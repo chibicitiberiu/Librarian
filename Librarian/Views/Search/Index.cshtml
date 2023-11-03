@@ -1,0 +1,19 @@
+﻿@{
+    ViewData["Title"] = "Search";
+    ViewData["CurrentPage"] = "search";
+}
+
+<form asp-action="Search">
+    <input type="text" name="query" />
+    <button type="submit">Search</button>
+
+    <div>
+        <input type="checkbox" name="include_metadata" value="include_metadata" id="include_metadata"/>
+        <label for="include_metadata">Search in metadata</label>
+
+        <input type="checkbox" name="include_content" value="include_content" id="include_content" />
+        <label for="include_content">Search in content</label>
+    </div>
+
+    <a asp-area="" asp-controller="Search" asp-action="AdvancedSearch">Advanced search</a>
+</form>

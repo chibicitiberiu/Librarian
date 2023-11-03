@@ -1,0 +1,203 @@
+﻿body {
+  color: #eee;
+  background: #25314B;
+  font-family: "Lucida Sans", "Lucida Sans Regular", "Lucida Grande", "Lucida Sans Unicode", "Luxi Sans", Geneva, Verdana, sans-serif;
+  font-size: 9pt;
+  padding: 0.25em 1em;
+}
+
+.header {
+  color: black;
+  background: #E6E6E6;
+  border-bottom: 1px solid #A1A1A1;
+}
+
+.footer {
+  color: black;
+  background: #E6E6E6;
+  border-top: 1px solid #FFFFFF;
+}
+
+.nav .nav-brand {
+  font-weight: bold;
+  font-size: 14pt;
+  font-style: italic;
+}
+.nav .nav-link {
+  background: #E6E6E6;
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  border-bottom: 1px solid #CECECE;
+  border-right: 1px solid #CECECE;
+  outline: 1px solid #5C5C5C;
+  margin: 1px;
+  vertical-align: middle;
+  padding: 0.3em 0.5em;
+}
+.nav .nav-link:hover {
+  background: #F5F5F5;
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  border-bottom: 1px solid #CECECE;
+  border-right: 1px solid #CECECE;
+  outline-color: #000000;
+}
+.nav .nav-link:active {
+  background: #CCCCCC;
+  border-top-color: #CECECE;
+  border-left-color: #CECECE;
+  border-bottom-color: white;
+  border-right-color: white;
+  outline-color: #000000;
+}
+.nav .nav-link:disabled, .nav .nav-link.disabled {
+  opacity: 0.5;
+}
+.nav .nav-link.active {
+  background: #CCCCCC;
+  border-top-color: #CECECE;
+  border-left-color: #CECECE;
+  border-bottom-color: white;
+  border-right-color: white;
+  outline-color: #000000;
+}
+.nav a {
+  color: #0a1539;
+  text-decoration: none;
+}
+.nav a.active {
+  color: #2649b4;
+}
+
+.window {
+  color: black;
+  background: #E6E6E6;
+  outline: 1px solid #000000;
+  border-radius: 0.25em;
+  box-shadow: 1px 1px 4px black;
+}
+.window .window-title {
+  background: url("/img/window-title-tile.png") repeat-x;
+  height: 18px;
+  border-bottom: 1px solid #000000;
+}
+.window .window-title .window-title-inner {
+  height: 100%;
+  background: url("/img/window-title-fade.png") no-repeat;
+  background-position: center;
+  background-position-y: top;
+}
+.window .window-title h1 {
+  color: white;
+  font-size: 10pt;
+  font-weight: bolder;
+  text-align: center;
+  text-shadow: 1px 1px 2px #223256;
+  margin: 0;
+  padding: 0;
+}
+.window .window-content {
+  background: white;
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  border-bottom: 1px solid #CECECE;
+  border-right: 1px solid #CECECE;
+}
+
+button, .button {
+  background: #E6E6E6;
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  border-bottom: 1px solid #CECECE;
+  border-right: 1px solid #CECECE;
+  outline: 1px solid #5C5C5C;
+  margin: 1px;
+}
+button:hover, .button:hover {
+  background: #F5F5F5;
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  border-bottom: 1px solid #CECECE;
+  border-right: 1px solid #CECECE;
+  outline-color: #000000;
+}
+button:active, .button:active {
+  background: #CCCCCC;
+  border-top-color: #CECECE;
+  border-left-color: #CECECE;
+  border-bottom-color: white;
+  border-right-color: white;
+  outline-color: #000000;
+}
+button:disabled, button.disabled, .button:disabled, .button.disabled {
+  opacity: 0.5;
+}
+
+.toolbar button, .toolbar-button, button.toolbar-button {
+  background: transparent;
+  border-top: 1px solid transparent;
+  border-left: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+  border-right: 1px solid transparent;
+  outline: 1px solid #E6E6E6;
+  outline: 1px solid rgba(255, 255, 255, 0.01);
+  margin: 1px;
+}
+.toolbar button:hover, .toolbar-button:hover, button.toolbar-button:hover {
+  background: #F5F5F5;
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  border-bottom: 1px solid #CECECE;
+  border-right: 1px solid #CECECE;
+  outline-color: #000000;
+}
+.toolbar button:active, .toolbar-button:active, button.toolbar-button:active {
+  background: #CCCCCC;
+  border-top-color: #CECECE;
+  border-left-color: #CECECE;
+  border-bottom-color: white;
+  border-right-color: white;
+  outline-color: #000000;
+}
+.toolbar button:disabled, .toolbar button.disabled, .toolbar-button:disabled, .toolbar-button.disabled, button.toolbar-button:disabled, button.toolbar-button.disabled {
+  opacity: 0.5;
+}
+
+input, .input {
+  background: white;
+  border-top: 1px solid #DEDEDE;
+  border-left: 1px solid #DEDEDE;
+  border-bottom: 1px solid white;
+  border-right: 1px solid white;
+  outline: 1px solid #999999;
+  display: block;
+  display: inline-block;
+}
+
+.location-bar {
+  min-width: 15em;
+  margin: 2px;
+}
+
+hr {
+  margin: 0 0.5em;
+  border-top: 1px solid #CECECE;
+  border-bottom: 1px solid white;
+}
+
+.separator {
+  display: inline;
+  display: inline-block;
+  width: 4px;
+  height: 25px;
+  background: url("/img/separator.gif");
+  margin: 0.5em 0.5em;
+}
+
+.disabled {
+  opacity: 0.5;
+}
+
+.invalid {
+  background-color: lightcoral;
+}

@@ -1,0 +1,155 @@
+﻿@using Librarian.Utils;
+@model BrowseViewModel
+@{
+    ViewData["Title"] = Model.DisplayPath;
+    ViewData["CurrentPage"] = "browse";
+
+    bool buttonUpEnabled = (Model.ParentPath != null);
+    string? buttonUpUrl = buttonUpEnabled
+        ? Url.Action("Index", "Browse", new { path = Model.ParentPath })
+        : "#";
+}
+
+@section Scripts {
+    <script>
+        document.librarian_browse_path = "@Model.Path";
+        document.librarian_browse_urlCut = "@Url.Action("Cut", "Browse")";
+        document.librarian_browse_urlCopy = "@Url.Action("Copy", "Browse")";
+        document.librarian_browse_urlPaste = "@Url.Action("Paste", "Browse")";
+        document.librarian_browse_urlRename = "@Url.Action("Rename", "Browse")";
+        document.librarian_browse_urlRenameBulk = "@Url.Action("RenameBulk", "Browse")";
+        document.librarian_browse_urlDelete = "@Url.Action("Delete", "Browse")";
+        document.librarian_browse_urlMetadata = "@(Url.Action("Index", "Metadata"))/@(Model.Path)";
+    </script>
+
+    <script src="~/js/browse.js" asp-append-version="true"></script>
+}
+
+<div class="window">
+    <div class="window-title">
+        <div class="window-title-inner">
+            <h1>Browsing @Model.DisplayName</h1>
+        </div>
+    </div>
+
+    <div class="menubar">
+        <ul>
+            <li>
+                File
+                    <ul>
+                        <li>New</li>
+                        <li>Open</li>
+                    </ul>
+            </li>
+            <li>Edit</li>
+            <li>Help
+                <ul>
+                    <li>About...</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <hr />
+
+    <div class="toolbar">
+        <button id="btn-cut"><img src="~/icons/32/edit-cut.png" />Cut</button>
+        <button id="btn-copy"><img src="~/icons/32/edit-copy.png" />Copy</button>
+        <button id="btn-paste" disabled="@(Model.Clipboard == null)"><img src="~/icons/32/edit-paste.png" />Paste</button>
+        <div class="separator"></div>
+        <button id="btn-rename"><img src="~/icons/32/edit.png" />Rename</button>
+        <button id="btn-delete"><img src="~/icons/32/edit-delete.png" />Delete</button>
+        <div class="separator"></div>
+        <button id="btn-metadata"><img src="~/icons/32/gnome-stock-insert-table.png" />Metadata</button>
+    </div>
+
+    <hr />
+
+    <div class="toolbar">
+        <a class="toolbar-button @HtmlUtils.BoolToClass(!buttonUpEnabled, "disabled")"
+           href="@buttonUpUrl">
+           <img src="~/icons/16/go-up.png" />
+        </a>
+        <div class="input location-bar">
+            <a class="toolbar-button"
+               href="@Url.Action("Index", "Browse", new { path = "" })">
+                <img src="~/icons/16/go-home.png" />
+            </a>
+            <span>/</span>
+            @foreach (var (name, path) in Model.Breadcrumbs)
+            {
+                <a class="toolbar-button" href="@Url.Action("Index", "Browse", new { path = path })">@name</a>
+                <span>/</span>
+            }
+        </div>
+    </div>
+
+    <div class="window-content">
+
+        <table id="file-listing" class="file-listing sortable">
+            <thead>
+                <tr>
+                    <th><input id="chk-select-all" type="checkbox" /></th>
+                    <th data-col="icon"></th>
+                    <th>File</th>
+                    <th>Size</th>
+                    <th>Type</th>
+                    <th>Last modified</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var file in Model.Files)
+                {
+                    <tr class="file-entry" data-id="@(file.Name)">
+                        <td><input id="chk-selected" type="checkbox" /></td>
+                        <td><img src="@file.IconUrl"></td>
+                        @if (file.IsDirectory)
+                        {
+                            <td data-sort="0_@(file.Name)">
+                                <a href="@Url.Action("Index", "Browse", new { path = file.Path})">@(file.Name)</a>
+                            </td>
+                            <td></td>
+                            <td>&lt;DIR&gt;</td>
+                        }
+                        else
+                        {
+                            <td data-sort="1_@(file.Name)">
+                                <a href="@Url.Action("Index", "Browse", new { path = file.Path})">@(file.Name)</a>
+                            </td>
+                            <td data-sort="@(file.Size)">@(file.DisplaySize)</td>
+                            <td>@(file.MimeType)</td>
+                        }
+
+                        <td>@(file.LastModified.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"))</td>
+                        <td>
+                            @if (file.Name != "..")
+                            {
+                                <a href="@Url.Action("Index", "Browse", new { path = file.Path})">Properties [todo]</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+    </div>
+
+    <div class="window-statusbar">
+        <div id="msg-status" class="flex-fill">Ready</div>
+        <div>
+            @{
+                var clipboardTitle = "Clipboard empty.";
+                if (Model.Clipboard != null)
+                    clipboardTitle = string.Format("{0} item{1} {2} in clipboard",
+                                          Model.Clipboard.SourceFiles.Length,
+                                          Model.Clipboard.SourceFiles.Length > 1 ? "s" : "",
+                                          Model.Clipboard.Move ? "cut" : "copied");
+            }
+            <img id="img-clipboard-indicator"
+                 src="~/icons/16/icon-clipboard.png"
+                 title="@clipboardTitle"
+                 class="@HtmlUtils.BoolToClass(Model.Clipboard == null, "disabled")"/></div>
+    </div>
+
+</div>

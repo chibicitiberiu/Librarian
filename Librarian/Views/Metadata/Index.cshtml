@@ -1,0 +1,110 @@
+﻿@using Librarian.Utils;
+@using Librarian.ViewModels;
+@model MetadataViewModel
+@{
+    ViewData["Title"] = Model.DisplayPath;
+    ViewData["CurrentPage"] = "metadata";
+
+    string? urlBrowse = Url.Action("Index", "Browse", new { path = Model.IsDirectory ? Model.Path : Model.ParentPath });
+}
+
+@section Scripts {
+    <script>
+        document.librarian_metadata_path = "@Model.Path";
+        document.librarian_metadata_urlBrowse = "@urlBrowse";
+    </script>
+
+    <script src="~/js/metadata.js" asp-append-version="true"></script>
+}
+
+<div class="window">
+    <div class="window-title">
+        <div class="window-title-inner">
+            <h1>Metadata for @Model.DisplayName</h1>
+        </div>
+    </div>
+
+    <div class="menubar">
+        <ul>
+            <li>
+                File
+                    <ul>
+                        <li>New</li>
+                        <li>Open</li>
+                    </ul>
+            </li>
+            <li>Edit</li>
+            <li>Help
+                <ul>
+                    <li>About...</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <hr />
+
+    <div class="toolbar">
+        <button id="btn-save" title="Save changes"><img src="~/icons/32/document-save.png" />Save</button>
+        <div class="separator"></div>
+        <button id="btn-add" title="Add metadata fields"><img src="~/icons/32/edit-add.png" />Add</button>
+        <button id="btn-delete" title="Delete the selected metadata fields."><img src="~/icons/32/edit-delete.png" />Delete</button>
+    </div>
+
+    <div class="window-content">
+
+        @foreach (var group in Model.Metadata.GroupBy(x => x.Definition.Group))
+        {
+            <div class="metadata-group" data-id="@group.Key">
+                <h2 class="metadata-group-title">@group.Key</h2>
+
+                <table>
+                    <tbody>
+                        @foreach (var field in group.OrderBy(x => x.Definition.Name))
+                        {
+                            var fieldId = $"{field.Definition.Group}/{field.Definition.Name}";
+                            <tr data-id="@fieldId">
+                                <td><input id="chk-selected" type="checkbox" readonly="@(!field.Editable)" /></td>
+                                <td>@field.Definition.Name</td>
+                                <td class="col-input">
+                                    @switch (field.Definition.Type)
+                                    {
+                                        case Librarian.Model.MetadataType.Text:
+                                            <input id="@fieldId" name="@fieldId" type="text" value="@field.Value" readonly="@(!field.Editable)">
+                                            break;
+                                        case Librarian.Model.MetadataType.BigText:
+                                        case Librarian.Model.MetadataType.FormattedText:
+                                            <textarea id="@fieldId" name="@fieldId" type="text" readonly="@(!field.Editable)">@field.Value</textarea>
+                                            break;
+                                        case Librarian.Model.MetadataType.Integer:
+                                            <input id="@fieldId" name="@fieldId" type="number" value="@field.Value" readonly="@(!field.Editable)">
+                                            break;
+                                        case Librarian.Model.MetadataType.Float:
+                                            <input id="@fieldId" name="@fieldId" type="text" value="@field.Value" readonly="@(!field.Editable)">
+                                            break;
+                                        case Librarian.Model.MetadataType.Date:
+                                            <input id="@fieldId" name="@fieldId" type="text" value="@field.Value" readonly="@(!field.Editable)">
+                                            break;
+                                        case Librarian.Model.MetadataType.TimeSpan:
+                                            <input id="@fieldId" name="@fieldId" type="text" value="@field.Value" readonly="@(!field.Editable)">
+                                            break;
+                                        case Librarian.Model.MetadataType.Blob:
+                                            <input id="@fieldId" name="@fieldId" type="text" value="@field.Value" readonly="@(!field.Editable)">
+                                            break;
+                                    }
+                                </td>
+                                <td class="fill"></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="window-statusbar">
+        <div id="msg-status" class="flex-fill">Ready</div>
+        <div>
+
+    </div>
+</div>

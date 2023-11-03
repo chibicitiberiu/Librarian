@@ -1,0 +1,40 @@
+﻿@using Librarian.Utils;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Librarian</title>
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="~/css/style.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false);
+    <link rel="icon" href="~/favicon.ico" asp-append-version="true" />
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <div class="nav-brand">
+                <a asp-area="" asp-controller="Home" asp-action="Index">Librarian</a>
+            </div>
+            <div class="separator"></div>
+            <a asp-area="" asp-controller="Browse" asp-action="Index" 
+               class="nav-link @HtmlUtils.ActiveOnPage("browse", ViewData["CurrentPage"])">
+                <img src="~/icons/16/file-manager.png" /> Browse
+            </a>
+            <a asp-area="" asp-controller="Search" asp-action="Index"
+               class="nav-link @HtmlUtils.ActiveOnPage("search", ViewData["CurrentPage"])">
+                <img src="~/icons/16/gnome-searchtool.png" /> Search
+            </a>
+        </div>
+    </div>
+    <div class="main" role="main">
+        @RenderBody()
+    </div>
+    <div class="footer">
+        &copy; 2023 - Librarian
+    </div>
+    <script src="~/js/app.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

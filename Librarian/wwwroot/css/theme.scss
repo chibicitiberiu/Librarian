@@ -1,0 +1,231 @@
+﻿$color-desktop: #25314B;
+$color-desktop-fg: #eee;
+
+$color-panel: #E6E6E6;
+$color-panel-highlight: #F5F5F5;
+$color-panel-active: #CCCCCC;
+$color-foreground: black;
+
+$color-inner-border-light: white;
+$color-inner-border-dark: #CECECE;
+$color-outer-border: #5C5C5C;
+$color-outer-border-highlight: #000000;
+
+$color-link: #0a1539;
+$color-link-active: #2649b4;
+
+$color-title: white;
+
+$color-content: white;
+$color-input-background: $color-content;
+$color-input-outer-border: #999999;
+$color-input-inner-border-dark: #DEDEDE;
+$color-input-inner-border-light: white;
+
+@mixin common-desktop {
+    color: $color-desktop-fg;
+    background: $color-desktop;
+}
+
+@mixin common-panel {
+    color: $color-foreground;
+    background: $color-panel;
+}
+
+@mixin common-button-highlight {
+    background: $color-panel-highlight;
+    border-top: 1px solid $color-inner-border-light;
+    border-left: 1px solid $color-inner-border-light;
+    border-bottom: 1px solid $color-inner-border-dark;
+    border-right: 1px solid $color-inner-border-dark;
+    outline-color: $color-outer-border-highlight;
+}
+
+@mixin common-button-normal {
+    background: $color-panel;
+    border-top: 1px solid $color-inner-border-light;
+    border-left: 1px solid $color-inner-border-light;
+    border-bottom: 1px solid $color-inner-border-dark;
+    border-right: 1px solid $color-inner-border-dark;
+    outline: 1px solid $color-outer-border;
+    margin: 1px;
+}
+
+@mixin common-button-transparent {
+    background: transparent;
+    border-top: 1px solid transparent;
+    border-left: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+    border-right: 1px solid transparent;
+    outline: 1px solid $color-panel;
+    outline: 1px solid rgba(255 255 255 / 0.01);
+    margin: 1px;
+}
+
+@mixin common-button-active {
+    background: $color-panel-active;
+    border-top-color: $color-inner-border-dark;
+    border-left-color: $color-inner-border-dark;
+    border-bottom-color: $color-inner-border-light;
+    border-right-color: $color-inner-border-light;
+    outline-color: $color-outer-border-highlight;
+}
+
+@mixin common-input {
+    background: $color-input-background;
+    border-top: 1px solid $color-input-inner-border-dark;
+    border-left: 1px solid $color-input-inner-border-dark;
+    border-bottom: 1px solid $color-input-inner-border-light;
+    border-right: 1px solid $color-input-inner-border-light;
+    outline: 1px solid $color-input-outer-border;
+}
+
+@mixin common-button {
+    @include common-button-normal;
+
+    &:hover {
+        @include common-button-highlight;
+    }
+    &:active {
+        @include common-button-active;
+    }
+    &:disabled, &.disabled {
+        opacity: .5;
+    }
+}
+
+@mixin common-toolbar-button {
+    @include common-button-transparent;
+
+    &:hover {
+        @include common-button-highlight;
+    }
+    &:active {
+        @include common-button-active;
+    }
+    &:disabled, &.disabled {
+        opacity: .5;
+    }
+}
+
+body {
+    @include common-desktop;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', 'Luxi Sans', Geneva, Verdana, sans-serif;
+    font-size: 9pt;
+    padding: .25em 1em;
+}
+
+.header {
+    @include common-panel;
+    border-bottom: 1px solid #A1A1A1;
+}
+
+.footer {
+    @include common-panel;
+    border-top: 1px solid #FFFFFF;
+}
+
+.nav {
+    .nav-brand {
+        font-weight: bold;
+        font-size: 14pt;
+        font-style: italic;
+    }
+    .nav-link {
+        @include common-button;
+        vertical-align: middle;
+        padding: .3em .5em;
+
+        &.active {
+            @include common-button-active;
+        }
+    }
+    a {
+        color: $color-link;
+        text-decoration: none;
+
+        &.active {
+            color: $color-link-active;
+        }
+    }
+}
+
+.window {
+    @include common-panel;
+    outline: 1px solid $color-outer-border-highlight;
+    border-radius: .25em;
+    box-shadow: 1px 1px 4px black;
+
+    .window-title {
+        background: url("/img/window-title-tile.png") repeat-x;
+        height: 18px;
+        border-bottom: 1px solid $color-outer-border-highlight;
+
+        .window-title-inner {
+            height: 100%;
+            background: url("/img/window-title-fade.png") no-repeat;
+            background-position: center;
+            background-position-y: top;
+        }
+
+        h1 {
+            color: $color-title;
+            font-size: 10pt;
+            font-weight: bolder;
+            text-align: center;
+            text-shadow: 1px 1px 2px #223256;
+            margin: 0;
+            padding: 0;
+        }
+    }
+
+    .window-content {
+        background: $color-content;
+        border-top: 1px solid $color-inner-border-light;
+        border-left: 1px solid $color-inner-border-light;
+        border-bottom: 1px solid $color-inner-border-dark;
+        border-right: 1px solid $color-inner-border-dark;
+    }
+}
+
+button, .button {
+    @include common-button;
+}
+
+.toolbar button, .toolbar-button, button.toolbar-button {
+    @include common-toolbar-button;
+}
+
+input, .input {
+    @include common-input;
+    display: block;
+    display: inline-block;
+}
+
+.location-bar {
+    min-width: 15em;
+    margin: 2px;
+}
+
+hr {
+    margin: 0 .5em;
+    border-top: 1px solid $color-inner-border-dark;
+    border-bottom: 1px solid $color-inner-border-light;
+}
+
+.separator {
+    display: inline;
+    display: inline-block;
+    width: 4px;
+    height: 25px;
+    background: url('/img/separator.gif');
+    margin: .5em .5em;
+}
+
+.disabled {
+    opacity: .5;
+}
+
+.invalid {
+    background-color: lightcoral;
+}

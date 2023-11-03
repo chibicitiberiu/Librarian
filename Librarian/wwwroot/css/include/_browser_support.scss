@@ -1,0 +1,56 @@
+﻿@mixin display-flex() {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -ms-flexbox;
+    display: -moz-box;
+    display: flex;
+}
+
+@mixin flex-direction-row() {
+    -webkit-box-orient: horizontal;
+    -webkit-box-direction: normal;
+    -webkit-flex-direction: row;
+    -moz-box-orient: horizontal;
+    -moz-box-direction: normal;
+    -ms-flex-direction: row;
+    flex-direction: row;
+}
+
+@mixin flex-direction-column() {
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    -webkit-flex-direction: column;
+    -moz-box-orient: vertical;
+    -moz-box-direction: normal;
+    -ms-flex-direction: column;
+    flex-direction: column;
+}
+
+@mixin align-items($value) {
+    -webkit-box-align: $value;
+    -webkit-align-items: $value;
+    -moz-box-align: $value;
+    -ms-flex-align: $value;
+    align-items: $value;
+}
+
+@mixin align-self($value) {
+    -webkit-align-self: $value;
+    -ms-flex-item-align: $value;
+    -ms-grid-row-align: $value;
+    align-self: $value;
+}
+
+@mixin box-sizing($value) {
+    -webkit-box-sizing: $value;
+    -moz-box-sizing: $value;
+    box-sizing: $value;
+}
+
+@mixin flex-grow($value) {
+    -webkit-box-flex: $value;
+    -webkit-flex-grow: $value;
+    -moz-box-flex: $value;
+    -ms-flex-positive: $value;
+    flex-grow: $value;
+}
