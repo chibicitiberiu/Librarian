@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Librarian.Controllers
 {
@@ -23,7 +24,7 @@ namespace Librarian.Controllers
             this.fileService = fileService;
         }
 
-        public IActionResult Index(string path)
+        public async Task<IActionResult> IndexAsync(string path)
         {
             try
             {
@@ -62,7 +63,7 @@ namespace Librarian.Controllers
                 }
 
                 // collect and fill metadata
-                vm.Metadata = metadataService.GetMetadata(diskPath);
+                vm.Metadata = await metadataService.GetMetadataAsync(diskPath);
 
                 return View(vm);
             }

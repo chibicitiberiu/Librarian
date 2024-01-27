@@ -1,5 +1,4 @@
-﻿using Librarian.Metadata;
-using System.Collections;
+﻿using Librarian.Model;
 using System.Collections.Generic;
 
 namespace Librarian.ViewModels
@@ -16,6 +15,6 @@ namespace Librarian.ViewModels
 
         public bool IsDirectory { get; set; }
 
-        public IEnumerable<MetadataField> Metadata { get; set; } = null!;
+        public IEnumerable<MetadataBase> Metadata { get; set; } = null!;
     }
 }

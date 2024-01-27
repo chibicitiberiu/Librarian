@@ -46,144 +46,144 @@ namespace Librarian.Indexing
 
             logger.LogInformation("Getting metadata for {0}...", indexedFile.Path);
 
-            var metadata = metadataService.GetMetadata(indexedFile.Path);
+            var metadata = await metadataService.GetMetadataAsync(indexedFile.Path);
             foreach (var field in metadata)
             {
-                MetadataAttribute attribute = await GetOrCreateMetadataAttribute(field);
+                MetadataAttributeDefinition attribute = field.AttributeDefinition;
 
                 // Get or create metadata
-                switch (field.Definition.Type)
+                switch (attribute.Type)
                 {
                     case MetadataType.Text:
                     case MetadataType.BigText:
                     case MetadataType.FormattedText:
-                        SaveTextMetadata(fileId, indexedFile, field, attribute);
+                        SaveTextMetadata(fileId, indexedFile, (TextMetadata)field, attribute);
                         break;
 
                     case MetadataType.Integer:
-                        SaveIntMetadata(fileId, indexedFile, field, attribute);
+                        SaveIntMetadata(fileId, indexedFile, (IntegerMetadata)field, attribute);
                         break;
 
                     case MetadataType.Float:
-                        SaveFloatMetadata(fileId, indexedFile, field, attribute);
+                        SaveFloatMetadata(fileId, indexedFile, (FloatMetadata)field, attribute);
                         break;
 
                     case MetadataType.Date:
-                        SaveDateMetadata(fileId, indexedFile, field, attribute);
+                        SaveDateMetadata(fileId, indexedFile, (DateMetadata)field, attribute);
                         break;
 
                     case MetadataType.Blob:
-                        SaveBlobMetadata(fileId, indexedFile, field, attribute);
+                        SaveBlobMetadata(fileId, indexedFile, (BlobMetadata)field, attribute);
                         break;
                 }
             }
             await dbContext.SaveChangesAsync();
         }
 
-        private void SaveBlobMetadata(int fileId, IndexedFile indexedFile, MetadataField field, MetadataAttribute attribute)
+        private void SaveBlobMetadata(int fileId, IndexedFile indexedFile, BlobMetadata field, MetadataAttributeDefinition attribute)
         {
-            var blobMetadata = dbContext.BlobMetadata.FirstOrDefault(x => x.FileId == fileId && x.Attribute.Id == attribute.Id);
+            var blobMetadata = dbContext.BlobMetadata.FirstOrDefault(x => x.FileId == fileId && x.AttributeDefinition.Id == attribute.Id);
             if (blobMetadata == null)
             {
-                blobMetadata = new DB.Model.BlobMetadata();
+                blobMetadata = new BlobMetadata();
                 dbContext.Add(blobMetadata);
             }
-            blobMetadata.Attribute = attribute;
+            blobMetadata.AttributeDefinition = attribute;
             blobMetadata.Value = (byte[])field.Value;
             blobMetadata.File = indexedFile;
             blobMetadata.ProviderId = field.ProviderId;
         }
 
-        private void SaveDateMetadata(int fileId, IndexedFile indexedFile, MetadataField field, MetadataAttribute attribute)
+        private void SaveDateMetadata(int fileId, IndexedFile indexedFile, DateMetadata field, MetadataAttributeDefinition attribute)
         {
-            var dateMetadata = dbContext.DateMetadata.FirstOrDefault(x => x.FileId == fileId && x.Attribute.Id == attribute.Id);
+            var dateMetadata = dbContext.DateMetadata.FirstOrDefault(x => x.FileId == fileId && x.AttributeDefinition.Id == attribute.Id);
             if (dateMetadata == null)
             {
-                dateMetadata = new DB.Model.DateMetadata();
+                dateMetadata = new DateMetadata();
                 dbContext.Add(dateMetadata);
             }
-            dateMetadata.Attribute = attribute;
-            if (field.Value is DateTime dt)
-                dateMetadata.Value = new DateTimeOffset(dt).ToUniversalTime();
-            else dateMetadata.Value = ((DateTimeOffset)field.Value).ToUniversalTime();
+            dateMetadata.AttributeDefinition = attribute;
+            //if (field.Value is DateTime dt)
+            //    dateMetadata.Value = new DateTimeOffset(dt).ToUniversalTime();
+            //else dateMetadata.Value = ((DateTimeOffset)field.Value).ToUniversalTime();
             dateMetadata.File = indexedFile;
             dateMetadata.ProviderId = field.ProviderId;
         }
 
-        private void SaveFloatMetadata(int fileId, IndexedFile indexedFile, MetadataField field, MetadataAttribute attribute)
+        private void SaveFloatMetadata(int fileId, IndexedFile indexedFile, FloatMetadata field, MetadataAttributeDefinition attribute)
         {
-            var floatMetadata = dbContext.FloatMetadata.FirstOrDefault(x => x.FileId == fileId && x.Attribute.Id == attribute.Id);
+            var floatMetadata = dbContext.FloatMetadata.FirstOrDefault(x => x.FileId == fileId && x.AttributeDefinition.Id == attribute.Id);
             if (floatMetadata == null)
             {
-                floatMetadata = new DB.Model.FloatMetadata();
+                floatMetadata = new FloatMetadata();
                 dbContext.Add(floatMetadata);
             }
-            floatMetadata.Attribute = attribute;
-            if (field.Value is TimeSpan ts)
-                floatMetadata.Value = ts.TotalSeconds;
-            else
+            floatMetadata.AttributeDefinition = attribute;
+            //if (field.Value is TimeSpan ts)
+            //    floatMetadata.Value = ts.TotalSeconds;
+            //else
                 floatMetadata.Value = Convert.ToDouble(field.Value);
             floatMetadata.File = indexedFile;
             floatMetadata.ProviderId = field.ProviderId;
         }
 
-        private void SaveIntMetadata(int fileId, IndexedFile indexedFile, MetadataField field, MetadataAttribute attribute)
+        private void SaveIntMetadata(int fileId, IndexedFile indexedFile, IntegerMetadata field, MetadataAttributeDefinition attribute)
         {
-            var intMetadata = dbContext.IntegerMetadata.FirstOrDefault(x => x.FileId == fileId && x.Attribute.Id == attribute.Id);
+            var intMetadata = dbContext.IntegerMetadata.FirstOrDefault(x => x.FileId == fileId && x.AttributeDefinition.Id == attribute.Id);
             if (intMetadata == null)
             {
-                intMetadata = new DB.Model.IntegerMetadata();
+                intMetadata = new IntegerMetadata();
                 dbContext.Add(intMetadata);
             }
-            intMetadata.Attribute = attribute;
+            intMetadata.AttributeDefinition = attribute;
             intMetadata.Value = Convert.ToInt64(field.Value);
             intMetadata.File = indexedFile;
             intMetadata.ProviderId = field.ProviderId;
         }
 
-        private void SaveTextMetadata(int fileId, IndexedFile indexedFile, MetadataField field, MetadataAttribute attribute)
+        private void SaveTextMetadata(int fileId, IndexedFile indexedFile, TextMetadata field, MetadataAttributeDefinition attribute)
         {
-            var textMetadata = dbContext.TextMetadata.FirstOrDefault(x => x.FileId == fileId && x.Attribute.Id == attribute.Id);
+            var textMetadata = dbContext.TextMetadata.FirstOrDefault(x => x.FileId == fileId && x.AttributeDefinition.Id == attribute.Id);
             if (textMetadata == null)
             {
-                textMetadata = new DB.Model.TextMetadata();
+                textMetadata = new TextMetadata();
                 dbContext.Add(textMetadata);
             }
-            textMetadata.Attribute = attribute;
+            textMetadata.AttributeDefinition = attribute;
             textMetadata.Value = (string)field.Value;
             //textMetadata.ValueSearch = LanguageHelper.CreateTsVector(textMetadata.Value, config);
             textMetadata.File = indexedFile;
             textMetadata.ProviderId = field.ProviderId;
         }
 
-        private async Task<MetadataAttribute> GetOrCreateMetadataAttribute(MetadataField field)
-        {
-            var attribute = dbContext.MetadataAttributes.FirstOrDefault(
-                x => x.Name == field.Definition.Name && x.Group == field.Definition.Group);
+        //private async Task<MetadataAttributeDefinition> GetOrCreateMetadataAttribute(MetadataBase field)
+        //{
+        //    var attribute = dbContext.MetadataAttributes.FirstOrDefault(
+        //        x => x.Name == field.Definition.Name && x.Group == field.Definition.Group);
 
-            // try creating the object
-            if (attribute == null)
-            {
-                attribute = new MetadataAttribute()
-                {
-                    Name = field.Definition.Name,
-                    Group = field.Definition.Group,
-                    Type = field.Definition.Type,
-                };
-                dbContext.MetadataAttributes.Add(attribute);
-                try
-                {
-                    await dbContext.SaveChangesAsync();
-                }
-                catch (DbUpdateException ex) when (ex.InnerException is PostgresException pex && pex.SqlState == PostgresErrorCodes.UniqueViolation)
-                {
-                    // attribute was created in parallel
-                    attribute = dbContext.MetadataAttributes.First(
-                        x => x.Name == field.Definition.Name && x.Group == field.Definition.Group);
-                }
-            }
+        //    // try creating the object
+        //    if (attribute == null)
+        //    {
+        //        attribute = new MetadataAttributeDefinition()
+        //        {
+        //            Name = field.Definition.Name,
+        //            Group = field.Definition.Group,
+        //            Type = field.Definition.Type,
+        //        };
+        //        dbContext.MetadataAttributes.Add(attribute);
+        //        try
+        //        {
+        //            await dbContext.SaveChangesAsync();
+        //        }
+        //        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pex && pex.SqlState == PostgresErrorCodes.UniqueViolation)
+        //        {
+        //            // attribute was created in parallel
+        //            attribute = dbContext.MetadataAttributes.First(
+        //                x => x.Name == field.Definition.Name && x.Group == field.Definition.Group);
+        //        }
+        //    }
 
-            return attribute;
-        }
+        //    return attribute;
+        //}
     }
 }

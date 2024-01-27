@@ -1,0 +1,6 @@
+[submodule "meta-cli/import/argparse"]
+	path = meta-cli/import/argparse
+	url = https://github.com/p-ranav/argparse.git
+[submodule "meta-cli/import/json"]
+	path = meta-cli/import/json
+	url = https://github.com/nlohmann/json.git

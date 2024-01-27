@@ -8,20 +8,32 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Data\MetadataAttributeAliases.csv" />
+    <None Remove="Data\MetadataAttributes.csv" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Data\MetadataAttributes.csv" />
+    <EmbeddedResource Include="Data\MetadataAttributeAliases.csv" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="30.0.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.13" />
     <PackageReference Include="Npgsql" Version="7.0.6" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Model\MetadataFields.cs">
-      <DependentUpon>MetadataFields.tt</DependentUpon>
+    <Compile Update="Model\MetadataAttributes.cs">
+      <DependentUpon>MetadataAttributes.tt</DependentUpon>
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
     </Compile>
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Model\MetadataFields.tt">
-      <LastGenOutput>MetadataFields.cs</LastGenOutput>
+    <None Update="Model\MetadataAttributes.tt">
+      <LastGenOutput>MetadataAttributes.cs</LastGenOutput>
       <Generator>TextTemplatingFileGenerator</Generator>
     </None>
   </ItemGroup>

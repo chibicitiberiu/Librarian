@@ -1,5 +1,6 @@
 ﻿@using Librarian.Utils;
 @using Librarian.ViewModels;
+@using Librarian.Model;
 @model MetadataViewModel
 @{
     ViewData["Title"] = Model.DisplayPath;
@@ -53,44 +54,68 @@
 
     <div class="window-content">
 
-        @foreach (var group in Model.Metadata.GroupBy(x => x.Definition.Group))
+        @foreach (var group in Model.Metadata.GroupBy(x => x.AttributeDefinition.Group))
         {
             <div class="metadata-group" data-id="@group.Key">
                 <h2 class="metadata-group-title">@group.Key</h2>
 
                 <table>
                     <tbody>
-                        @foreach (var field in group.OrderBy(x => x.Definition.Name))
+                        @foreach (var field in group.OrderBy(x => x.AttributeDefinition.Name))
                         {
-                            var fieldId = $"{field.Definition.Group}/{field.Definition.Name}";
+                            var fieldId = $"{field.AttributeDefinition.Group}/{field.AttributeDefinition.Name}";
                             <tr data-id="@fieldId">
                                 <td><input id="chk-selected" type="checkbox" readonly="@(!field.Editable)" /></td>
-                                <td>@field.Definition.Name</td>
+                                <td>@field.AttributeDefinition.Name</td>
                                 <td class="col-input">
-                                    @switch (field.Definition.Type)
+                                    @switch (field.AttributeDefinition.Type)
                                     {
                                         case Librarian.Model.MetadataType.Text:
-                                            <input id="@fieldId" name="@fieldId" type="text" value="@field.Value" readonly="@(!field.Editable)">
-                                            break;
+                                            {
+                                                var textMetadata = (TextMetadata)field;
+                                                <input id="@fieldId" name="@fieldId" type="text" value="@textMetadata.Value" readonly="@(!textMetadata.Editable)">
+                                                break;
+                                            }
                                         case Librarian.Model.MetadataType.BigText:
                                         case Librarian.Model.MetadataType.FormattedText:
-                                            <textarea id="@fieldId" name="@fieldId" type="text" readonly="@(!field.Editable)">@field.Value</textarea>
-                                            break;
+                                            {
+                                                var textMetadata = (TextMetadata)field;
+                                                <textarea id="@fieldId" name="@fieldId" type="text" readonly="@(!textMetadata.Editable)">@textMetadata.Value</textarea>
+                                                break;
+                                            }
                                         case Librarian.Model.MetadataType.Integer:
-                                            <input id="@fieldId" name="@fieldId" type="number" value="@field.Value" readonly="@(!field.Editable)">
-                                            break;
+                                            {
+                                                var intMetadata = (IntegerMetadata)field;
+                                                <input id="@fieldId" name="@fieldId" type="number" value="@intMetadata.Value" readonly="@(!intMetadata.Editable)">
+                                                break;
+                                            }
                                         case Librarian.Model.MetadataType.Float:
-                                            <input id="@fieldId" name="@fieldId" type="text" value="@field.Value" readonly="@(!field.Editable)">
-                                            break;
+                                            {
+                                                var floatMetadata = (FloatMetadata)field;
+                                                <input id="@fieldId" name="@fieldId" type="text" value="@floatMetadata.Value" readonly="@(!floatMetadata.Editable)">
+                                                break;
+                                            }
                                         case Librarian.Model.MetadataType.Date:
-                                            <input id="@fieldId" name="@fieldId" type="text" value="@field.Value" readonly="@(!field.Editable)">
-                                            break;
+                                            {
+                                                var dateMetadata = (DateMetadata)field;
+                                                <input id="@fieldId" name="@fieldId" type="text" value="@dateMetadata.Value" readonly="@(!dateMetadata.Editable)">
+                                                break;
+                                            }
                                         case Librarian.Model.MetadataType.TimeSpan:
-                                            <input id="@fieldId" name="@fieldId" type="text" value="@field.Value" readonly="@(!field.Editable)">
-                                            break;
+                                            {
+                                                var floatMetadata = (FloatMetadata)field;
+                                                var value = TimeSpan.FromSeconds(floatMetadata.Value);
+
+                                                <input id="@fieldId" name="@fieldId" type="text" value="@value" readonly="@(!floatMetadata.Editable)">
+                                                break;
+                                            }
                                         case Librarian.Model.MetadataType.Blob:
-                                            <input id="@fieldId" name="@fieldId" type="text" value="@field.Value" readonly="@(!field.Editable)">
-                                            break;
+                                            {
+                                                var blobMetadata = (BlobMetadata)field;
+                                                string value = Convert.ToHexString(blobMetadata.Value);
+                                                <input id="@fieldId" name="@fieldId" type="text" value="@value" readonly="@(!blobMetadata.Editable)">
+                                                break;
+                                            }
                                     }
                                 </td>
                                 <td class="fill"></td>

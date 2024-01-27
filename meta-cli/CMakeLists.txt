@@ -11,6 +11,9 @@ endif()
 
 project ("meta-cli")
 
+include_directories("import/argparse/include"
+					"import/json/single_include")
+
 # Add source to this project's executable.
 add_executable (meta-cli "main.cpp" "main.h")
 
@@ -21,4 +24,5 @@ endif()
 # TODO: Add tests and install targets if needed.
 find_library(LIBAVFORMAT NAMES avformat libavformat)
 find_library(LIBAVUTIL NAMES avutil libavutil)
-target_link_libraries(meta-cli PRIVATE avformat avutil)
+find_library(LIBAVCODEC NAMES avcodec libavcodec)
+target_link_libraries(meta-cli PRIVATE avformat avutil avcodec)

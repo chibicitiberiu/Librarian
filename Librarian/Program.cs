@@ -1,6 +1,8 @@
 using Librarian.DB;
 using Librarian.Indexing;
+using Librarian.Metadata;
 using Librarian.Metadata.Providers;
+using Librarian.Metadata.Providers.MetadataCli;
 using Librarian.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -46,16 +48,19 @@ namespace Librarian
 
             builder.Services.AddSingleton<FileService>();
             builder.Services.AddScoped<MetadataService>();
+            builder.Services.AddScoped<MetadataFactory>();
 
             builder.Services.AddScoped<IMetadataProvider, FileMetadataProvider>();
-            builder.Services.AddScoped<IMetadataProvider, MetadataExtractorProvider>();
-
+            //builder.Services.AddScoped<IMetadataProvider, MetadataExtractorProvider>();
+            builder.Services.AddScoped<IMetadataProvider, MetadataCliProvider>();
             builder.Services.AddSession(opts =>
             {
                 opts.Cookie.HttpOnly = true;
                 opts.Cookie.IsEssential = true;
                 opts.IdleTimeout = TimeSpan.FromMinutes(10);
             });
+
+            builder.Services.AddSingleton<MetadataCliService>();
 
             var app = builder.Build();
 

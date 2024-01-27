@@ -18,7 +18,7 @@ namespace Librarian.DB.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.11")
+                .HasAnnotation("ProductVersion", "7.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -31,16 +31,21 @@ namespace Librarian.DB.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("AttributeId")
+                    b.Property<int>("AttributeDefinitionId")
                         .HasColumnType("integer");
 
                     b.Property<bool>("Editable")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("FileId")
+                    b.Property<int?>("FileId")
+                        .IsRequired()
                         .HasColumnType("integer");
 
-                    b.Property<int>("ProviderId")
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SubResourceId")
                         .HasColumnType("integer");
 
                     b.Property<byte[]>("Value")
@@ -49,9 +54,11 @@ namespace Librarian.DB.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AttributeId");
+                    b.HasIndex("AttributeDefinitionId");
 
                     b.HasIndex("FileId");
+
+                    b.HasIndex("SubResourceId");
 
                     b.ToTable("BlobMetadata");
                 });
@@ -64,16 +71,21 @@ namespace Librarian.DB.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("AttributeId")
+                    b.Property<int>("AttributeDefinitionId")
                         .HasColumnType("integer");
 
                     b.Property<bool>("Editable")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("FileId")
+                    b.Property<int?>("FileId")
+                        .IsRequired()
                         .HasColumnType("integer");
 
-                    b.Property<int>("ProviderId")
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SubResourceId")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("Value")
@@ -81,9 +93,11 @@ namespace Librarian.DB.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AttributeId");
+                    b.HasIndex("AttributeDefinitionId");
 
                     b.HasIndex("FileId");
+
+                    b.HasIndex("SubResourceId");
 
                     b.ToTable("DateMetadata");
                 });
@@ -96,16 +110,21 @@ namespace Librarian.DB.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("AttributeId")
+                    b.Property<int>("AttributeDefinitionId")
                         .HasColumnType("integer");
 
                     b.Property<bool>("Editable")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("FileId")
+                    b.Property<int?>("FileId")
+                        .IsRequired()
                         .HasColumnType("integer");
 
-                    b.Property<int>("ProviderId")
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SubResourceId")
                         .HasColumnType("integer");
 
                     b.Property<double>("Value")
@@ -113,9 +132,11 @@ namespace Librarian.DB.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AttributeId");
+                    b.HasIndex("AttributeDefinitionId");
 
                     b.HasIndex("FileId");
+
+                    b.HasIndex("SubResourceId");
 
                     b.ToTable("FloatMetadata");
                 });
@@ -180,16 +201,21 @@ namespace Librarian.DB.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("AttributeId")
+                    b.Property<int>("AttributeDefinitionId")
                         .HasColumnType("integer");
 
                     b.Property<bool>("Editable")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("FileId")
+                    b.Property<int?>("FileId")
+                        .IsRequired()
                         .HasColumnType("integer");
 
-                    b.Property<int>("ProviderId")
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SubResourceId")
                         .HasColumnType("integer");
 
                     b.Property<long>("Value")
@@ -197,14 +223,16 @@ namespace Librarian.DB.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AttributeId");
+                    b.HasIndex("AttributeDefinitionId");
 
                     b.HasIndex("FileId");
+
+                    b.HasIndex("SubResourceId");
 
                     b.ToTable("IntegerMetadata");
                 });
 
-            modelBuilder.Entity("Librarian.Model.MetadataAttribute", b =>
+            modelBuilder.Entity("Librarian.Model.MetadataAttributeAlias", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -212,7 +240,775 @@ namespace Librarian.DB.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Grouping")
+                    b.Property<string>("Alias")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("AttributeDefinitionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Alias")
+                        .IsUnique();
+
+                    b.HasIndex("AttributeDefinitionId");
+
+                    b.ToTable("AttributeAliases");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Alias = "acoustid_id",
+                            AttributeDefinitionId = 1,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Alias = "album",
+                            AttributeDefinitionId = 2,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Alias = "album_artist",
+                            AttributeDefinitionId = 3,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Alias = "albumartistsort",
+                            AttributeDefinitionId = 4,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Alias = "replaygain_album_gain",
+                            AttributeDefinitionId = 5,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Alias = "replaygain_album_peak",
+                            AttributeDefinitionId = 6,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Alias = "artist",
+                            AttributeDefinitionId = 7,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Alias = "artists",
+                            AttributeDefinitionId = 7,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Alias = "artistsort",
+                            AttributeDefinitionId = 8,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Alias = "tbp",
+                            AttributeDefinitionId = 9,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Alias = "composer",
+                            AttributeDefinitionId = 12,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Alias = "tcm",
+                            AttributeDefinitionId = 12,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Alias = "ieng",
+                            AttributeDefinitionId = 13,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Alias = "tke",
+                            AttributeDefinitionId = 14,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Alias = "toal",
+                            AttributeDefinitionId = 16,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Alias = "replaygain_reference_loudness",
+                            AttributeDefinitionId = 17,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Alias = "tracktotal",
+                            AttributeDefinitionId = 19,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Alias = "track",
+                            AttributeDefinitionId = 20,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Alias = "musicmatch_trackartist",
+                            AttributeDefinitionId = 21,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Alias = "replaygain_track_gain",
+                            AttributeDefinitionId = 22,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Alias = "replaygain_track_peak",
+                            AttributeDefinitionId = 23,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Alias = "mimetype",
+                            AttributeDefinitionId = 31,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Alias = "asin",
+                            AttributeDefinitionId = 33,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Alias = "barcode",
+                            AttributeDefinitionId = 34,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Alias = "upc",
+                            AttributeDefinitionId = 34,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Alias = "catalognumber",
+                            AttributeDefinitionId = 35,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 27,
+                            Alias = "grouping",
+                            AttributeDefinitionId = 37,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 28,
+                            Alias = "comment",
+                            AttributeDefinitionId = 38,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 29,
+                            Alias = "compilation",
+                            AttributeDefinitionId = 39,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 30,
+                            Alias = "law_rating",
+                            AttributeDefinitionId = 40,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 31,
+                            Alias = "rating",
+                            AttributeDefinitionId = 40,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 32,
+                            Alias = "content_type",
+                            AttributeDefinitionId = 41,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 33,
+                            Alias = "copyright",
+                            AttributeDefinitionId = 42,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 34,
+                            Alias = "credits",
+                            AttributeDefinitionId = 43,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 35,
+                            Alias = "creation_time",
+                            AttributeDefinitionId = 44,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 36,
+                            Alias = "date",
+                            AttributeDefinitionId = 44,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 37,
+                            Alias = "originaldate",
+                            AttributeDefinitionId = 44,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 38,
+                            Alias = "date_release",
+                            AttributeDefinitionId = 45,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 39,
+                            Alias = "date_released",
+                            AttributeDefinitionId = 45,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 40,
+                            Alias = "tdr",
+                            AttributeDefinitionId = 45,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 41,
+                            Alias = "description",
+                            AttributeDefinitionId = 46,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 42,
+                            Alias = "tds",
+                            AttributeDefinitionId = 46,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 43,
+                            Alias = "director",
+                            AttributeDefinitionId = 47,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 44,
+                            Alias = "encoded_by",
+                            AttributeDefinitionId = 49,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 45,
+                            Alias = "encoded-by",
+                            AttributeDefinitionId = 49,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 46,
+                            Alias = "encodedby",
+                            AttributeDefinitionId = 49,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 47,
+                            Alias = "encoder",
+                            AttributeDefinitionId = 50,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 48,
+                            Alias = "software",
+                            AttributeDefinitionId = 50,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 49,
+                            Alias = "encodersettings",
+                            AttributeDefinitionId = 51,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 50,
+                            Alias = "tss",
+                            AttributeDefinitionId = 51,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 51,
+                            Alias = "language",
+                            AttributeDefinitionId = 54,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 52,
+                            Alias = "location",
+                            AttributeDefinitionId = 55,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 53,
+                            Alias = "location-eng",
+                            AttributeDefinitionId = 55,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 54,
+                            Alias = "minor_version",
+                            AttributeDefinitionId = 56,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 55,
+                            Alias = "organization",
+                            AttributeDefinitionId = 57,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 56,
+                            Alias = "product",
+                            AttributeDefinitionId = 58,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 57,
+                            Alias = "publisher",
+                            AttributeDefinitionId = 59,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 58,
+                            Alias = "releasecountry",
+                            AttributeDefinitionId = 60,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 59,
+                            Alias = "releasestatus",
+                            AttributeDefinitionId = 62,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 60,
+                            Alias = "releasetype",
+                            AttributeDefinitionId = 63,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 61,
+                            Alias = "script",
+                            AttributeDefinitionId = 64,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 62,
+                            Alias = "tsiz",
+                            AttributeDefinitionId = 65,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 63,
+                            Alias = "isrc",
+                            AttributeDefinitionId = 66,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 64,
+                            Alias = "tid",
+                            AttributeDefinitionId = 66,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 65,
+                            Alias = "woas",
+                            AttributeDefinitionId = 67,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 66,
+                            Alias = "subtitle",
+                            AttributeDefinitionId = 69,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 67,
+                            Alias = "tit3",
+                            AttributeDefinitionId = 69,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 68,
+                            Alias = "tt3",
+                            AttributeDefinitionId = 69,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 69,
+                            Alias = "summary",
+                            AttributeDefinitionId = 70,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 70,
+                            Alias = "synopsis",
+                            AttributeDefinitionId = 71,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 71,
+                            Alias = "title",
+                            AttributeDefinitionId = 73,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 72,
+                            Alias = "ufid",
+                            AttributeDefinitionId = 74,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 73,
+                            Alias = "uploader",
+                            AttributeDefinitionId = 75,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 74,
+                            Alias = "written_by",
+                            AttributeDefinitionId = 76,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 75,
+                            Alias = "tyer",
+                            AttributeDefinitionId = 77,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 76,
+                            Alias = "year",
+                            AttributeDefinitionId = 77,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 77,
+                            Alias = "originalyear",
+                            AttributeDefinitionId = 78,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 78,
+                            Alias = "actor",
+                            AttributeDefinitionId = 83,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 79,
+                            Alias = "bps",
+                            AttributeDefinitionId = 84,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 80,
+                            Alias = "bps-eng",
+                            AttributeDefinitionId = 84,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 81,
+                            Alias = "date_recorded",
+                            AttributeDefinitionId = 86,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 82,
+                            Alias = "disc",
+                            AttributeDefinitionId = 87,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 83,
+                            Alias = "duration",
+                            AttributeDefinitionId = 88,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 84,
+                            Alias = "duration-eng",
+                            AttributeDefinitionId = 88,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 85,
+                            Alias = "tlen",
+                            AttributeDefinitionId = 88,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 86,
+                            Alias = "episodeid",
+                            AttributeDefinitionId = 90,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 87,
+                            Alias = "episodenumber",
+                            AttributeDefinitionId = 91,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 88,
+                            Alias = "episode_sort",
+                            AttributeDefinitionId = 91,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 89,
+                            Alias = "genre",
+                            AttributeDefinitionId = 92,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 90,
+                            Alias = "label",
+                            AttributeDefinitionId = 93,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 91,
+                            Alias = "media",
+                            AttributeDefinitionId = 94,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 92,
+                            Alias = "musicbrainz_albumartistid",
+                            AttributeDefinitionId = 95,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 93,
+                            Alias = "musicbrainz_albumid",
+                            AttributeDefinitionId = 96,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 94,
+                            Alias = "musicbrainz_artistid",
+                            AttributeDefinitionId = 97,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 95,
+                            Alias = "musicbrainz_releasegroupid",
+                            AttributeDefinitionId = 98,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 96,
+                            Alias = "musicbrainz_releasetrackid",
+                            AttributeDefinitionId = 99,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 97,
+                            Alias = "musicbrainz_trackid",
+                            AttributeDefinitionId = 100,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 98,
+                            Alias = "narratedby",
+                            AttributeDefinitionId = 101,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 99,
+                            Alias = "producer",
+                            AttributeDefinitionId = 102,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 100,
+                            Alias = "screenplay_by",
+                            AttributeDefinitionId = 103,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 101,
+                            Alias = "season_number",
+                            AttributeDefinitionId = 104,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 102,
+                            Alias = "seasonnumber",
+                            AttributeDefinitionId = 104,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 103,
+                            Alias = "production_studio",
+                            AttributeDefinitionId = 107,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 104,
+                            Alias = "disctotal",
+                            AttributeDefinitionId = 108,
+                            Role = 0
+                        },
+                        new
+                        {
+                            Id = 105,
+                            Alias = "filename",
+                            Role = 1
+                        });
+                });
+
+            modelBuilder.Entity("Librarian.Model.MetadataAttributeDefinition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("Group")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
@@ -226,10 +1022,1000 @@ namespace Librarian.DB.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Grouping", "Name", "Type")
+                    b.HasIndex("Group", "Name")
                         .IsUnique();
 
                     b.ToTable("MetadataAttributes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "AcoustID identifier",
+                            Group = "Audio",
+                            Name = "AcoustID ID",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Album",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Album artist",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Album artist (sort)",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Description = "The ideal listening gain for an entire album",
+                            Group = "Audio",
+                            Name = "Album gain",
+                            Type = 4
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Description = "Peak album amplitude, used to predict whether the required replay gain adjustment will cause clipping during playback",
+                            Group = "Audio",
+                            Name = "Album peak",
+                            Type = 4
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Artist",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Artist (sort)",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Beats per minute",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Bits per sample",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Channels",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Composer",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Engineer",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Initial key",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Lyrics",
+                            Type = 1
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Original album",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Reference loudness",
+                            Type = 4
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Sample rate",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Total tracks",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Track ",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Track artist",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Track gain",
+                            Type = 4
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Description = "",
+                            Group = "Audio",
+                            Name = "Track peak",
+                            Type = 4
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Description = "Date and time when the file was created on disk.",
+                            Group = "File attributes",
+                            Name = "Date created",
+                            Type = 5
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Description = "Date and time when the file was last modified.",
+                            Group = "File attributes",
+                            Name = "Date modified",
+                            Type = 5
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Description = "The file extension.",
+                            Group = "File attributes",
+                            Name = "File extension",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 27,
+                            Description = "The file name as it appears on disk.",
+                            Group = "File attributes",
+                            Name = "File name",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 28,
+                            Description = "File type as detected by the 'file' command.",
+                            Group = "File attributes",
+                            Name = "File type",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 29,
+                            Description = "The full file system path to the file.",
+                            Group = "File attributes",
+                            Name = "Full path",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 30,
+                            Description = "Number of items (files or folders) in the directory.",
+                            Group = "File attributes",
+                            Name = "Item count",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 31,
+                            Description = "The detected mime type of the file.",
+                            Group = "File attributes",
+                            Name = "Mime type",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 32,
+                            Description = "The size of the file in bytes.",
+                            Group = "File attributes",
+                            Name = "Size",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 33,
+                            Description = "Product identifier used by the Amazon store",
+                            Group = "General",
+                            Name = "Amazon Standard Identification Number (ASIN)",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 34,
+                            Description = "",
+                            Group = "General",
+                            Name = "Bar code",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 35,
+                            Description = "",
+                            Group = "General",
+                            Name = "Catalog number",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 36,
+                            Description = "",
+                            Group = "General",
+                            Name = "Category",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 37,
+                            Description = "",
+                            Group = "General",
+                            Name = "Collection",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 38,
+                            Description = "",
+                            Group = "General",
+                            Name = "Comment",
+                            Type = 1
+                        },
+                        new
+                        {
+                            Id = 39,
+                            Description = "",
+                            Group = "General",
+                            Name = "Compilation",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 40,
+                            Description = "",
+                            Group = "General",
+                            Name = "Content rating",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 41,
+                            Description = "",
+                            Group = "General",
+                            Name = "Content type",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 42,
+                            Description = "",
+                            Group = "General",
+                            Name = "Copyright",
+                            Type = 1
+                        },
+                        new
+                        {
+                            Id = 43,
+                            Description = "",
+                            Group = "General",
+                            Name = "Credits",
+                            Type = 1
+                        },
+                        new
+                        {
+                            Id = 44,
+                            Description = "Date when this file was created.",
+                            Group = "General",
+                            Name = "Date created",
+                            Type = 5
+                        },
+                        new
+                        {
+                            Id = 45,
+                            Description = "Date when this file was released.",
+                            Group = "General",
+                            Name = "Date released",
+                            Type = 5
+                        },
+                        new
+                        {
+                            Id = 46,
+                            Description = "Long description of the file, can be formatted with MarkDown.",
+                            Group = "General",
+                            Name = "Description",
+                            Type = 2
+                        },
+                        new
+                        {
+                            Id = 47,
+                            Description = "",
+                            Group = "General",
+                            Name = "Director",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 48,
+                            Description = "Name that will be displayed in the metadata file browser.",
+                            Group = "General",
+                            Name = "Display name",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 49,
+                            Description = "",
+                            Group = "General",
+                            Name = "Encoded by",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 50,
+                            Description = "",
+                            Group = "General",
+                            Name = "Encoder",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 51,
+                            Description = "",
+                            Group = "General",
+                            Name = "Encoder settings",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 52,
+                            Description = "",
+                            Group = "General",
+                            Name = "Id",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 53,
+                            Description = "",
+                            Group = "General",
+                            Name = "Index",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 54,
+                            Description = "",
+                            Group = "General",
+                            Name = "Language",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 55,
+                            Description = "",
+                            Group = "General",
+                            Name = "Location",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 56,
+                            Description = "",
+                            Group = "General",
+                            Name = "Minor version",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 57,
+                            Description = "",
+                            Group = "General",
+                            Name = "Organization",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 58,
+                            Description = "",
+                            Group = "General",
+                            Name = "Product",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 59,
+                            Description = "",
+                            Group = "General",
+                            Name = "Publisher",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 60,
+                            Description = "",
+                            Group = "General",
+                            Name = "Release country",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 61,
+                            Description = "",
+                            Group = "General",
+                            Name = "Release notes",
+                            Type = 2
+                        },
+                        new
+                        {
+                            Id = 62,
+                            Description = "",
+                            Group = "General",
+                            Name = "Release status",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 63,
+                            Description = "",
+                            Group = "General",
+                            Name = "Release type",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 64,
+                            Description = "",
+                            Group = "General",
+                            Name = "Script",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 65,
+                            Description = "",
+                            Group = "General",
+                            Name = "Size",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 66,
+                            Description = "",
+                            Group = "General",
+                            Name = "Source",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 67,
+                            Description = "",
+                            Group = "General",
+                            Name = "Source URL",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 68,
+                            Description = "",
+                            Group = "General",
+                            Name = "Subcategory",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 69,
+                            Description = "",
+                            Group = "General",
+                            Name = "Subtitle",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 70,
+                            Description = "",
+                            Group = "General",
+                            Name = "Summary",
+                            Type = 1
+                        },
+                        new
+                        {
+                            Id = 71,
+                            Description = "",
+                            Group = "General",
+                            Name = "Synopsis",
+                            Type = 1
+                        },
+                        new
+                        {
+                            Id = 72,
+                            Description = "",
+                            Group = "General",
+                            Name = "Tag",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 73,
+                            Description = "",
+                            Group = "General",
+                            Name = "Title",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 74,
+                            Description = "",
+                            Group = "General",
+                            Name = "Unique file identifier (UFID)",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 75,
+                            Description = "",
+                            Group = "General",
+                            Name = "Uploader",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 76,
+                            Description = "",
+                            Group = "General",
+                            Name = "Written by",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 77,
+                            Description = "",
+                            Group = "General",
+                            Name = "Year",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 78,
+                            Description = "",
+                            Group = "General",
+                            Name = "Year created",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 79,
+                            Description = "Ratio obtained by dividing the width by the height.",
+                            Group = "Image",
+                            Name = "Aspect ratio",
+                            Type = 4
+                        },
+                        new
+                        {
+                            Id = 80,
+                            Description = "Image height in pixels.",
+                            Group = "Image",
+                            Name = "Height",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 81,
+                            Description = "Total number of pixels in this image.",
+                            Group = "Image",
+                            Name = "Pixels",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 82,
+                            Description = "Image width in pixels.",
+                            Group = "Image",
+                            Name = "Width",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 83,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Actor",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 84,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Bit rate",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 85,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Codec",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 86,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Date recorded",
+                            Type = 5
+                        },
+                        new
+                        {
+                            Id = 87,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Disc",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 88,
+                            Description = "Media duration.",
+                            Group = "Media",
+                            Name = "Duration",
+                            Type = 6
+                        },
+                        new
+                        {
+                            Id = 89,
+                            Description = "",
+                            Group = "Media",
+                            Name = "End time",
+                            Type = 6
+                        },
+                        new
+                        {
+                            Id = 90,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Episode ID",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 91,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Episode number",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 92,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Genre",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 93,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Label",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 94,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Media format",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 95,
+                            Description = "",
+                            Group = "Media",
+                            Name = "MusicBrainz album artist ID",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 96,
+                            Description = "",
+                            Group = "Media",
+                            Name = "MusicBrainz album ID",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 97,
+                            Description = "",
+                            Group = "Media",
+                            Name = "MusicBrainz artist ID",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 98,
+                            Description = "",
+                            Group = "Media",
+                            Name = "MusicBrainz release group ID",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 99,
+                            Description = "",
+                            Group = "Media",
+                            Name = "MusicBrainz release track ID",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 100,
+                            Description = "",
+                            Group = "Media",
+                            Name = "MusicBrainz track ID",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 101,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Narrated by",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 102,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Producer",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 103,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Screenplay by",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 104,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Season number",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 105,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Start time",
+                            Type = 6
+                        },
+                        new
+                        {
+                            Id = 106,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Stream type",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 107,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Studio",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 108,
+                            Description = "",
+                            Group = "Media",
+                            Name = "Total discs",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 109,
+                            Description = "Version of this package.",
+                            Group = "Package",
+                            Name = "Version",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 110,
+                            Description = "System architecture for which this software was compiled",
+                            Group = "Software",
+                            Name = "Architecture",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 111,
+                            Description = "",
+                            Group = "Software",
+                            Name = "End of life date",
+                            Type = 5
+                        },
+                        new
+                        {
+                            Id = 112,
+                            Description = "",
+                            Group = "Software",
+                            Name = "Installation instructions",
+                            Type = 2
+                        },
+                        new
+                        {
+                            Id = 113,
+                            Description = "",
+                            Group = "Software",
+                            Name = "Minimum CPU",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 114,
+                            Description = "",
+                            Group = "Software",
+                            Name = "Minimum disk space",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 115,
+                            Description = "",
+                            Group = "Software",
+                            Name = "Minimum RAM",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = 116,
+                            Description = "",
+                            Group = "Software",
+                            Name = "Platform",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 117,
+                            Description = "",
+                            Group = "Software",
+                            Name = "Serial key",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 118,
+                            Description = "",
+                            Group = "Software",
+                            Name = "User interface",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 119,
+                            Description = "",
+                            Group = "Video",
+                            Name = "Frame rate",
+                            Type = 4
+                        },
+                        new
+                        {
+                            Id = 120,
+                            Description = "",
+                            Group = "Video",
+                            Name = "Frames",
+                            Type = 3
+                        });
+                });
+
+            modelBuilder.Entity("Librarian.Model.SubResource", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("FileId")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("InternalId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FileId");
+
+                    b.ToTable("SubResources");
                 });
 
             modelBuilder.Entity("Librarian.Model.TextMetadata", b =>
@@ -240,16 +2026,21 @@ namespace Librarian.DB.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("AttributeId")
+                    b.Property<int>("AttributeDefinitionId")
                         .HasColumnType("integer");
 
                     b.Property<bool>("Editable")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("FileId")
+                    b.Property<int?>("FileId")
+                        .IsRequired()
                         .HasColumnType("integer");
 
-                    b.Property<int>("ProviderId")
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SubResourceId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Value")
@@ -261,18 +2052,20 @@ namespace Librarian.DB.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AttributeId");
+                    b.HasIndex("AttributeDefinitionId");
 
                     b.HasIndex("FileId");
+
+                    b.HasIndex("SubResourceId");
 
                     b.ToTable("TextMetadata");
                 });
 
             modelBuilder.Entity("Librarian.Model.BlobMetadata", b =>
                 {
-                    b.HasOne("Librarian.Model.MetadataAttribute", "Attribute")
+                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
                         .WithMany()
-                        .HasForeignKey("AttributeId")
+                        .HasForeignKey("AttributeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -282,16 +2075,22 @@ namespace Librarian.DB.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Attribute");
+                    b.HasOne("Librarian.Model.SubResource", "SubResource")
+                        .WithMany()
+                        .HasForeignKey("SubResourceId");
+
+                    b.Navigation("AttributeDefinition");
 
                     b.Navigation("File");
+
+                    b.Navigation("SubResource");
                 });
 
             modelBuilder.Entity("Librarian.Model.DateMetadata", b =>
                 {
-                    b.HasOne("Librarian.Model.MetadataAttribute", "Attribute")
+                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
                         .WithMany()
-                        .HasForeignKey("AttributeId")
+                        .HasForeignKey("AttributeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -301,16 +2100,22 @@ namespace Librarian.DB.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Attribute");
+                    b.HasOne("Librarian.Model.SubResource", "SubResource")
+                        .WithMany()
+                        .HasForeignKey("SubResourceId");
+
+                    b.Navigation("AttributeDefinition");
 
                     b.Navigation("File");
+
+                    b.Navigation("SubResource");
                 });
 
             modelBuilder.Entity("Librarian.Model.FloatMetadata", b =>
                 {
-                    b.HasOne("Librarian.Model.MetadataAttribute", "Attribute")
+                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
                         .WithMany()
-                        .HasForeignKey("AttributeId")
+                        .HasForeignKey("AttributeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -320,9 +2125,15 @@ namespace Librarian.DB.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Attribute");
+                    b.HasOne("Librarian.Model.SubResource", "SubResource")
+                        .WithMany()
+                        .HasForeignKey("SubResourceId");
+
+                    b.Navigation("AttributeDefinition");
 
                     b.Navigation("File");
+
+                    b.Navigation("SubResource");
                 });
 
             modelBuilder.Entity("Librarian.Model.IndexedFileContents", b =>
@@ -338,9 +2149,9 @@ namespace Librarian.DB.Migrations
 
             modelBuilder.Entity("Librarian.Model.IntegerMetadata", b =>
                 {
-                    b.HasOne("Librarian.Model.MetadataAttribute", "Attribute")
+                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
                         .WithMany()
-                        .HasForeignKey("AttributeId")
+                        .HasForeignKey("AttributeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -350,16 +2161,42 @@ namespace Librarian.DB.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Attribute");
+                    b.HasOne("Librarian.Model.SubResource", "SubResource")
+                        .WithMany()
+                        .HasForeignKey("SubResourceId");
+
+                    b.Navigation("AttributeDefinition");
+
+                    b.Navigation("File");
+
+                    b.Navigation("SubResource");
+                });
+
+            modelBuilder.Entity("Librarian.Model.MetadataAttributeAlias", b =>
+                {
+                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
+                        .WithMany()
+                        .HasForeignKey("AttributeDefinitionId");
+
+                    b.Navigation("AttributeDefinition");
+                });
+
+            modelBuilder.Entity("Librarian.Model.SubResource", b =>
+                {
+                    b.HasOne("Librarian.Model.IndexedFile", "File")
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("File");
                 });
 
             modelBuilder.Entity("Librarian.Model.TextMetadata", b =>
                 {
-                    b.HasOne("Librarian.Model.MetadataAttribute", "Attribute")
+                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
                         .WithMany()
-                        .HasForeignKey("AttributeId")
+                        .HasForeignKey("AttributeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -369,9 +2206,15 @@ namespace Librarian.DB.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Attribute");
+                    b.HasOne("Librarian.Model.SubResource", "SubResource")
+                        .WithMany()
+                        .HasForeignKey("SubResourceId");
+
+                    b.Navigation("AttributeDefinition");
 
                     b.Navigation("File");
+
+                    b.Navigation("SubResource");
                 });
 
             modelBuilder.Entity("Librarian.Model.IndexedFile", b =>

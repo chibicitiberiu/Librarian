@@ -1,14 +1,17 @@
 ﻿using Librarian.Metadata;
 using Librarian.Metadata.Providers;
+using Librarian.Model;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Librarian.Services
 {
     public class MetadataService
     {
-        private readonly Dictionary<int, IMetadataProvider> metadataProviders = new();
+        private readonly Dictionary<Guid, IMetadataProvider> metadataProviders = new();
         private readonly ILogger logger;
 
         public MetadataService(ILogger<MetadataService> logger, IEnumerable<IMetadataProvider> providers)
@@ -18,20 +21,20 @@ namespace Librarian.Services
                 metadataProviders.Add(provider.ProviderId, provider);
         }
 
-        public IEnumerable<MetadataField> GetMetadata(string fileName)
+        public async Task<IEnumerable<MetadataBase>> GetMetadataAsync(string fileName)
         {
+            IEnumerable<MetadataBase> result = Enumerable.Empty<MetadataBase>();
+
             foreach (var provider in metadataProviders.Values)
             {
-                var metadataFields = provider.GetMetadata(fileName);
+                var metadataFields = await provider.GetMetadataAsync(fileName);
                 if (metadataFields != null)
                 {
-                    foreach (var metadataField in metadataFields)
-                    {
-                        metadataField.ProviderId = provider.ProviderId;
-                        yield return metadataField;
-                    }
+                    result = result.Concat(metadataFields.Metadata);
                 }
             }
+
+            return result;
         }
     }
 }

@@ -26,7 +26,6 @@
 
   <ItemGroup>
     <PackageReference Include="GitignoreParserNet" Version="0.2.0.10" />
-    <PackageReference Include="MetadataExtractor" Version="2.8.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.13">
       <PrivateAssets>all</PrivateAssets>
@@ -44,7 +43,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Librarian.Core\Librarian.Core.csproj" />
-    <ProjectReference Include="..\Librarian.Metadata.FFMpeg\Librarian.Metadata.FFMpeg.csproj" />
+    <ProjectReference Include="..\Librarian.Metadata\Librarian.Metadata.csproj" />
   </ItemGroup>
 
   <ItemGroup>

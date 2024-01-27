@@ -24,7 +24,7 @@ namespace Librarian.Model
         public DateTimeOffset IndexLastUpdated { get; set; }
 
         #endregion
-        
+
         #region Basic file metadata, used to determine if index needs updating
 
         public long? Size { get; set; } = null;
@@ -32,7 +32,6 @@ namespace Librarian.Model
         public DateTimeOffset Modified { get; set; }
 
         #endregion
-
 
         #region Foreign keys
         public virtual IndexedFileContents? Contents { get; set; }
