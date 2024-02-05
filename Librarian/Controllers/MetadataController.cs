@@ -63,7 +63,12 @@ namespace Librarian.Controllers
                 }
 
                 // collect and fill metadata
-                vm.Metadata = await metadataService.GetMetadataAsync(diskPath);
+                var allMetadata = (await metadataService.GetMetadataAsync(diskPath, false)).ToList();
+                vm.Metadata = allMetadata.Where(x => x.SubResource == null);
+                vm.SubResourceMetadata = allMetadata
+                    .Where(x => x.SubResource != null)
+                    .GroupBy(x => x.SubResource!)
+                    .ToDictionary(grouping => grouping.Key, grouping => grouping.ToArray().AsEnumerable());
 
                 return View(vm);
             }

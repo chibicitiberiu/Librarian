@@ -28,24 +28,24 @@ namespace Librarian.Metadata.Providers
             if (File.Exists(filePath))
             {
                 info = new FileInfo(filePath);
-                result.Add(metadataFactory.Create(FileAttributes.Size, ((FileInfo)info).Length, ProviderId, false));
-                result.Add(metadataFactory.Create(FileAttributes.MimeType, MimeUtility.GetMimeMapping(filePath), ProviderId, false));
+                result.Add(metadataFactory.Create(FileAttributes.Size, ((FileInfo)info).Length, ProviderId, editable: false));
+                result.Add(metadataFactory.Create(FileAttributes.MimeType, MimeUtility.GetMimeMapping(filePath), ProviderId, editable: false));
             }
             else if (Directory.Exists(filePath))
             {
                 info = new DirectoryInfo(filePath);
-                result.Add(metadataFactory.Create(FileAttributes.ItemCount, ((DirectoryInfo)info).EnumerateFileSystemInfos().Count(), ProviderId, false));
-                result.Add(metadataFactory.Create(FileAttributes.MimeType, DirectoryMimeType, ProviderId, false));
+                result.Add(metadataFactory.Create(FileAttributes.ItemCount, ((DirectoryInfo)info).EnumerateFileSystemInfos().Count(), ProviderId, editable: false));
+                result.Add(metadataFactory.Create(FileAttributes.MimeType, DirectoryMimeType, ProviderId, editable: false));
             }
             else
             {
                 throw new IOException("File does not exist!");
             }
 
-            result.Add(metadataFactory.Create(FileAttributes.FileName, info.Name, ProviderId, true));
-            result.Add(metadataFactory.Create(FileAttributes.FullPath, info.FullName, ProviderId, false));
-            result.Add(metadataFactory.Create(FileAttributes.DateCreated, new DateTimeOffset(info.CreationTime), ProviderId, false));
-            result.Add(metadataFactory.Create(FileAttributes.DateModified, new DateTimeOffset(info.LastWriteTime), ProviderId, false));
+            result.Add(metadataFactory.Create(FileAttributes.FileName, info.Name, ProviderId, editable: true));
+            result.Add(metadataFactory.Create(FileAttributes.FullPath, info.FullName, ProviderId, editable: false));
+            result.Add(metadataFactory.Create(FileAttributes.DateCreated, new DateTimeOffset(info.CreationTime), ProviderId, editable: false));
+            result.Add(metadataFactory.Create(FileAttributes.DateModified, new DateTimeOffset(info.LastWriteTime), ProviderId, editable: false));
             await GetFileType(filePath, result);
 
             return result;
@@ -57,7 +57,7 @@ namespace Librarian.Metadata.Providers
             {
                 var (exitCode, output, _) = await ProcessHelper.RunProcessAsync(FileCommand, "-b", filePath);
                 if (exitCode == 0)
-                    result.Metadata.Add(metadataFactory.Create(FileAttributes.FileType, output, ProviderId, false));
+                    result.Metadata.Add(metadataFactory.Create(FileAttributes.FileType, output.Trim(), ProviderId, editable: false));
             }
         }
 

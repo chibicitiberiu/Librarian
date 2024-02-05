@@ -7,7 +7,10 @@ namespace Librarian.Utils
     {
         public static string HumanizeSize(long size, int decimals = 2)
         {
-            var suffixes = " KMGTP";
+            if (size <= 0)
+                return size.ToString();
+
+            const string suffixes = " KMGTP";
             int factor = Convert.ToInt32(Math.Floor(Math.Log10(size))) / 3;
             if (factor == 0)
                 return size.ToString();

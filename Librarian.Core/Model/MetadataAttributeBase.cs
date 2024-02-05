@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Librarian.Model
 {
-    public class MetadataBase
+    public class MetadataAttributeBase
     {
         [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
@@ -21,12 +21,29 @@ namespace Librarian.Model
         /// If true, this metadata is editable
         /// </summary>
         public bool Editable { get; set; }
+        
+        public bool IsUserEdited { get; set; }
+
+        #region Info about source
 
         /// <summary>
         /// ID of the provider that created this metadata.
         /// Information is used for editing the metadata.
         /// </summary>
-        public string ProviderId { get; set; }
+        [Required]
+        public string? ProviderId { get; set; }
+
+        /// <summary>
+        /// Provider specific identifier
+        /// </summary>
+        public string? ProviderAttributeId { get; set; }
+
+        /// <summary>
+        /// If true, the provider is capable of saving this attribute back to the original file
+        /// </summary>
+        public bool CanSaveToFile { get; set; }
+
+        #endregion
 
         #region Foreign keys
         /// <summary>
@@ -45,13 +62,19 @@ namespace Librarian.Model
         public virtual MetadataAttributeDefinition AttributeDefinition { get; set; } = null!;
         #endregion
 
-        public MetadataBase() { }
+        public MetadataAttributeBase() { }
 
-        public MetadataBase(MetadataAttributeDefinition attributeDefinition, Guid providerId, bool editable = false)
+        public MetadataAttributeBase(MetadataAttributeDefinition attributeDefinition,
+                            Guid providerId,
+                            string? providerAttributeId = null,
+                            bool editable = false,
+                            bool canSaveToFile = false)
         {
             AttributeDefinition = attributeDefinition;
             ProviderId = providerId.ToString();
             Editable = editable;
+            ProviderAttributeId = providerAttributeId;
+            CanSaveToFile = canSaveToFile;
         }
     }
 }

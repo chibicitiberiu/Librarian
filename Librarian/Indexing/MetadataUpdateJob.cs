@@ -40,13 +40,13 @@ namespace Librarian.Indexing
             var indexedFile = await dbContext.IndexedFiles.FindAsync(fileId);
             if (indexedFile == null)
             {
-                logger.LogError("Invalid file ID {}", fileId);
+                logger.LogError("Invalid file ID {fileId}", fileId);
                 return;
             }
 
-            logger.LogInformation("Getting metadata for {0}...", indexedFile.Path);
+            logger.LogInformation("Getting metadata for {file}...", indexedFile.Path);
 
-            var metadata = await metadataService.GetMetadataAsync(indexedFile.Path);
+            var metadata = await metadataService.GetMetadataAsync(indexedFile.Path, true);
             foreach (var field in metadata)
             {
                 MetadataAttributeDefinition attribute = field.AttributeDefinition;

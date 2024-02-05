@@ -49,6 +49,7 @@ namespace Librarian
             builder.Services.AddSingleton<FileService>();
             builder.Services.AddScoped<MetadataService>();
             builder.Services.AddScoped<MetadataFactory>();
+            builder.Services.AddScoped<MetadataSerializer>();
 
             builder.Services.AddScoped<IMetadataProvider, FileMetadataProvider>();
             //builder.Services.AddScoped<IMetadataProvider, MetadataExtractorProvider>();

@@ -86,11 +86,11 @@ namespace Librarian.Metadata.Providers.MetadataCli
                         int streamId = MetadataFactory.StreamLanguageGetStreamId(pair.Key);
                         var stream = result.SubResources.FirstOrDefault(res => res.Kind == SubResourceKind.Stream && res.InternalId == streamId);
                         if (stream != null)
-                            result.Add(metadataFactory.Create(General.Language, pair.Value, ProviderId, false, stream));
+                            result.Add(metadataFactory.Create(General.Language, pair.Value, ProviderId, editable: false, subResource: stream));
                     }
                     else
                     {
-                        var metadataBase = metadataFactory.Create(pair.Key, pair.Value, ProviderId, true);
+                        var metadataBase = metadataFactory.Create(pair.Key, pair.Value, ProviderId, editable: true);
                         if (metadataBase == null)
                             continue;
 
@@ -102,7 +102,7 @@ namespace Librarian.Metadata.Providers.MetadataCli
             // general media attributes
             if (metadata.BitRate != null && metadata.BitRate != 0L)
             {
-                result.Add(metadataFactory.Create(Media.BitRate, metadata.BitRate, ProviderId, false));
+                result.Add(metadataFactory.Create(Media.BitRate, metadata.BitRate, ProviderId, editable: false));
             }
             else if (metadata.Streams != null)
             {
@@ -111,7 +111,7 @@ namespace Librarian.Metadata.Providers.MetadataCli
                     .Where(stream => stream.BitRate != null)
                     .Sum(stream => stream.BitRate);
                 if (bitRate != null && bitRate != 0L)
-                    result.Add(metadataFactory.Create(Media.BitRate, bitRate, ProviderId, false));
+                    result.Add(metadataFactory.Create(Media.BitRate, bitRate, ProviderId, editable: false));
             }
 
             if (metadata.Streams != null)
@@ -121,7 +121,7 @@ namespace Librarian.Metadata.Providers.MetadataCli
                     .Where(stream => stream.Duration != null)
                     .Max(stream => stream.Duration);
                 if (duration != null)
-                    result.Add(metadataFactory.Create(Media.Duration, duration, ProviderId, false));
+                    result.Add(metadataFactory.Create(Media.Duration, duration, ProviderId, editable: false));
 
                 // image attributes
                 var bestStream = metadata.Streams
@@ -132,15 +132,15 @@ namespace Librarian.Metadata.Providers.MetadataCli
 
                 if (bestStream != null)
                 {
-                    result.Add(metadataFactory.Create(Image.Width, bestStream.Width!, ProviderId, false));
-                    result.Add(metadataFactory.Create(Image.Height, bestStream.Height!, ProviderId, false));
+                    result.Add(metadataFactory.Create(Image.Width, bestStream.Width!, ProviderId, editable: false));
+                    result.Add(metadataFactory.Create(Image.Height, bestStream.Height!, ProviderId, editable: false));
 
                     if (bestStream.AspectRatio != null)
-                        result.Add(metadataFactory.Create(Image.AspectRatio, bestStream.AspectRatio, ProviderId, false));
+                        result.Add(metadataFactory.Create(Image.AspectRatio, bestStream.AspectRatio, ProviderId, editable: false));
                     else
-                        result.Add(metadataFactory.Create(Image.AspectRatio, Convert.ToDouble(bestStream.Width) / Convert.ToDouble(bestStream.Height), ProviderId, false));
+                        result.Add(metadataFactory.Create(Image.AspectRatio, Convert.ToDouble(bestStream.Width) / Convert.ToDouble(bestStream.Height), ProviderId, editable: false));
 
-                    result.Add(metadataFactory.Create(Image.Pixels, bestStream.Width! * bestStream.Height!, ProviderId, false));
+                    result.Add(metadataFactory.Create(Image.Pixels, bestStream.Width! * bestStream.Height!, ProviderId, editable: false));
                 }
 
                 // video attributes
@@ -151,7 +151,7 @@ namespace Librarian.Metadata.Providers.MetadataCli
                     .Max();
 
                 if (framerate != null)
-                    result.Add(metadataFactory.Create(Video.FrameRate, framerate, ProviderId, false));
+                    result.Add(metadataFactory.Create(Video.FrameRate, framerate, ProviderId, editable: false));
 
                 long? frames = metadata.Streams
                     .Where(stream => stream.Type is MetadataCliStreamType.Video)
@@ -159,7 +159,7 @@ namespace Librarian.Metadata.Providers.MetadataCli
                     .Max(stream => stream.Frames);
 
                 if (frames != null)
-                    result.Add(metadataFactory.Create(Video.Frames, frames, ProviderId, false));
+                    result.Add(metadataFactory.Create(Video.Frames, frames, ProviderId, editable: false));
 
                 // audio attributes
                 long? bitsPerSample = metadata.Streams
@@ -168,7 +168,7 @@ namespace Librarian.Metadata.Providers.MetadataCli
                     .Max(stream => stream.BitsPerSample);
 
                 if (bitsPerSample != null)
-                    result.Add(metadataFactory.Create(Audio.BitsPerSample, bitsPerSample, ProviderId, false));
+                    result.Add(metadataFactory.Create(Audio.BitsPerSample, bitsPerSample, ProviderId, editable: false));
 
                 long? channels = metadata.Streams
                     .Where(stream => stream.Type is MetadataCliStreamType.Audio)
@@ -176,7 +176,7 @@ namespace Librarian.Metadata.Providers.MetadataCli
                     .Max(stream => stream.Channels);
 
                 if (channels != null)
-                    result.Add(metadataFactory.Create(Audio.Channels, channels, ProviderId, false));
+                    result.Add(metadataFactory.Create(Audio.Channels, channels, ProviderId, editable: false));
 
                 long? sampleRate = metadata.Streams
                     .Where(stream => stream.Type is MetadataCliStreamType.Audio)
@@ -184,7 +184,7 @@ namespace Librarian.Metadata.Providers.MetadataCli
                     .Max(stream => stream.SampleRate);
 
                 if (sampleRate != null)
-                    result.Add(metadataFactory.Create(Audio.SampleRate, sampleRate, ProviderId, false));
+                    result.Add(metadataFactory.Create(Audio.SampleRate, sampleRate, ProviderId, editable: false));
             }
         }
 
@@ -194,7 +194,7 @@ namespace Librarian.Metadata.Providers.MetadataCli
             {
                 foreach (var pair in stream.Metadata)
                 {
-                    var metadataBase = metadataFactory.Create(pair.Key, pair.Value, ProviderId, true, streamResource);
+                    var metadataBase = metadataFactory.Create(pair.Key, pair.Value, ProviderId, editable: true, subResource: streamResource);
                     if (metadataBase == null)
                         continue;
 
@@ -211,50 +211,50 @@ namespace Librarian.Metadata.Providers.MetadataCli
             }
 
             // general/identification
-            result.Add(metadataFactory.Create(General.Id, stream.Id, ProviderId, false, streamResource));
+            result.Add(metadataFactory.Create(General.Id, stream.Id, ProviderId, editable: false, subResource: streamResource));
             if (stream.Index != null)
-                result.Add(metadataFactory.Create(General.Index, stream.Index, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(General.Index, stream.Index, ProviderId, editable: false, subResource: streamResource));
             if (stream.Type != null)
-                result.Add(metadataFactory.Create(Media.StreamType, stream.Type, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Media.StreamType, stream.Type, ProviderId, editable: false, subResource: streamResource));
 
             // general media attributes
             if (stream.BitRate != null)
-                result.Add(metadataFactory.Create(Media.BitRate, stream.BitRate, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Media.BitRate, stream.BitRate, ProviderId, editable: false, subResource: streamResource));
             if (!string.IsNullOrWhiteSpace(stream.Codec))
-                result.Add(metadataFactory.Create(Media.Codec, stream.Codec.Trim(), ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Media.Codec, stream.Codec.Trim(), ProviderId, editable: false, subResource: streamResource));
             if (stream.Duration != null)
-                result.Add(metadataFactory.Create(Media.Duration, stream.Duration, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Media.Duration, stream.Duration, ProviderId, editable: false, subResource: streamResource));
             if (stream.StartTime != null)
-                result.Add(metadataFactory.Create(Media.StartTime, stream.StartTime, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Media.StartTime, stream.StartTime, ProviderId, editable: false, subResource: streamResource));
 
             // image attributes
             if (stream.AspectRatio != null)
-                result.Add(metadataFactory.Create(Image.AspectRatio, stream.AspectRatio, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Image.AspectRatio, stream.AspectRatio, ProviderId, editable: false, subResource: streamResource));
             else if (stream.Width != null && stream.Height != null)
-                result.Add(metadataFactory.Create(Image.AspectRatio, Convert.ToDouble(stream.Width) / Convert.ToDouble(stream.Height), ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Image.AspectRatio, Convert.ToDouble(stream.Width) / Convert.ToDouble(stream.Height), ProviderId, editable: false, subResource: streamResource));
 
             if (stream.Width != null)
-                result.Add(metadataFactory.Create(Image.Width, stream.Width, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Image.Width, stream.Width, ProviderId, editable: false, subResource: streamResource));
             if (stream.Height != null)
-                result.Add(metadataFactory.Create(Image.Height, stream.Height, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Image.Height, stream.Height, ProviderId, editable: false, subResource: streamResource));
             if (stream.Width != null && stream.Height != null)
-                result.Add(metadataFactory.Create(Image.Pixels, stream.Width * stream.Height, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Image.Pixels, stream.Width * stream.Height, ProviderId, editable: false, subResource: streamResource));
 
             // video attributes
             if (stream.RealFrameRate != null)
-                result.Add(metadataFactory.Create(Video.FrameRate, stream.RealFrameRate, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Video.FrameRate, stream.RealFrameRate, ProviderId, editable: false, subResource: streamResource));
             else if (stream.FrameRate != null)
-                result.Add(metadataFactory.Create(Video.FrameRate, stream.FrameRate, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Video.FrameRate, stream.FrameRate, ProviderId, editable: false, subResource: streamResource));
             else if (stream.Frames != null)
-                result.Add(metadataFactory.Create(Video.Frames, stream.Frames, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Video.Frames, stream.Frames, ProviderId, editable: false, subResource: streamResource));
 
             // audio attributes
             if (stream.BitsPerSample != null)
-                result.Add(metadataFactory.Create(Audio.BitsPerSample, stream.BitsPerSample, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Audio.BitsPerSample, stream.BitsPerSample, ProviderId, editable: false, subResource: streamResource));
             if (stream.Channels != null)
-                result.Add(metadataFactory.Create(Audio.Channels, stream.Channels, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Audio.Channels, stream.Channels, ProviderId, editable: false, subResource: streamResource));
             if (stream.SampleRate != null)
-                result.Add(metadataFactory.Create(Audio.SampleRate, stream.SampleRate, ProviderId, false, streamResource));
+                result.Add(metadataFactory.Create(Audio.SampleRate, stream.SampleRate, ProviderId, editable: false, subResource: streamResource));
         }
 
         private void CollectChapterMetadata(MetadataCollection result, MetadataCliChapter chapter, SubResource chapterResource)
@@ -263,7 +263,7 @@ namespace Librarian.Metadata.Providers.MetadataCli
             {
                 foreach (var pair in chapter.Metadata)
                 {
-                    var metadataBase = metadataFactory.Create(pair.Key, pair.Value, ProviderId, true, chapterResource);
+                    var metadataBase = metadataFactory.Create(pair.Key, pair.Value, ProviderId, editable: true, subResource: chapterResource);
                     if (metadataBase == null)
                         continue;
 
@@ -273,13 +273,13 @@ namespace Librarian.Metadata.Providers.MetadataCli
                 }
             }
 
-            result.Add(metadataFactory.Create(General.Id, chapter.Id, ProviderId, false, chapterResource));
+            result.Add(metadataFactory.Create(General.Id, chapter.Id, ProviderId, editable: false, subResource: chapterResource));
             if (chapter.Start != null)
-                result.Add(metadataFactory.Create(Media.StartTime, chapter.Start, ProviderId, false, chapterResource));
+                result.Add(metadataFactory.Create(Media.StartTime, chapter.Start, ProviderId, editable: false, subResource: chapterResource));
             if (chapter.End != null)
-                result.Add(metadataFactory.Create(Media.EndTime, chapter.End, ProviderId, false, chapterResource));
+                result.Add(metadataFactory.Create(Media.EndTime, chapter.End, ProviderId, editable: false, subResource: chapterResource));
             if (chapter.Start != null && chapter.End != null)
-                result.Add(metadataFactory.Create(Media.Duration, chapter.End - chapter.Start, ProviderId, false, chapterResource));
+                result.Add(metadataFactory.Create(Media.Duration, chapter.End - chapter.Start, ProviderId, editable: false, subResource: chapterResource));
         }
 
         public Task SaveMetadataAsync(string filePath, MetadataCollection metadata)

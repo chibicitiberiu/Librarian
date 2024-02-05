@@ -2,15 +2,20 @@
 
 namespace Librarian.Model
 {
-    public class BlobMetadata : MetadataBase
+    public class BlobMetadata : MetadataAttributeBase
     {
         [Required]
         public byte[] Value { get; set; } = null!;
 
         public BlobMetadata() { }
 
-        public BlobMetadata(MetadataAttributeDefinition attributeDefinition, byte[] value, Guid providerId, bool editable = false)
-            : base(attributeDefinition, providerId, editable)
+        public BlobMetadata(MetadataAttributeDefinition attributeDefinition,
+                            byte[] value,
+                            Guid providerId,
+                            string? providerAttributeId = null,
+                            bool editable = false,
+                            bool canSaveToFile = false)
+            : base(attributeDefinition, providerId, providerAttributeId, editable, canSaveToFile)
         {
             Value = value;
         }

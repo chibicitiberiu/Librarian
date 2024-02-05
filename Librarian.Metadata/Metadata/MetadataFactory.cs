@@ -2,6 +2,8 @@
 using Librarian.Model;
 using Librarian.Util;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
+using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 
 namespace Librarian.Metadata
@@ -19,33 +21,119 @@ namespace Librarian.Metadata
             this.logger = logger;
         }
 
-        public MetadataBase Create(MetadataAttributeDefinition definition,
-                                   object value,
-                                   Guid providerId,
-                                   bool editable = false,
-                                   SubResource? subResource = null)
+        public MetadataAttributeBase Create(MetadataAttributeDefinition definition,
+                                            object value,
+                                            Guid providerId,
+                                            string? providerAttributeId = null,
+                                            bool editable = false,
+                                            bool canSaveToFile = false,
+                                            SubResource? subResource = null,
+                                            bool isUserEdited = false)
         {
-            MetadataBase metadata = definition.Type switch
+            MetadataAttributeBase metadata = definition.Type switch
             {
-                MetadataType.Text or MetadataType.BigText or MetadataType.FormattedText => new TextMetadata(definition, Convert.ToString(value)!, providerId, editable),
-                MetadataType.Integer => new IntegerMetadata(definition, Convert.ToInt64(value), providerId, editable),
-                MetadataType.Float => new FloatMetadata(definition, Convert.ToDouble(value), providerId, editable),
-                MetadataType.Date => new DateMetadata(definition, ConvertToDateTimeOffset(value), providerId, editable),
-                MetadataType.TimeSpan => new FloatMetadata(definition, ConvertToTimeSpan(value), providerId, editable),
-                MetadataType.Blob => new BlobMetadata(definition, ConvertToByteArray(value), providerId, editable),
+                MetadataType.Text or MetadataType.BigText or MetadataType.FormattedText
+                    => new TextMetadata(definition,
+                                        value: Convert.ToString(value)!,
+                                        providerId: providerId,
+                                        providerAttributeId: providerAttributeId,
+                                        editable: editable,
+                                        canSaveToFile: canSaveToFile),
+
+                MetadataType.Integer
+                    => new IntegerMetadata(definition,
+                                           value: Convert.ToInt64(value),
+                                           providerId: providerId,
+                                           providerAttributeId: providerAttributeId,
+                                           editable: editable,
+                                           canSaveToFile: canSaveToFile),
+
+                MetadataType.Float
+                    => new FloatMetadata(definition,
+                                         value: Convert.ToDouble(value),
+                                         providerId: providerId,
+                                         providerAttributeId: providerAttributeId,
+                                         editable: editable,
+                                         canSaveToFile: canSaveToFile),
+
+                MetadataType.Date
+                    => new DateMetadata(definition,
+                                        value: ConvertToDateTimeOffset(value),
+                                        providerId: providerId,
+                                        providerAttributeId: providerAttributeId,
+                                        editable: editable,
+                                        canSaveToFile: canSaveToFile),
+
+                MetadataType.TimeSpan
+                    => new FloatMetadata(definition,
+                                         value: ConvertToTimeSpan(value),
+                                         providerId: providerId,
+                                         providerAttributeId: providerAttributeId,
+                                         editable: editable,
+                                         canSaveToFile: canSaveToFile),
+
+                MetadataType.Blob
+                    => new BlobMetadata(definition,
+                                        value: ConvertToByteArray(value),
+                                        providerId: providerId,
+                                        providerAttributeId: providerAttributeId,
+                                        editable: editable,
+                                        canSaveToFile: canSaveToFile),
+
                 _ => throw new NotImplementedException(),
             };
             metadata.ProviderId = providerId.ToString();
             metadata.Editable = editable;
+            metadata.IsUserEdited = isUserEdited;
             metadata.SubResource = subResource;
             return metadata;
         }
 
-        public MetadataBase? Create(string rawName,
-                                    object value,
-                                    Guid providerId,
-                                    bool editable = false,
-                                    SubResource? subResource = null)
+        public MetadataAttributeBase Create(string? groupName,
+                                            string name,
+                                            MetadataType type,
+                                            object value,
+                                            Guid providerId,
+                                            string? providerAttributeId = null,
+                                            bool editable = false,
+                                            bool canSaveToFile = false,
+                                            SubResource? subResource = null,
+                                            bool isUserEdited = false)
+        {
+
+
+            var definition = dbContext.MetadataAttributes
+                .FirstOrDefault(x => x.Group == groupName && x.Name == name && x.Type == type);
+
+            if (definition == null)
+            {
+                definition = new MetadataAttributeDefinition()
+                {
+                    Name = name,
+                    Group = groupName,
+                    Type = type
+                };
+                dbContext.Add(definition);
+                dbContext.SaveChanges();
+            }
+
+            return Create(definition,
+                          value: value,
+                          providerId: providerId,
+                          providerAttributeId: providerAttributeId,
+                          editable: editable,
+                          canSaveToFile: canSaveToFile,
+                          subResource: subResource,
+                          isUserEdited: isUserEdited);
+        }
+
+        public MetadataAttributeBase? Create(string rawName,
+                                             object value,
+                                             Guid providerId,
+                                             string? providerAttributeId = null,
+                                             bool editable = false,
+                                             bool canSaveToFile = false,
+                                             SubResource? subResource = null)
         {
             string name = rawName.Trim().ToLower();
 
@@ -68,7 +156,7 @@ namespace Librarian.Metadata
                         }
                         logger.LogTrace("Create {name} (original: '{rawName}') = {value} >> Found alias for attribute {attributeId} : {attributeGroup} : {attributeName}",
                             name, rawName, value, attributeAlias.AttributeDefinition!.Id, attributeAlias.AttributeDefinition!.Group, attributeAlias.AttributeDefinition!.Name);
-                        return Create(attributeAlias.AttributeDefinition!, value, providerId, editable, subResource);
+                        return Create(attributeAlias.AttributeDefinition!, value, providerId, providerAttributeId, editable, canSaveToFile, subResource);
 
                     case AliasRole.Ignore:
                         logger.LogTrace("Create {name} (original: '{rawName}') = {value} failed >> Alias is ignored!", name, rawName, value);
@@ -79,6 +167,7 @@ namespace Librarian.Metadata
             // Find existing attribute definition
             string cleanedName = AttributeHelper.NormalizeAttributeName(rawName)!;
             var attributeCandidates = dbContext.MetadataAttributes
+                .AsEnumerable()
                 .Where(x => string.Equals(x.Name, cleanedName, StringComparison.OrdinalIgnoreCase))
                 .Where(x => MatchesDatatype(value, x))
                 .ToArray();
@@ -98,7 +187,7 @@ namespace Librarian.Metadata
                             cleanedName, rawName, value, attribute.Id, attribute.Group, attribute.Name);
                 }
 
-                return Create(attribute, value, providerId, editable, subResource);
+                return Create(attribute, value, providerId, providerAttributeId, editable, canSaveToFile, subResource);
             }
 
             // Create attribute
@@ -113,7 +202,7 @@ namespace Librarian.Metadata
 
             logger.LogTrace("Create {name} (original: '{rawName}') = {value} >> New attribute {attributeId} : {attributeGroup} : {attributeName}",
                 cleanedName, rawName, value, newAttribute.Id, newAttribute.Group, newAttribute.Name);
-            return Create(newAttribute, value, providerId, editable, subResource);
+            return Create(newAttribute, value, providerId, providerAttributeId, editable, canSaveToFile, subResource);
         }
 
         private static bool MatchesDatatype(object value, MetadataAttributeDefinition attributeDefinition)
@@ -163,8 +252,25 @@ namespace Librarian.Metadata
 
         private static DateTimeOffset ConvertToDateTimeOffset(object value)
         {
-            if (value is DateTimeOffset dateTimeOffset) return dateTimeOffset;
-            if (value is DateTime dateTime) return dateTime;
+            string[] formats =
+            {
+                "yyyy"
+            };
+
+            if (value is DateTimeOffset dateTimeOffset)
+                return dateTimeOffset;
+
+            if (value is DateTime dateTime)
+                return dateTime;
+
+            if (value is string stringValue)
+            {
+                if (DateTimeOffset.TryParseExact(stringValue, formats, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal, out DateTimeOffset result))
+                    return result;
+
+                else return DateTimeOffset.Parse(stringValue);
+            }
+
             throw new ArgumentException("Unsupported conversion from " + value.GetType() + " to DateTimeOffset");
         }
 
