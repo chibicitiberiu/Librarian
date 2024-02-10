@@ -30,6 +30,7 @@ Operations with marked files:
 * add support for computing checksums
 * configure
 * UI
+* add methods for updating the index on renaming, moving, copying etc
 
 ## Search
 * indexed/non-indexed search
