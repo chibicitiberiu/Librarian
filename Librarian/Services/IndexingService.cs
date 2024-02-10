@@ -5,6 +5,7 @@ using Librarian.Model;
 using Librarian.Resources;
 using Librarian.Util;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
@@ -21,9 +22,14 @@ namespace Librarian.Services
         private readonly ILogger logger;
         private readonly IConfiguration config;
         private readonly FileService fileService;
-        private readonly DatabaseContext dbContext;
-        private readonly MetadataService metadataService;
         private readonly JobTracker jobTracker;
+        private readonly IServiceProvider serviceProvider;
+
+        class ScopedServices
+        {
+            public DatabaseContext DbContext { get; set; } = null!;
+            public MetadataService MetadataService { get; set; } = null!;
+        }
 
         private GitignoreParser? gitIgnoreParser;
         private FileSystemWatcher? fsWatcher;
@@ -33,19 +39,18 @@ namespace Librarian.Services
         public IndexingService(ILogger<IndexingService> logger,
                                IConfiguration config,
                                FileService fileService,
-                               DatabaseContext dbContext,
-                               MetadataService metadataService,
-                               JobTracker jobTracker)
+                               JobTracker jobTracker,
+                               IServiceProvider serviceProvider)
         {
             this.logger = logger;
             this.config = config;
             this.fileService = fileService;
-            this.dbContext = dbContext;
-            this.metadataService = metadataService;
             this.jobTracker = jobTracker;
 
             if (!bool.TryParse(config["Indexing:RemoveIndexOnDelete"], out removeIndexOnDelete))
                 removeIndexOnDelete = false;
+
+            this.serviceProvider = serviceProvider;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -102,6 +107,18 @@ namespace Librarian.Services
         public void Dispose()
         {
             fsWatcher?.Dispose();
+        }
+
+        #endregion
+
+        #region Scoped services
+        private ScopedServices GetScopedServices(IServiceScope scope)
+        {
+            return new ScopedServices()
+            {
+                DbContext = scope.ServiceProvider.GetService<DatabaseContext>()!,
+                MetadataService = scope.ServiceProvider.GetService<MetadataService>()!
+            };
         }
 
         #endregion
@@ -168,8 +185,11 @@ namespace Librarian.Services
         public async Task IndexAll()
         {
             var jobToken = jobTracker.StartJob(Strings.IndexingAll);
+            
+            using var scope = serviceProvider.CreateScope();
+            var scopedServices = GetScopedServices(scope);
 
-            await IndexDirectoryInternal(new DirectoryInfo(fileService.BasePath), recurse: true, jobToken: jobToken);
+            await IndexDirectoryInternal(new DirectoryInfo(fileService.BasePath), recurse: true, jobToken: jobToken, scopedServices: scopedServices);
 
             jobToken.Finish();
         }
@@ -187,7 +207,10 @@ namespace Librarian.Services
             var relativePath = fileService.GetRelativePath(directory);
             var jobToken = jobTracker.StartJob(string.Format(Strings.IndexingDirectory, relativePath));
 
-            await IndexDirectoryInternal(directory, recurse: recurse, jobToken: jobToken);
+            using var scope = serviceProvider.CreateScope();
+            var scopedServices = GetScopedServices(scope);
+
+            await IndexDirectoryInternal(directory, recurse: recurse, jobToken: jobToken, scopedServices: scopedServices);
 
             jobToken.Finish();
         }
@@ -197,12 +220,15 @@ namespace Librarian.Services
             var relativePath = fileService.GetRelativePath(file);
             var jobToken = jobTracker.StartJob(string.Format(Strings.IndexingFile, relativePath));
 
-            await IndexFileInternal(file);
+            using var scope = serviceProvider.CreateScope();
+            var scopedServices = GetScopedServices(scope);
+
+            await IndexFileInternal(file, scopedServices: scopedServices);
 
             jobToken.Finish();
         }
 
-        private async Task IndexDirectoryInternal(DirectoryInfo directory, bool recurse, JobToken jobToken)
+        private async Task IndexDirectoryInternal(DirectoryInfo directory, bool recurse, JobToken jobToken, ScopedServices scopedServices)
         {
             if (ShouldIgnoreDirectory(directory))
             {
@@ -211,7 +237,7 @@ namespace Librarian.Services
             }
 
             logger.LogTrace("Indexing directory {folderName}", directory.FullName);
-            await UpdateIndex(directory);
+            await UpdateIndex(directory, scopedServices);
 
             if (recurse)
             {
@@ -229,11 +255,11 @@ namespace Librarian.Services
                     {
                         if (item is FileInfo file)
                         {
-                            await IndexFileInternal(file);
+                            await IndexFileInternal(file, scopedServices);
                         }
                         else if (item is DirectoryInfo dir)
                         {
-                            await IndexDirectoryInternal(dir, false, jobToken);
+                            await IndexDirectoryInternal(dir, false, jobToken, scopedServices);
 
                             var opts = new EnumerationOptions() { IgnoreInaccessible = true, ReturnSpecialDirectories = false };
                             queue.EnqueueRange(directory.EnumerateDirectories("*", opts));
@@ -250,9 +276,9 @@ namespace Librarian.Services
             }
         }
 
-        private async Task IndexFileInternal(FileInfo file)
+        private async Task IndexFileInternal(FileInfo file, ScopedServices scopedServices)
         {
-            if (ShouldIgnoreFile(file))
+            if (ShouldIgnoreFile(file, scopedServices))
             {
                 logger.LogTrace("Ignoring file {fileName}", file.FullName);
                 return;
@@ -260,7 +286,9 @@ namespace Librarian.Services
 
             logger.LogTrace("Indexing file {fileName}", file.FullName);
 
-            await UpdateIndex(file);
+            using var scope = serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetService<DatabaseContext>()!;
+            await UpdateIndex(file, scopedServices);
         }
 
         #endregion
@@ -276,13 +304,13 @@ namespace Librarian.Services
             return !IsAccepted(relativePath);
         }
 
-        private bool ShouldIgnoreFile(FileInfo fileInfo)
+        private bool ShouldIgnoreFile(FileInfo fileInfo, ScopedServices scopedServices)
         {
             string relativePath = fileService.GetRelativePath(fileInfo.FullName);
             if (!IsAccepted(relativePath))
                 return true;
 
-            if (metadataService.IsMetaFile(relativePath))
+            if (scopedServices.MetadataService.IsMetaFile(relativePath))
                 return true;
 
             return false;
@@ -297,37 +325,37 @@ namespace Librarian.Services
 
         #region Updating index
 
-        private async Task UpdateIndex(DirectoryInfo directory)
+        private async Task UpdateIndex(DirectoryInfo directory, ScopedServices scopedServices)
         {
             var relPath = fileService.GetRelativePath(directory);
 
-            var indexedFile = dbContext.IndexedFiles.FirstOrDefault(x => x.Path == relPath);
+            var indexedFile = scopedServices.DbContext.IndexedFiles.FirstOrDefault(x => x.Path == relPath);
             if (indexedFile == null)
             {
                 indexedFile = new IndexedFile() { Path = relPath, };
-                dbContext.Add(indexedFile);
+                scopedServices.DbContext.Add(indexedFile);
             }
 
             indexedFile.Exists = true;
             indexedFile.IndexLastUpdated = DateTimeOffset.UtcNow;
             indexedFile.Created = directory.CreationTimeUtc;
             indexedFile.Modified = directory.LastWriteTimeUtc;
-            await dbContext.SaveChangesAsync();
+            await scopedServices.DbContext.SaveChangesAsync();
 
-            await metadataService.UpdateMetadata(indexedFile);
+            await scopedServices.MetadataService.UpdateMetadata(indexedFile);
         }
 
-        private async Task UpdateIndex(FileInfo file)
+        private async Task UpdateIndex(FileInfo file, ScopedServices scopedServices)
         {
             var relPath = fileService.GetRelativePath(file);
-            var indexedFile = dbContext.IndexedFiles.FirstOrDefault(x => x.Path == relPath);
+            var indexedFile = scopedServices.DbContext.IndexedFiles.FirstOrDefault(x => x.Path == relPath);
 
             if (indexedFile == null || HasFileChanged(file, indexedFile))
             {
                 if (indexedFile == null)
                 {
                     indexedFile = new IndexedFile() { Path = relPath };
-                    dbContext.Add(indexedFile);
+                    scopedServices.DbContext.Add(indexedFile);
                 }
                 indexedFile.Exists = true;
                 indexedFile.IndexLastUpdated = DateTimeOffset.UtcNow;
@@ -335,9 +363,9 @@ namespace Librarian.Services
                 indexedFile.Created = file.CreationTimeUtc;
                 indexedFile.Modified = file.LastWriteTimeUtc;
                 indexedFile.Size = file.Length;
-                await dbContext.SaveChangesAsync();
+                await scopedServices.DbContext.SaveChangesAsync();
 
-                await metadataService.UpdateMetadata(indexedFile);
+                await scopedServices.MetadataService.UpdateMetadata(indexedFile);
             }
         }
 
@@ -376,22 +404,27 @@ namespace Librarian.Services
             // update index for all files inside tree
             var relPath = fileService.GetRelativePath(absoluteOldPath);
 
-            Queue<IndexedFile> queue = new();
-            dbContext.IndexedFiles
-                .Where(x => x.Path.StartsWith(relPath))
-                .ForEach(queue.Enqueue);
-
-            // nothing found in db? means it's not indexed
-            while (queue.Count > 0)
+            using (var scope = serviceProvider.CreateScope())
             {
-                var file = queue.Dequeue();
-                var oldFilePath = fileService.Resolve(file.Path);
-                var relToOldPath = oldFilePath[absoluteOldPath.Length..];
-                var newAbsPath = string.IsNullOrEmpty(relToOldPath) ? info.FullName : Path.Combine(info.FullName, relToOldPath);
-                file.Path = fileService.GetRelativePath(info.FullName);
-            }
+                var dbContext = scope.ServiceProvider.GetService<DatabaseContext>()!;
 
-            await dbContext.SaveChangesAsync();
+                Queue<IndexedFile> queue = new();
+                dbContext.IndexedFiles
+                    .Where(x => x.Path.StartsWith(relPath))
+                    .ForEach(queue.Enqueue);
+
+                // nothing found in db? means it's not indexed
+                while (queue.Count > 0)
+                {
+                    var file = queue.Dequeue();
+                    var oldFilePath = fileService.Resolve(file.Path);
+                    var relToOldPath = oldFilePath[absoluteOldPath.Length..];
+                    var newAbsPath = string.IsNullOrEmpty(relToOldPath) ? info.FullName : Path.Combine(info.FullName, relToOldPath);
+                    file.Path = fileService.GetRelativePath(info.FullName);
+                }
+
+                await dbContext.SaveChangesAsync();
+            }
 
             // refresh index
             await Index(info, true);
@@ -419,6 +452,9 @@ namespace Librarian.Services
 
         public async Task OnFileDeleted(string absolutePath)
         {
+            using var scope = serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetService<DatabaseContext>()!;
+
             var relPath = fileService.GetRelativePath(absolutePath);
 
             if (removeIndexOnDelete)
@@ -439,7 +475,7 @@ namespace Librarian.Services
 
         #region Other operations
 
-        private IndexedFile? GetIndexedFile(FileSystemInfo info)
+        private IndexedFile? GetIndexedFile(FileSystemInfo info, DatabaseContext dbContext)
         {
             var relPath = fileService.GetRelativePath(info.FullName);
             return dbContext.IndexedFiles.FirstOrDefault(x => x.Path == relPath);
