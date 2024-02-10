@@ -7,7 +7,7 @@ namespace Librarian.Data
 {
     public static class Datasets
     {
-        public static IEnumerable<MetadataAttributeDefinition> GetMetadataAttributes()
+        public static IEnumerable<AttributeDefinition> GetMetadataAttributes()
         {
             int index = 1;
 
@@ -20,18 +20,19 @@ namespace Librarian.Data
 
             while (csvReader.Read())
             {
-                yield return new MetadataAttributeDefinition()
-                {
-                    Id = index++,
-                    Group = csvReader["Group"],
-                    Name = csvReader["Name"]!,
-                    Description = csvReader["Description"],
-                    Type = Enum.Parse<MetadataType>(csvReader["Type"]!)
-                };
+                bool isReadOnly = (csvReader["IsReadOnly"] ?? string.Empty).StartsWith("y") || (csvReader["IsReadOnly"] == "true");
+
+                yield return new AttributeDefinition(id: index++,
+                                                     name: csvReader["Name"]!,
+                                                     group: csvReader["Group"],
+                                                     type: Enum.Parse<AttributeType>(csvReader["Type"]!),
+                                                     description: csvReader["Description"],
+                                                     isReadOnly: isReadOnly,
+                                                     unit: csvReader["Unit"]);
             }
         }
 
-        public static IEnumerable<MetadataAttributeAlias> GetAliases()
+        public static IEnumerable<AttributeAlias> GetAliases()
         {
             int index = 1;
 
@@ -51,7 +52,7 @@ namespace Librarian.Data
                 if (!Enum.TryParse(csvReader["Role"], out AliasRole role))
                     role = AliasRole.Default;
 
-                yield return new MetadataAttributeAlias()
+                yield return new AttributeAlias()
                 {
                     Id = index++,
                     Alias = csvReader["Alias"]!.Trim().ToLowerInvariant(),

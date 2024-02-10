@@ -5,11 +5,11 @@ namespace Librarian.Metadata
 {
     public class MetadataCollection
     {
-        public Collection<MetadataAttributeBase> Metadata {  get; } = new Collection<MetadataAttributeBase>();
+        public Collection<AttributeBase> Metadata {  get; } = new Collection<AttributeBase>();
 
         public Collection<SubResource> SubResources { get; } = new Collection<SubResource>();
 
-        public void Add(MetadataAttributeBase metadata)
+        public void Add(AttributeBase metadata)
         {
             Metadata.Add(metadata);
         }

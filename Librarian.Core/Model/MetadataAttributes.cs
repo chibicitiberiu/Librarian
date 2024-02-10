@@ -5,154 +5,154 @@ namespace Librarian.Model.MetadataAttributes
 {
     public static class Audio
     {
-        public static readonly MetadataAttributeDefinition AcoustIDID = new (id: 1, name: "AcoustID ID", group: "Audio", type: MetadataType.Text, description: "AcoustID identifier");
-        public static readonly MetadataAttributeDefinition Album = new (id: 2, name: "Album", group: "Audio", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition AlbumArtist = new (id: 3, name: "Album artist", group: "Audio", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition AlbumArtistSort = new (id: 4, name: "Album artist (sort)", group: "Audio", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition AlbumGain = new (id: 5, name: "Album gain", group: "Audio", type: MetadataType.Float, description: "The ideal listening gain for an entire album");
-        public static readonly MetadataAttributeDefinition AlbumPeak = new (id: 6, name: "Album peak", group: "Audio", type: MetadataType.Float, description: "Peak album amplitude, used to predict whether the required replay gain adjustment will cause clipping during playback");
-        public static readonly MetadataAttributeDefinition Artist = new (id: 7, name: "Artist", group: "Audio", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition ArtistSort = new (id: 8, name: "Artist (sort)", group: "Audio", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition BeatsPerMinute = new (id: 9, name: "Beats per minute", group: "Audio", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition BitsPerSample = new (id: 10, name: "Bits per sample", group: "Audio", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition Channels = new (id: 11, name: "Channels", group: "Audio", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition Composer = new (id: 12, name: "Composer", group: "Audio", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Engineer = new (id: 13, name: "Engineer", group: "Audio", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition InitialKey = new (id: 14, name: "Initial key", group: "Audio", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Lyrics = new (id: 15, name: "Lyrics", group: "Audio", type: MetadataType.BigText, description: "");
-        public static readonly MetadataAttributeDefinition OriginalAlbum = new (id: 16, name: "Original album", group: "Audio", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition ReferenceLoudness = new (id: 17, name: "Reference loudness", group: "Audio", type: MetadataType.Float, description: "");
-        public static readonly MetadataAttributeDefinition SampleRate = new (id: 18, name: "Sample rate", group: "Audio", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition TotalTracks = new (id: 19, name: "Total tracks", group: "Audio", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition Track = new (id: 20, name: "Track ", group: "Audio", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition TrackArtist = new (id: 21, name: "Track artist", group: "Audio", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition TrackGain = new (id: 22, name: "Track gain", group: "Audio", type: MetadataType.Float, description: "");
-        public static readonly MetadataAttributeDefinition TrackPeak = new (id: 23, name: "Track peak", group: "Audio", type: MetadataType.Float, description: "");
+        public static readonly AttributeDefinition AcoustIDID = new (id: 1, name: "AcoustID ID", group: "Audio", type: AttributeType.Text, description: "AcoustID identifier", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Album = new (id: 2, name: "Album", group: "Audio", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition AlbumArtist = new (id: 3, name: "Album artist", group: "Audio", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition AlbumArtistSort = new (id: 4, name: "Album artist (sort)", group: "Audio", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition AlbumGain = new (id: 5, name: "Album gain", group: "Audio", type: AttributeType.Float, description: "The ideal listening gain for an entire album", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition AlbumPeak = new (id: 6, name: "Album peak", group: "Audio", type: AttributeType.Float, description: "Peak album amplitude, used to predict whether the required replay gain adjustment will cause clipping during playback", isReadOnly: false, unit: "dB");
+        public static readonly AttributeDefinition Artist = new (id: 7, name: "Artist", group: "Audio", type: AttributeType.Text, description: "", isReadOnly: false, unit: "dB");
+        public static readonly AttributeDefinition ArtistSort = new (id: 8, name: "Artist (sort)", group: "Audio", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition BeatsPerMinute = new (id: 9, name: "Beats per minute", group: "Audio", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition BitsPerSample = new (id: 10, name: "Bits per sample", group: "Audio", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Channels = new (id: 11, name: "Channels", group: "Audio", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Composer = new (id: 12, name: "Composer", group: "Audio", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Engineer = new (id: 13, name: "Engineer", group: "Audio", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition InitialKey = new (id: 14, name: "Initial key", group: "Audio", type: AttributeType.Text, description: "", isReadOnly: false, unit: "bpm");
+        public static readonly AttributeDefinition Lyrics = new (id: 15, name: "Lyrics", group: "Audio", type: AttributeType.BigText, description: "", isReadOnly: false, unit: "bps");
+        public static readonly AttributeDefinition OriginalAlbum = new (id: 16, name: "Original album", group: "Audio", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition ReferenceLoudness = new (id: 17, name: "Reference loudness", group: "Audio", type: AttributeType.Float, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition SampleRate = new (id: 18, name: "Sample rate", group: "Audio", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition TotalTracks = new (id: 19, name: "Total tracks", group: "Audio", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Track = new (id: 20, name: "Track ", group: "Audio", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition TrackArtist = new (id: 21, name: "Track artist", group: "Audio", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition TrackGain = new (id: 22, name: "Track gain", group: "Audio", type: AttributeType.Float, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition TrackPeak = new (id: 23, name: "Track peak", group: "Audio", type: AttributeType.Float, description: "", isReadOnly: false, unit: "");
     }
 
     public static class FileAttributes
     {
-        public static readonly MetadataAttributeDefinition DateCreated = new (id: 24, name: "Date created", group: "File attributes", type: MetadataType.Date, description: "Date and time when the file was created on disk.");
-        public static readonly MetadataAttributeDefinition DateModified = new (id: 25, name: "Date modified", group: "File attributes", type: MetadataType.Date, description: "Date and time when the file was last modified.");
-        public static readonly MetadataAttributeDefinition FileExtension = new (id: 26, name: "File extension", group: "File attributes", type: MetadataType.Text, description: "The file extension.");
-        public static readonly MetadataAttributeDefinition FileName = new (id: 27, name: "File name", group: "File attributes", type: MetadataType.Text, description: "The file name as it appears on disk.");
-        public static readonly MetadataAttributeDefinition FileType = new (id: 28, name: "File type", group: "File attributes", type: MetadataType.Text, description: "File type as detected by the 'file' command.");
-        public static readonly MetadataAttributeDefinition FullPath = new (id: 29, name: "Full path", group: "File attributes", type: MetadataType.Text, description: "The full file system path to the file.");
-        public static readonly MetadataAttributeDefinition ItemCount = new (id: 30, name: "Item count", group: "File attributes", type: MetadataType.Integer, description: "Number of items (files or folders) in the directory.");
-        public static readonly MetadataAttributeDefinition MimeType = new (id: 31, name: "Mime type", group: "File attributes", type: MetadataType.Text, description: "The detected mime type of the file.");
-        public static readonly MetadataAttributeDefinition Size = new (id: 32, name: "Size", group: "File attributes", type: MetadataType.Integer, description: "The size of the file in bytes.");
+        public static readonly AttributeDefinition DateCreated = new (id: 24, name: "Date created", group: "File attributes", type: AttributeType.Date, description: "Date and time when the file was created on disk.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition DateModified = new (id: 25, name: "Date modified", group: "File attributes", type: AttributeType.Date, description: "Date and time when the file was last modified.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition FileExtension = new (id: 26, name: "File extension", group: "File attributes", type: AttributeType.Text, description: "The file extension.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition FileName = new (id: 27, name: "File name", group: "File attributes", type: AttributeType.Text, description: "The file name as it appears on disk.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition FileType = new (id: 28, name: "File type", group: "File attributes", type: AttributeType.Text, description: "File type as detected by the 'file' command.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition FullPath = new (id: 29, name: "Full path", group: "File attributes", type: AttributeType.Text, description: "The full file system path to the file.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition ItemCount = new (id: 30, name: "Item count", group: "File attributes", type: AttributeType.Integer, description: "Number of items (files or folders) in the directory.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MimeType = new (id: 31, name: "Mime type", group: "File attributes", type: AttributeType.Text, description: "The detected mime type of the file.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Size = new (id: 32, name: "Size", group: "File attributes", type: AttributeType.Integer, description: "The size of the file in bytes.", isReadOnly: false, unit: "");
     }
 
     public static class General
     {
-        public static readonly MetadataAttributeDefinition AmazonStandardIdentificationNumberASIN = new (id: 33, name: "Amazon Standard Identification Number (ASIN)", group: "General", type: MetadataType.Text, description: "Product identifier used by the Amazon store");
-        public static readonly MetadataAttributeDefinition BarCode = new (id: 34, name: "Bar code", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition CatalogNumber = new (id: 35, name: "Catalog number", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Category = new (id: 36, name: "Category", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Collection = new (id: 37, name: "Collection", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Comment = new (id: 38, name: "Comment", group: "General", type: MetadataType.BigText, description: "");
-        public static readonly MetadataAttributeDefinition Compilation = new (id: 39, name: "Compilation", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition ContentRating = new (id: 40, name: "Content rating", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition ContentType = new (id: 41, name: "Content type", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Copyright = new (id: 42, name: "Copyright", group: "General", type: MetadataType.BigText, description: "");
-        public static readonly MetadataAttributeDefinition Credits = new (id: 43, name: "Credits", group: "General", type: MetadataType.BigText, description: "");
-        public static readonly MetadataAttributeDefinition DateCreated = new (id: 44, name: "Date created", group: "General", type: MetadataType.Date, description: "Date when this file was created.");
-        public static readonly MetadataAttributeDefinition DateReleased = new (id: 45, name: "Date released", group: "General", type: MetadataType.Date, description: "Date when this file was released.");
-        public static readonly MetadataAttributeDefinition Description = new (id: 46, name: "Description", group: "General", type: MetadataType.FormattedText, description: "Long description of the file, can be formatted with MarkDown.");
-        public static readonly MetadataAttributeDefinition Director = new (id: 47, name: "Director", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition DisplayName = new (id: 48, name: "Display name", group: "General", type: MetadataType.Text, description: "Name that will be displayed in the metadata file browser.");
-        public static readonly MetadataAttributeDefinition EncodedBy = new (id: 49, name: "Encoded by", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Encoder = new (id: 50, name: "Encoder", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition EncoderSettings = new (id: 51, name: "Encoder settings", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Id = new (id: 52, name: "Id", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Index = new (id: 53, name: "Index", group: "General", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition Language = new (id: 54, name: "Language", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Location = new (id: 55, name: "Location", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition MinorVersion = new (id: 56, name: "Minor version", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Organization = new (id: 57, name: "Organization", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Product = new (id: 58, name: "Product", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Publisher = new (id: 59, name: "Publisher", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition ReleaseCountry = new (id: 60, name: "Release country", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition ReleaseNotes = new (id: 61, name: "Release notes", group: "General", type: MetadataType.FormattedText, description: "");
-        public static readonly MetadataAttributeDefinition ReleaseStatus = new (id: 62, name: "Release status", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition ReleaseType = new (id: 63, name: "Release type", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Script = new (id: 64, name: "Script", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Size = new (id: 65, name: "Size", group: "General", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition Source = new (id: 66, name: "Source", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition SourceURL = new (id: 67, name: "Source URL", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Subcategory = new (id: 68, name: "Subcategory", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Subtitle = new (id: 69, name: "Subtitle", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Summary = new (id: 70, name: "Summary", group: "General", type: MetadataType.BigText, description: "");
-        public static readonly MetadataAttributeDefinition Synopsis = new (id: 71, name: "Synopsis", group: "General", type: MetadataType.BigText, description: "");
-        public static readonly MetadataAttributeDefinition Tag = new (id: 72, name: "Tag", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Title = new (id: 73, name: "Title", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition UniqueFileIdentifierUFID = new (id: 74, name: "Unique file identifier (UFID)", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Uploader = new (id: 75, name: "Uploader", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition WrittenBy = new (id: 76, name: "Written by", group: "General", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Year = new (id: 77, name: "Year", group: "General", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition YearCreated = new (id: 78, name: "Year created", group: "General", type: MetadataType.Integer, description: "");
+        public static readonly AttributeDefinition AmazonStandardIdentificationNumberASIN = new (id: 33, name: "Amazon Standard Identification Number (ASIN)", group: "General", type: AttributeType.Text, description: "Product identifier used by the Amazon store", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition BarCode = new (id: 34, name: "Bar code", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition CatalogNumber = new (id: 35, name: "Catalog number", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Category = new (id: 36, name: "Category", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Collection = new (id: 37, name: "Collection", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Comment = new (id: 38, name: "Comment", group: "General", type: AttributeType.BigText, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Compilation = new (id: 39, name: "Compilation", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition ContentRating = new (id: 40, name: "Content rating", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition ContentType = new (id: 41, name: "Content type", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Copyright = new (id: 42, name: "Copyright", group: "General", type: AttributeType.BigText, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Credits = new (id: 43, name: "Credits", group: "General", type: AttributeType.BigText, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition DateCreated = new (id: 44, name: "Date created", group: "General", type: AttributeType.Date, description: "Date when this file was created.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition DateReleased = new (id: 45, name: "Date released", group: "General", type: AttributeType.Date, description: "Date when this file was released.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Description = new (id: 46, name: "Description", group: "General", type: AttributeType.FormattedText, description: "Long description of the file, can be formatted with MarkDown.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Director = new (id: 47, name: "Director", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition DisplayName = new (id: 48, name: "Display name", group: "General", type: AttributeType.Text, description: "Name that will be displayed in the metadata file browser.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition EncodedBy = new (id: 49, name: "Encoded by", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Encoder = new (id: 50, name: "Encoder", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition EncoderSettings = new (id: 51, name: "Encoder settings", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Id = new (id: 52, name: "Id", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Index = new (id: 53, name: "Index", group: "General", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Language = new (id: 54, name: "Language", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Location = new (id: 55, name: "Location", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MinorVersion = new (id: 56, name: "Minor version", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Organization = new (id: 57, name: "Organization", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Product = new (id: 58, name: "Product", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Publisher = new (id: 59, name: "Publisher", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition ReleaseCountry = new (id: 60, name: "Release country", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition ReleaseNotes = new (id: 61, name: "Release notes", group: "General", type: AttributeType.FormattedText, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition ReleaseStatus = new (id: 62, name: "Release status", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition ReleaseType = new (id: 63, name: "Release type", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Script = new (id: 64, name: "Script", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Size = new (id: 65, name: "Size", group: "General", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Source = new (id: 66, name: "Source", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition SourceURL = new (id: 67, name: "Source URL", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Subcategory = new (id: 68, name: "Subcategory", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Subtitle = new (id: 69, name: "Subtitle", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Summary = new (id: 70, name: "Summary", group: "General", type: AttributeType.BigText, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Synopsis = new (id: 71, name: "Synopsis", group: "General", type: AttributeType.BigText, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Tag = new (id: 72, name: "Tag", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Title = new (id: 73, name: "Title", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition UniqueFileIdentifierUFID = new (id: 74, name: "Unique file identifier (UFID)", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Uploader = new (id: 75, name: "Uploader", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition WrittenBy = new (id: 76, name: "Written by", group: "General", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Year = new (id: 77, name: "Year", group: "General", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition YearCreated = new (id: 78, name: "Year created", group: "General", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
     }
 
     public static class Image
     {
-        public static readonly MetadataAttributeDefinition AspectRatio = new (id: 79, name: "Aspect ratio", group: "Image", type: MetadataType.Float, description: "Ratio obtained by dividing the width by the height.");
-        public static readonly MetadataAttributeDefinition Height = new (id: 80, name: "Height", group: "Image", type: MetadataType.Integer, description: "Image height in pixels.");
-        public static readonly MetadataAttributeDefinition Pixels = new (id: 81, name: "Pixels", group: "Image", type: MetadataType.Integer, description: "Total number of pixels in this image.");
-        public static readonly MetadataAttributeDefinition Width = new (id: 82, name: "Width", group: "Image", type: MetadataType.Integer, description: "Image width in pixels.");
+        public static readonly AttributeDefinition AspectRatio = new (id: 79, name: "Aspect ratio", group: "Image", type: AttributeType.Float, description: "Ratio obtained by dividing the width by the height.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Height = new (id: 80, name: "Height", group: "Image", type: AttributeType.Integer, description: "Image height in pixels.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Pixels = new (id: 81, name: "Pixels", group: "Image", type: AttributeType.Integer, description: "Total number of pixels in this image.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Width = new (id: 82, name: "Width", group: "Image", type: AttributeType.Integer, description: "Image width in pixels.", isReadOnly: false, unit: "");
     }
 
     public static class Media
     {
-        public static readonly MetadataAttributeDefinition Actor = new (id: 83, name: "Actor", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition BitRate = new (id: 84, name: "Bit rate", group: "Media", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition Codec = new (id: 85, name: "Codec", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition DateRecorded = new (id: 86, name: "Date recorded", group: "Media", type: MetadataType.Date, description: "");
-        public static readonly MetadataAttributeDefinition Disc = new (id: 87, name: "Disc", group: "Media", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition Duration = new (id: 88, name: "Duration", group: "Media", type: MetadataType.TimeSpan, description: "Media duration.");
-        public static readonly MetadataAttributeDefinition EndTime = new (id: 89, name: "End time", group: "Media", type: MetadataType.TimeSpan, description: "");
-        public static readonly MetadataAttributeDefinition EpisodeID = new (id: 90, name: "Episode ID", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition EpisodeNumber = new (id: 91, name: "Episode number", group: "Media", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition Genre = new (id: 92, name: "Genre", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Label = new (id: 93, name: "Label", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition MediaFormat = new (id: 94, name: "Media format", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition MusicBrainzAlbumArtistID = new (id: 95, name: "MusicBrainz album artist ID", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition MusicBrainzAlbumID = new (id: 96, name: "MusicBrainz album ID", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition MusicBrainzArtistID = new (id: 97, name: "MusicBrainz artist ID", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition MusicBrainzReleaseGroupID = new (id: 98, name: "MusicBrainz release group ID", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition MusicBrainzReleaseTrackID = new (id: 99, name: "MusicBrainz release track ID", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition MusicBrainzTrackID = new (id: 100, name: "MusicBrainz track ID", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition NarratedBy = new (id: 101, name: "Narrated by", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Producer = new (id: 102, name: "Producer", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition ScreenplayBy = new (id: 103, name: "Screenplay by", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition SeasonNumber = new (id: 104, name: "Season number", group: "Media", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition StartTime = new (id: 105, name: "Start time", group: "Media", type: MetadataType.TimeSpan, description: "");
-        public static readonly MetadataAttributeDefinition StreamType = new (id: 106, name: "Stream type", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition Studio = new (id: 107, name: "Studio", group: "Media", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition TotalDiscs = new (id: 108, name: "Total discs", group: "Media", type: MetadataType.Integer, description: "");
+        public static readonly AttributeDefinition Actor = new (id: 83, name: "Actor", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "dB");
+        public static readonly AttributeDefinition BitRate = new (id: 84, name: "Bit rate", group: "Media", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Codec = new (id: 85, name: "Codec", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition DateRecorded = new (id: 86, name: "Date recorded", group: "Media", type: AttributeType.Date, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Disc = new (id: 87, name: "Disc", group: "Media", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Duration = new (id: 88, name: "Duration", group: "Media", type: AttributeType.TimeSpan, description: "Media duration.", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition EndTime = new (id: 89, name: "End time", group: "Media", type: AttributeType.TimeSpan, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition EpisodeID = new (id: 90, name: "Episode ID", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition EpisodeNumber = new (id: 91, name: "Episode number", group: "Media", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Genre = new (id: 92, name: "Genre", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Label = new (id: 93, name: "Label", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MediaFormat = new (id: 94, name: "Media format", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MusicBrainzAlbumArtistID = new (id: 95, name: "MusicBrainz album artist ID", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MusicBrainzAlbumID = new (id: 96, name: "MusicBrainz album ID", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MusicBrainzArtistID = new (id: 97, name: "MusicBrainz artist ID", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MusicBrainzReleaseGroupID = new (id: 98, name: "MusicBrainz release group ID", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MusicBrainzReleaseTrackID = new (id: 99, name: "MusicBrainz release track ID", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MusicBrainzTrackID = new (id: 100, name: "MusicBrainz track ID", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition NarratedBy = new (id: 101, name: "Narrated by", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Producer = new (id: 102, name: "Producer", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition ScreenplayBy = new (id: 103, name: "Screenplay by", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition SeasonNumber = new (id: 104, name: "Season number", group: "Media", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition StartTime = new (id: 105, name: "Start time", group: "Media", type: AttributeType.TimeSpan, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition StreamType = new (id: 106, name: "Stream type", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Studio = new (id: 107, name: "Studio", group: "Media", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition TotalDiscs = new (id: 108, name: "Total discs", group: "Media", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
     }
 
     public static class Package
     {
-        public static readonly MetadataAttributeDefinition Version = new (id: 109, name: "Version", group: "Package", type: MetadataType.Text, description: "Version of this package.");
+        public static readonly AttributeDefinition Version = new (id: 109, name: "Version", group: "Package", type: AttributeType.Text, description: "Version of this package.", isReadOnly: false, unit: "");
     }
 
     public static class Software
     {
-        public static readonly MetadataAttributeDefinition Architecture = new (id: 110, name: "Architecture", group: "Software", type: MetadataType.Text, description: "System architecture for which this software was compiled");
-        public static readonly MetadataAttributeDefinition EndOfLifeDate = new (id: 111, name: "End of life date", group: "Software", type: MetadataType.Date, description: "");
-        public static readonly MetadataAttributeDefinition InstallationInstructions = new (id: 112, name: "Installation instructions", group: "Software", type: MetadataType.FormattedText, description: "");
-        public static readonly MetadataAttributeDefinition MinimumCPU = new (id: 113, name: "Minimum CPU", group: "Software", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition MinimumDiskSpace = new (id: 114, name: "Minimum disk space", group: "Software", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition MinimumRAM = new (id: 115, name: "Minimum RAM", group: "Software", type: MetadataType.Integer, description: "");
-        public static readonly MetadataAttributeDefinition Platform = new (id: 116, name: "Platform", group: "Software", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition SerialKey = new (id: 117, name: "Serial key", group: "Software", type: MetadataType.Text, description: "");
-        public static readonly MetadataAttributeDefinition UserInterface = new (id: 118, name: "User interface", group: "Software", type: MetadataType.Text, description: "");
+        public static readonly AttributeDefinition Architecture = new (id: 110, name: "Architecture", group: "Software", type: AttributeType.Text, description: "System architecture for which this software was compiled", isReadOnly: false, unit: "dB");
+        public static readonly AttributeDefinition EndOfLifeDate = new (id: 111, name: "End of life date", group: "Software", type: AttributeType.Date, description: "", isReadOnly: false, unit: "dB");
+        public static readonly AttributeDefinition InstallationInstructions = new (id: 112, name: "Installation instructions", group: "Software", type: AttributeType.FormattedText, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MinimumCPU = new (id: 113, name: "Minimum CPU", group: "Software", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MinimumDiskSpace = new (id: 114, name: "Minimum disk space", group: "Software", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition MinimumRAM = new (id: 115, name: "Minimum RAM", group: "Software", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Platform = new (id: 116, name: "Platform", group: "Software", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition SerialKey = new (id: 117, name: "Serial key", group: "Software", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition UserInterface = new (id: 118, name: "User interface", group: "Software", type: AttributeType.Text, description: "", isReadOnly: false, unit: "");
     }
 
     public static class Video
     {
-        public static readonly MetadataAttributeDefinition FrameRate = new (id: 119, name: "Frame rate", group: "Video", type: MetadataType.Float, description: "");
-        public static readonly MetadataAttributeDefinition Frames = new (id: 120, name: "Frames", group: "Video", type: MetadataType.Integer, description: "");
+        public static readonly AttributeDefinition FrameRate = new (id: 119, name: "Frame rate", group: "Video", type: AttributeType.Float, description: "", isReadOnly: false, unit: "");
+        public static readonly AttributeDefinition Frames = new (id: 120, name: "Frames", group: "Video", type: AttributeType.Integer, description: "", isReadOnly: false, unit: "");
     }
 
 }

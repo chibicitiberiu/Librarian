@@ -15,8 +15,8 @@ namespace Librarian.ViewModels
 
         public bool IsDirectory { get; set; }
 
-        public IEnumerable<MetadataAttributeBase> Metadata { get; set; } = null!;
+        public IEnumerable<AttributeBase> Metadata { get; set; } = null!;
 
-        public Dictionary<SubResource, IEnumerable<MetadataAttributeBase>> SubResourceMetadata { get; set; } = null!;
+        public Dictionary<SubResource, IEnumerable<AttributeBase>> SubResourceMetadata { get; set; } = null!;
     }
 }

@@ -8,15 +8,15 @@ namespace Librarian.DB
     {
         public DbSet<IndexedFile> IndexedFiles { get; set; }
         public DbSet<IndexedFileContents> IndexedFileContents { get; set; }
-        public DbSet<MetadataAttributeDefinition> MetadataAttributes { get; set; }
-        public DbSet<MetadataAttributeAlias> AttributeAliases { get; set; }
+        public DbSet<AttributeDefinition> AttributeDefinitions { get; set; }
+        public DbSet<AttributeAlias> AttributeAliases { get; set; }
         public DbSet<SubResource> SubResources { get; set; }
 
-        public DbSet<BlobMetadata> BlobMetadata { get; set; }
-        public DbSet<DateMetadata> DateMetadata { get; set; }
-        public DbSet<FloatMetadata> FloatMetadata { get; set; }
-        public DbSet<IntegerMetadata> IntegerMetadata { get; set; }
-        public DbSet<TextMetadata> TextMetadata { get; set; }
+        public DbSet<BlobAttribute> BlobAttributes { get; set; }
+        public DbSet<DateAttribute> DateAttributes { get; set; }
+        public DbSet<FloatAttribute> FloatAttributes { get; set; }
+        public DbSet<IntegerAttribute> IntegerAttributes { get; set; }
+        public DbSet<TextAttribute> TextAttributes { get; set; }
 
         protected DatabaseContext()
         {
@@ -31,16 +31,16 @@ namespace Librarian.DB
             modelBuilder.Entity<IndexedFile>()
                 .HasIndex(f => f.Path).IsUnique(true);
 
-            modelBuilder.Entity<MetadataAttributeDefinition>()
-                .HasIndex(nameof(MetadataAttributeDefinition.Group), nameof(MetadataAttributeDefinition.Name))
+            modelBuilder.Entity<AttributeDefinition>()
+                .HasIndex(nameof(AttributeDefinition.Group), nameof(AttributeDefinition.Name))
                 .IsUnique(true);
-            modelBuilder.Entity<MetadataAttributeDefinition>()
+            modelBuilder.Entity<AttributeDefinition>()
                 .HasData(Datasets.GetMetadataAttributes());
 
-            modelBuilder.Entity<MetadataAttributeAlias>()
-                .HasIndex(nameof(MetadataAttributeAlias.Alias))
+            modelBuilder.Entity<AttributeAlias>()
+                .HasIndex(nameof(AttributeAlias.Alias))
                 .IsUnique(true);
-            modelBuilder.Entity<MetadataAttributeAlias>()
+            modelBuilder.Entity<AttributeAlias>()
                 .HasData(Datasets.GetAliases());
 
             base.OnModelCreating(modelBuilder);

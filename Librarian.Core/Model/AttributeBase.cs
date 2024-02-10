@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Librarian.Model
 {
-    public class MetadataAttributeBase
+    public abstract class AttributeBase
     {
         [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
@@ -21,8 +21,11 @@ namespace Librarian.Model
         /// If true, this metadata is editable
         /// </summary>
         public bool Editable { get; set; }
-        
-        public bool IsUserEdited { get; set; }
+
+        /// <summary>
+        /// Date when this attribute was last updated
+        /// </summary>
+        public DateTimeOffset DateUpdated { get; set; } = DateTimeOffset.UtcNow;
 
         #region Info about source
 
@@ -37,11 +40,6 @@ namespace Librarian.Model
         /// Provider specific identifier
         /// </summary>
         public string? ProviderAttributeId { get; set; }
-
-        /// <summary>
-        /// If true, the provider is capable of saving this attribute back to the original file
-        /// </summary>
-        public bool CanSaveToFile { get; set; }
 
         #endregion
 
@@ -59,22 +57,27 @@ namespace Librarian.Model
         /// <summary>
         /// Metadata attribute
         /// </summary>
-        public virtual MetadataAttributeDefinition AttributeDefinition { get; set; } = null!;
+        public virtual AttributeDefinition AttributeDefinition { get; set; } = null!;
         #endregion
 
-        public MetadataAttributeBase() { }
+        protected AttributeBase() { }
 
-        public MetadataAttributeBase(MetadataAttributeDefinition attributeDefinition,
-                            Guid providerId,
-                            string? providerAttributeId = null,
-                            bool editable = false,
-                            bool canSaveToFile = false)
+        protected AttributeBase(AttributeDefinition attributeDefinition,
+                                Guid? providerId,
+                                string? providerAttributeId = null,
+                                bool editable = false)
         {
             AttributeDefinition = attributeDefinition;
             ProviderId = providerId.ToString();
             Editable = editable;
             ProviderAttributeId = providerAttributeId;
-            CanSaveToFile = canSaveToFile;
+        }
+
+        public virtual void Update(AttributeBase other)
+        {
+            Editable = other.Editable;
+            ProviderAttributeId = other.ProviderAttributeId;
+            DateUpdated = DateTimeOffset.UtcNow;
         }
     }
 }

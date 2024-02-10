@@ -1,6 +1,4 @@
-﻿using Librarian.Models;
-using Librarian.Services;
-using Librarian.Utils;
+﻿using Librarian.Services;
 using Librarian.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -63,7 +61,7 @@ namespace Librarian.Controllers
                 }
 
                 // collect and fill metadata
-                var allMetadata = (await metadataService.GetMetadataAsync(diskPath, false)).ToList();
+                var allMetadata = await metadataService.CollectMetadataAsync(diskPath).ToListAsync();
                 vm.Metadata = allMetadata.Where(x => x.SubResource == null);
                 vm.SubResourceMetadata = allMetadata
                     .Where(x => x.SubResource != null)

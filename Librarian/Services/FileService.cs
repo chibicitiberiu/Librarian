@@ -34,10 +34,22 @@ namespace Librarian.Services
             return relPath.Replace("\\", "/");
         }
 
+        public string GetRelativePath(FileSystemInfo info)
+        {
+            string relPath = Path.GetRelativePath(BasePath, info.FullName);
+            return relPath.Replace("\\", "/");
+        }
+
         public bool IsRoot(string absPath)
         {
             string relPath = Path.GetRelativePath(BasePath, absPath);
             return string.IsNullOrEmpty(relPath) || relPath == ".";
+        }
+
+        public bool IsInBaseDirectory(string absPath)
+        {
+            absPath = PathUtils.GetCanonicalPath(absPath);
+            return absPath.StartsWith(BasePath);
         }
 
         public string GetAppDataFile(string path)

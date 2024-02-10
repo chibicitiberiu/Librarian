@@ -9,7 +9,7 @@ using Nito.AsyncEx.Synchronous;
 using System.Diagnostics.SymbolStore;
 using System.Globalization;
 
-internal class Program
+internal static class Program
 {
     private static readonly Dictionary<string, string?> Configuration = new()
     {
@@ -23,9 +23,9 @@ internal class Program
         @"D:\Retro Game Collection"
     };
 
-    private static CsvWriter FileInfoWriter;
-    private static CsvWriter MetadataWriter;
-    private static MetadataCliService CliService;
+    private static CsvWriter FileInfoWriter = null!;
+    private static CsvWriter MetadataWriter = null!;
+    private static MetadataCliService CliService = null!;
 
     private static string ToWslPath(string path)
     {
@@ -57,8 +57,8 @@ internal class Program
         CliService = new MetadataCliService(config);
 
         // Open output writers
-        using var fileInfoOut = new StreamWriter("/mnt/c/Temp/file-info.csv");
-        using var metadataOut = new StreamWriter("/mnt/c/Temp/all-metadata.csv");
+        await using var fileInfoOut = new StreamWriter("/mnt/c/Temp/file-info.csv");
+        await using var metadataOut = new StreamWriter("/mnt/c/Temp/all-metadata.csv");
         FileInfoWriter = new CsvWriter(fileInfoOut, CultureInfo.InvariantCulture);
         FileInfoWriter.WriteHeader(typeof(FileInfo));
         FileInfoWriter.NextRecord();
@@ -100,7 +100,7 @@ internal class Program
             {
                 //metadata = CliService.GetMetadataAsync(file.FullName).WaitAndUnwrapException();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 couldCollect = false;
             }

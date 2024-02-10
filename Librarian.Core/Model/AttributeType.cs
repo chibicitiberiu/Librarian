@@ -1,6 +1,6 @@
 ﻿namespace Librarian.Model
 {
-    public enum MetadataType
+    public enum AttributeType
     {
         // stored in TextMetadata
         Text,

@@ -18,7 +18,7 @@ namespace Librarian.Metadata.Providers
         public Guid ProviderId => providerId;
 
         public string DisplayName => "Metadata Extractor";
-
+        /*
         public IEnumerable<MetadataField> GetMetadata(string filePath)
         {
             IReadOnlyList<Directory> directories;
@@ -54,12 +54,12 @@ namespace Librarian.Metadata.Providers
         public Task<IEnumerable<MetadataField>> GetMetadataAsync(string filePath)
         {
             return Task.FromResult(GetMetadata(filePath));
-        }
+        }*/
 
-        public Task SaveMetadataAsync(string filePath, IEnumerable<MetadataField> metadata)
+        /*public Task SaveMetadataAsync(string filePath, IEnumerable<MetadataField> metadata)
         {
             throw new NotImplementedException();
-        }
+        }*/
 
         public Task SaveMetadataAsync(string filePath, MetadataCollection metadata)
         {

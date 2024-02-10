@@ -16,6 +16,8 @@ namespace Librarian.Model
         [MaxLength(4096), Required]
         public string Path { get; set; } = null!;
 
+        public bool Exists { get; set; } = true;
+
         #endregion
 
         #region Indexing
@@ -35,11 +37,11 @@ namespace Librarian.Model
 
         #region Foreign keys
         public virtual IndexedFileContents? Contents { get; set; }
-        public virtual ICollection<TextMetadata> TextMetadata { get; set; } = null!;
-        public virtual ICollection<IntegerMetadata> IntegerMetadata { get; set; } = null!;
-        public virtual ICollection<FloatMetadata> FloatMetadata { get; set; } = null!;
-        public virtual ICollection<DateMetadata> DateMetadata { get; set; } = null!;
-        public virtual ICollection<BlobMetadata> BlobMetadata { get; set; } = null!;
+        public virtual ICollection<TextAttribute> TextMetadata { get; set; } = null!;
+        public virtual ICollection<IntegerAttribute> IntegerMetadata { get; set; } = null!;
+        public virtual ICollection<FloatAttribute> FloatMetadata { get; set; } = null!;
+        public virtual ICollection<DateAttribute> DateMetadata { get; set; } = null!;
+        public virtual ICollection<BlobAttribute> BlobMetadata { get; set; } = null!;
         #endregion
     }
 }

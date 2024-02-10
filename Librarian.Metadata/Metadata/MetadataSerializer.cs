@@ -16,7 +16,7 @@ namespace Librarian.Metadata
 
         #region Serialization
 
-        public async Task Serialize(string fileName, IEnumerable<MetadataAttributeBase> attributes)
+        public async Task Serialize(string fileName, IEnumerable<AttributeBase> attributes)
         {
             await using var writer = new StreamWriter(fileName);
             await using var xmlWriter = XmlWriter.Create(writer, new XmlWriterSettings() { Async = true, Indent = true });
@@ -25,7 +25,7 @@ namespace Librarian.Metadata
             await document.WriteToAsync(xmlWriter, new CancellationToken());
         }
 
-        public XDocument Serialize(IEnumerable<MetadataAttributeBase> attributes)
+        public XDocument Serialize(IEnumerable<AttributeBase> attributes)
         {
             var fileAttributes = attributes
                 .Where(x => x.SubResource == null)
@@ -57,7 +57,7 @@ namespace Librarian.Metadata
             return new XDocument(rootNode);
         }
 
-        private XElement SerializeAttribute(MetadataAttributeBase attribute)
+        private XElement SerializeAttribute(AttributeBase attribute)
         {
             XElement ret = ToXElement(attribute as dynamic);
 
@@ -66,35 +66,29 @@ namespace Librarian.Metadata
 
             ret.Add(new XAttribute("name", attribute.AttributeDefinition.Name));
 
-            if (attribute.Editable)
-                ret.Add(new XAttribute("editable", true));
-
-            if (attribute.IsUserEdited)
-                ret.Add(new XAttribute("userEdited", true));
-
             return ret;
         }
 
-        private static XElement ToXElement(TextMetadata attribute)
+        private static XElement ToXElement(TextAttribute attribute)
         {
             var ret = new XElement("text", new XText(attribute.Value));
 
-            if (attribute.AttributeDefinition.Type == MetadataType.BigText)
+            if (attribute.AttributeDefinition.Type == AttributeType.BigText)
                 ret.Add(new XAttribute("kind", "big"));
-            else if (attribute.AttributeDefinition.Type == MetadataType.FormattedText)
+            else if (attribute.AttributeDefinition.Type == AttributeType.FormattedText)
                 ret.Add(new XAttribute("kind", "formatted"));
 
             return ret;
         }
 
-        private static XElement ToXElement(IntegerMetadata attribute)
+        private static XElement ToXElement(IntegerAttribute attribute)
         {
             return new XElement("int", new XText(attribute.Value.ToString()));
         }
 
-        private static XElement ToXElement(FloatMetadata attribute)
+        private static XElement ToXElement(FloatAttribute attribute)
         {
-            if (attribute.AttributeDefinition.Type == MetadataType.TimeSpan)
+            if (attribute.AttributeDefinition.Type == AttributeType.TimeSpan)
             {
                 TimeSpan ts = TimeSpan.FromSeconds(attribute.Value);
                 return new XElement("timeSpan", new XText(ts.ToString()));
@@ -105,13 +99,13 @@ namespace Librarian.Metadata
             }
         }
 
-        private static XElement ToXElement(BlobMetadata attribute)
+        private static XElement ToXElement(BlobAttribute attribute)
         {
             string value = Convert.ToBase64String(attribute.Value);
             return new XElement("blob", new XText(value));
         }
 
-        private static XElement ToXElement(DateMetadata attribute)
+        private static XElement ToXElement(DateAttribute attribute)
         {
             return new XElement(name: "date", new XText(attribute.Value.ToString()));
         }
@@ -133,19 +127,24 @@ namespace Librarian.Metadata
 
         #region Deserialization
 
-        public async Task<IEnumerable<MetadataAttributeBase>> Deserialize(string fileName)
+        public async Task<IEnumerable<AttributeBase>> Deserialize(string fileName)
         {
             using var reader = new StreamReader(fileName);
             XDocument document = await XDocument.LoadAsync(reader, LoadOptions.SetLineInfo, new CancellationToken());
             return Deserialize(document);
         }
 
-        public IEnumerable<MetadataAttributeBase> Deserialize(XDocument document)
+        public IEnumerable<AttributeBase> Deserialize(XDocument document)
         {
             if (document.Root == null)
                 throw new MetadataSerializationException(document, "Missing root element!");
 
-            foreach (var child in document.Root.Elements())
+            return DeserializeInternal(document);
+        }
+
+        private IEnumerable<AttributeBase> DeserializeInternal(XDocument document)
+        {
+            foreach (var child in document.Root!.Elements())
             {
                 if (child.Name == "subResources")
                 {
@@ -166,13 +165,11 @@ namespace Librarian.Metadata
             }
         }
 
-        private MetadataAttributeBase AttributeFromXElement(XElement xmlAttribute, SubResource? subResource = null)
+        private AttributeBase AttributeFromXElement(XElement xmlAttribute, SubResource? subResource = null)
         {
             string name = xmlAttribute.StringAttribute("name", true)!;
             string? group = xmlAttribute.StringAttribute("group");
-            bool editable = xmlAttribute.BoolAttribute("editable") ?? false;
-            bool userEdited = xmlAttribute.BoolAttribute("userEdited") ?? false;
-            MetadataType type = GetAttributeType(xmlAttribute);
+            AttributeType type = GetAttributeType(xmlAttribute);
 
             string valueStr = xmlAttribute.Text() ?? string.Empty;
 
@@ -182,35 +179,33 @@ namespace Librarian.Metadata
                                   valueStr,
                                   providerId: Guid.Empty,
                                   providerAttributeId: null,
-                                  editable: editable,
-                                  canSaveToFile: true,
-                                  subResource: subResource,
-                                  isUserEdited: userEdited);
+                                  editable: true,
+                                  subResource: subResource);
         }
 
-        private static MetadataType GetAttributeType(XElement xmlAttribute)
+        private static AttributeType GetAttributeType(XElement xmlAttribute)
         {
             var kindAttribute = xmlAttribute.Attribute("kind");
             string? kind = kindAttribute?.Value;
 
-            MetadataType type = xmlAttribute.Name.LocalName switch
+            AttributeType type = xmlAttribute.Name.LocalName switch
             {
-                "text" => MetadataType.Text,
-                "blob" => MetadataType.Blob,
-                "int" => MetadataType.Integer,
-                "float" => MetadataType.Float,
-                "date" => MetadataType.Date,
-                "timeSpan" => MetadataType.TimeSpan,
+                "text" => AttributeType.Text,
+                "blob" => AttributeType.Blob,
+                "int" => AttributeType.Integer,
+                "float" => AttributeType.Float,
+                "date" => AttributeType.Date,
+                "timeSpan" => AttributeType.TimeSpan,
                 _ => throw new MetadataSerializationException(xmlAttribute, "Invalid element type. Expected one of: text, blob, int, float, date, timeSpan."),
             };
 
-            if (type == MetadataType.Text && kind is not null)
+            if (type == AttributeType.Text && kind is not null)
             {
                 type = kind.ToLower() switch
                 {
-                    "big" => MetadataType.BigText,
-                    "formatted" => MetadataType.FormattedText,
-                    "simple" => MetadataType.Text,
+                    "big" => AttributeType.BigText,
+                    "formatted" => AttributeType.FormattedText,
+                    "simple" => AttributeType.Text,
                     _ => throw new MetadataSerializationException(kindAttribute!, "Invalid text kind. Expected one of: simple, big, formatted (default: simple)"),
                 };
             }

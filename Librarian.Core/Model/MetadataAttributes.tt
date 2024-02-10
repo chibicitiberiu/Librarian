@@ -27,7 +27,7 @@ namespace Librarian.Model.MetadataAttributes
         foreach (var attribute in group.OrderBy(attr => attr.Name))
         {
 #>
-        public static readonly MetadataAttributeDefinition <#= ToCamelCase(attribute.Name) #> = new (id: <#= attribute.Id #>, name: "<#= attribute.Name #>", group: "<#= attribute.Group #>", type: MetadataType.<#= attribute.Type #>, description: "<#= attribute.Description #>");
+        public static readonly AttributeDefinition <#= ToCamelCase(attribute.Name) #> = new (id: <#= attribute.Id #>, name: "<#= attribute.Name #>", group: "<#= attribute.Group #>", type: AttributeType.<#= attribute.Type #>, description: "<#= attribute.Description #>", isReadOnly: <#= attribute.IsReadOnly.ToString().ToLower() #>, unit: "<#= attribute.Unit #>");
 <#
         }
 #>
@@ -57,16 +57,18 @@ namespace Librarian.Model.MetadataAttributes
         return sb.ToString();
     }
 
-    class MetadataAttributeDefinition
+    class AttributeDefinition
     {
         public int Id { get; set; }
         public string Name { get; set; }
         public string Group { get; set; }
         public string Type { get; set; }
         public string Description { get; set; }
+        public string Unit { get; set; }
+        public bool IsReadOnly { get; set; }
     }
 
-    static IEnumerable<MetadataAttributeDefinition> GetMetadataAttributes(string file)
+    static IEnumerable<AttributeDefinition> GetMetadataAttributes(string file)
     {
         int index = 1;
 
@@ -79,13 +81,17 @@ namespace Librarian.Model.MetadataAttributes
             // read file
             while (csvReader.Read())
             {
-                yield return new MetadataAttributeDefinition()
+                bool isReadOnly = (csvReader["IsReadOnly"] ?? string.Empty).StartsWith("y") || (csvReader["IsReadOnly"] == "true");
+
+                yield return new AttributeDefinition()
                 {
                     Id = index++,
                     Group = csvReader["Group"],
                     Name = csvReader["Name"],
                     Description = csvReader["Description"],
-                    Type = csvReader["Type"]
+                    Type = csvReader["Type"],
+                    Unit = csvReader["Unit"],
+                    IsReadOnly = isReadOnly
                 };
             }
         }

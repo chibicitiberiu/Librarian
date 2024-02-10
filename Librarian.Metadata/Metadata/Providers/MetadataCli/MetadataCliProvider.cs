@@ -27,7 +27,10 @@ namespace Librarian.Metadata.Providers.MetadataCli
         public async Task<MetadataCollection> GetMetadataAsync(string filePath)
         {
             MetadataCollection result = new();
-            var metadata = await cliService.GetMetadataAsync(filePath) ?? throw new Exception("No metadata returned!");
+            var metadata = await cliService.GetMetadataAsync(filePath);
+
+            if (metadata == null)
+                return result;
 
             if (metadata.Parser != "avformat")
                 logger.LogWarning("Parser {parser} may have different attributes than expected!", metadata.Parser);

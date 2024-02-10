@@ -23,216 +23,7 @@ namespace Librarian.DB.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Librarian.Model.BlobMetadata", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AttributeDefinitionId")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("Editable")
-                        .HasColumnType("boolean");
-
-                    b.Property<int?>("FileId")
-                        .IsRequired()
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ProviderId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int?>("SubResourceId")
-                        .HasColumnType("integer");
-
-                    b.Property<byte[]>("Value")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AttributeDefinitionId");
-
-                    b.HasIndex("FileId");
-
-                    b.HasIndex("SubResourceId");
-
-                    b.ToTable("BlobMetadata");
-                });
-
-            modelBuilder.Entity("Librarian.Model.DateMetadata", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AttributeDefinitionId")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("Editable")
-                        .HasColumnType("boolean");
-
-                    b.Property<int?>("FileId")
-                        .IsRequired()
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ProviderId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int?>("SubResourceId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("Value")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AttributeDefinitionId");
-
-                    b.HasIndex("FileId");
-
-                    b.HasIndex("SubResourceId");
-
-                    b.ToTable("DateMetadata");
-                });
-
-            modelBuilder.Entity("Librarian.Model.FloatMetadata", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AttributeDefinitionId")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("Editable")
-                        .HasColumnType("boolean");
-
-                    b.Property<int?>("FileId")
-                        .IsRequired()
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ProviderId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int?>("SubResourceId")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("Value")
-                        .HasColumnType("double precision");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AttributeDefinitionId");
-
-                    b.HasIndex("FileId");
-
-                    b.HasIndex("SubResourceId");
-
-                    b.ToTable("FloatMetadata");
-                });
-
-            modelBuilder.Entity("Librarian.Model.IndexedFile", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTimeOffset>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("IndexLastUpdated")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("Modified")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("NeedsUpdating")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Path")
-                        .IsRequired()
-                        .HasMaxLength(4096)
-                        .HasColumnType("character varying(4096)");
-
-                    b.Property<long?>("Size")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Path")
-                        .IsUnique();
-
-                    b.ToTable("IndexedFiles");
-                });
-
-            modelBuilder.Entity("Librarian.Model.IndexedFileContents", b =>
-                {
-                    b.Property<int>("FileId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Content")
-                        .HasColumnType("text");
-
-                    b.Property<NpgsqlTsVector>("ContentSearch")
-                        .HasColumnType("tsvector");
-
-                    b.HasKey("FileId");
-
-                    b.ToTable("IndexedFileContents");
-                });
-
-            modelBuilder.Entity("Librarian.Model.IntegerMetadata", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AttributeDefinitionId")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("Editable")
-                        .HasColumnType("boolean");
-
-                    b.Property<int?>("FileId")
-                        .IsRequired()
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ProviderId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int?>("SubResourceId")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("Value")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AttributeDefinitionId");
-
-                    b.HasIndex("FileId");
-
-                    b.HasIndex("SubResourceId");
-
-                    b.ToTable("IntegerMetadata");
-                });
-
-            modelBuilder.Entity("Librarian.Model.MetadataAttributeAlias", b =>
+            modelBuilder.Entity("Librarian.Model.AttributeAlias", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -996,7 +787,7 @@ namespace Librarian.DB.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Librarian.Model.MetadataAttributeDefinition", b =>
+            modelBuilder.Entity("Librarian.Model.AttributeDefinition", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -1012,6 +803,9 @@ namespace Librarian.DB.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<bool>("IsReadOnly")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -1020,12 +814,15 @@ namespace Librarian.DB.Migrations
                     b.Property<int>("Type")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Unit")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Group", "Name")
                         .IsUnique();
 
-                    b.ToTable("MetadataAttributes");
+                    b.ToTable("AttributeDefinitions");
 
                     b.HasData(
                         new
@@ -1033,961 +830,1437 @@ namespace Librarian.DB.Migrations
                             Id = 1,
                             Description = "AcoustID identifier",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "AcoustID ID",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 2,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Album",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 3,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Album artist",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 4,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Album artist (sort)",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 5,
                             Description = "The ideal listening gain for an entire album",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Album gain",
-                            Type = 4
+                            Type = 4,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 6,
                             Description = "Peak album amplitude, used to predict whether the required replay gain adjustment will cause clipping during playback",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Album peak",
-                            Type = 4
+                            Type = 4,
+                            Unit = "dB"
                         },
                         new
                         {
                             Id = 7,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Artist",
-                            Type = 0
+                            Type = 0,
+                            Unit = "dB"
                         },
                         new
                         {
                             Id = 8,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Artist (sort)",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 9,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Beats per minute",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 10,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Bits per sample",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 11,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Channels",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 12,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Composer",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 13,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Engineer",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 14,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Initial key",
-                            Type = 0
+                            Type = 0,
+                            Unit = "bpm"
                         },
                         new
                         {
                             Id = 15,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Lyrics",
-                            Type = 1
+                            Type = 1,
+                            Unit = "bps"
                         },
                         new
                         {
                             Id = 16,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Original album",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 17,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Reference loudness",
-                            Type = 4
+                            Type = 4,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 18,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Sample rate",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 19,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Total tracks",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 20,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Track ",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 21,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Track artist",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 22,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Track gain",
-                            Type = 4
+                            Type = 4,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 23,
                             Description = "",
                             Group = "Audio",
+                            IsReadOnly = false,
                             Name = "Track peak",
-                            Type = 4
+                            Type = 4,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 24,
                             Description = "Date and time when the file was created on disk.",
                             Group = "File attributes",
+                            IsReadOnly = false,
                             Name = "Date created",
-                            Type = 5
+                            Type = 5,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 25,
                             Description = "Date and time when the file was last modified.",
                             Group = "File attributes",
+                            IsReadOnly = false,
                             Name = "Date modified",
-                            Type = 5
+                            Type = 5,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 26,
                             Description = "The file extension.",
                             Group = "File attributes",
+                            IsReadOnly = false,
                             Name = "File extension",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 27,
                             Description = "The file name as it appears on disk.",
                             Group = "File attributes",
+                            IsReadOnly = false,
                             Name = "File name",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 28,
                             Description = "File type as detected by the 'file' command.",
                             Group = "File attributes",
+                            IsReadOnly = false,
                             Name = "File type",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 29,
                             Description = "The full file system path to the file.",
                             Group = "File attributes",
+                            IsReadOnly = false,
                             Name = "Full path",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 30,
                             Description = "Number of items (files or folders) in the directory.",
                             Group = "File attributes",
+                            IsReadOnly = false,
                             Name = "Item count",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 31,
                             Description = "The detected mime type of the file.",
                             Group = "File attributes",
+                            IsReadOnly = false,
                             Name = "Mime type",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 32,
                             Description = "The size of the file in bytes.",
                             Group = "File attributes",
+                            IsReadOnly = false,
                             Name = "Size",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 33,
                             Description = "Product identifier used by the Amazon store",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Amazon Standard Identification Number (ASIN)",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 34,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Bar code",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 35,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Catalog number",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 36,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Category",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 37,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Collection",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 38,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Comment",
-                            Type = 1
+                            Type = 1,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 39,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Compilation",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 40,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Content rating",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 41,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Content type",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 42,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Copyright",
-                            Type = 1
+                            Type = 1,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 43,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Credits",
-                            Type = 1
+                            Type = 1,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 44,
                             Description = "Date when this file was created.",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Date created",
-                            Type = 5
+                            Type = 5,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 45,
                             Description = "Date when this file was released.",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Date released",
-                            Type = 5
+                            Type = 5,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 46,
                             Description = "Long description of the file, can be formatted with MarkDown.",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Description",
-                            Type = 2
+                            Type = 2,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 47,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Director",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 48,
                             Description = "Name that will be displayed in the metadata file browser.",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Display name",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 49,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Encoded by",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 50,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Encoder",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 51,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Encoder settings",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 52,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Id",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 53,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Index",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 54,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Language",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 55,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Location",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 56,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Minor version",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 57,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Organization",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 58,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Product",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 59,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Publisher",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 60,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Release country",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 61,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Release notes",
-                            Type = 2
+                            Type = 2,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 62,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Release status",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 63,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Release type",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 64,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Script",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 65,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Size",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 66,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Source",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 67,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Source URL",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 68,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Subcategory",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 69,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Subtitle",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 70,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Summary",
-                            Type = 1
+                            Type = 1,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 71,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Synopsis",
-                            Type = 1
+                            Type = 1,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 72,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Tag",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 73,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Title",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 74,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Unique file identifier (UFID)",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 75,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Uploader",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 76,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Written by",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 77,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Year",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 78,
                             Description = "",
                             Group = "General",
+                            IsReadOnly = false,
                             Name = "Year created",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 79,
                             Description = "Ratio obtained by dividing the width by the height.",
                             Group = "Image",
+                            IsReadOnly = false,
                             Name = "Aspect ratio",
-                            Type = 4
+                            Type = 4,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 80,
                             Description = "Image height in pixels.",
                             Group = "Image",
+                            IsReadOnly = false,
                             Name = "Height",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 81,
                             Description = "Total number of pixels in this image.",
                             Group = "Image",
+                            IsReadOnly = false,
                             Name = "Pixels",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 82,
                             Description = "Image width in pixels.",
                             Group = "Image",
+                            IsReadOnly = false,
                             Name = "Width",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 83,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Actor",
-                            Type = 0
+                            Type = 0,
+                            Unit = "dB"
                         },
                         new
                         {
                             Id = 84,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Bit rate",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 85,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Codec",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 86,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Date recorded",
-                            Type = 5
+                            Type = 5,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 87,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Disc",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 88,
                             Description = "Media duration.",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Duration",
-                            Type = 6
+                            Type = 6,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 89,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "End time",
-                            Type = 6
+                            Type = 6,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 90,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Episode ID",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 91,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Episode number",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 92,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Genre",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 93,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Label",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 94,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Media format",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 95,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "MusicBrainz album artist ID",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 96,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "MusicBrainz album ID",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 97,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "MusicBrainz artist ID",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 98,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "MusicBrainz release group ID",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 99,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "MusicBrainz release track ID",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 100,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "MusicBrainz track ID",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 101,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Narrated by",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 102,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Producer",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 103,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Screenplay by",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 104,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Season number",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 105,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Start time",
-                            Type = 6
+                            Type = 6,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 106,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Stream type",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 107,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Studio",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 108,
                             Description = "",
                             Group = "Media",
+                            IsReadOnly = false,
                             Name = "Total discs",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 109,
                             Description = "Version of this package.",
                             Group = "Package",
+                            IsReadOnly = false,
                             Name = "Version",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 110,
                             Description = "System architecture for which this software was compiled",
                             Group = "Software",
+                            IsReadOnly = false,
                             Name = "Architecture",
-                            Type = 0
+                            Type = 0,
+                            Unit = "dB"
                         },
                         new
                         {
                             Id = 111,
                             Description = "",
                             Group = "Software",
+                            IsReadOnly = false,
                             Name = "End of life date",
-                            Type = 5
+                            Type = 5,
+                            Unit = "dB"
                         },
                         new
                         {
                             Id = 112,
                             Description = "",
                             Group = "Software",
+                            IsReadOnly = false,
                             Name = "Installation instructions",
-                            Type = 2
+                            Type = 2,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 113,
                             Description = "",
                             Group = "Software",
+                            IsReadOnly = false,
                             Name = "Minimum CPU",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 114,
                             Description = "",
                             Group = "Software",
+                            IsReadOnly = false,
                             Name = "Minimum disk space",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 115,
                             Description = "",
                             Group = "Software",
+                            IsReadOnly = false,
                             Name = "Minimum RAM",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 116,
                             Description = "",
                             Group = "Software",
+                            IsReadOnly = false,
                             Name = "Platform",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 117,
                             Description = "",
                             Group = "Software",
+                            IsReadOnly = false,
                             Name = "Serial key",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 118,
                             Description = "",
                             Group = "Software",
+                            IsReadOnly = false,
                             Name = "User interface",
-                            Type = 0
+                            Type = 0,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 119,
                             Description = "",
                             Group = "Video",
+                            IsReadOnly = false,
                             Name = "Frame rate",
-                            Type = 4
+                            Type = 4,
+                            Unit = ""
                         },
                         new
                         {
                             Id = 120,
                             Description = "",
                             Group = "Video",
+                            IsReadOnly = false,
                             Name = "Frames",
-                            Type = 3
+                            Type = 3,
+                            Unit = ""
                         });
+                });
+
+            modelBuilder.Entity("Librarian.Model.BlobAttribute", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AttributeDefinitionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("DateUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Editable")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("FileId")
+                        .IsRequired()
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProviderAttributeId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SubResourceId")
+                        .HasColumnType("integer");
+
+                    b.Property<byte[]>("Value")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttributeDefinitionId");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("SubResourceId");
+
+                    b.ToTable("BlobAttributes");
+                });
+
+            modelBuilder.Entity("Librarian.Model.DateAttribute", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AttributeDefinitionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("DateUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Editable")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("FileId")
+                        .IsRequired()
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProviderAttributeId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SubResourceId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("Value")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttributeDefinitionId");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("SubResourceId");
+
+                    b.ToTable("DateAttributes");
+                });
+
+            modelBuilder.Entity("Librarian.Model.FloatAttribute", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AttributeDefinitionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("DateUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Editable")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("FileId")
+                        .IsRequired()
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProviderAttributeId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SubResourceId")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("Value")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttributeDefinitionId");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("SubResourceId");
+
+                    b.ToTable("FloatAttributes");
+                });
+
+            modelBuilder.Entity("Librarian.Model.IndexedFile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Exists")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("IndexLastUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("Modified")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("NeedsUpdating")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
+
+                    b.Property<long?>("Size")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Path")
+                        .IsUnique();
+
+                    b.ToTable("IndexedFiles");
+                });
+
+            modelBuilder.Entity("Librarian.Model.IndexedFileContents", b =>
+                {
+                    b.Property<int>("FileId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Content")
+                        .HasColumnType("text");
+
+                    b.Property<NpgsqlTsVector>("ContentSearch")
+                        .HasColumnType("tsvector");
+
+                    b.HasKey("FileId");
+
+                    b.ToTable("IndexedFileContents");
+                });
+
+            modelBuilder.Entity("Librarian.Model.IntegerAttribute", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AttributeDefinitionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("DateUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Editable")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("FileId")
+                        .IsRequired()
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProviderAttributeId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SubResourceId")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Value")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttributeDefinitionId");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("SubResourceId");
+
+                    b.ToTable("IntegerAttributes");
                 });
 
             modelBuilder.Entity("Librarian.Model.SubResource", b =>
@@ -2018,7 +2291,7 @@ namespace Librarian.DB.Migrations
                     b.ToTable("SubResources");
                 });
 
-            modelBuilder.Entity("Librarian.Model.TextMetadata", b =>
+            modelBuilder.Entity("Librarian.Model.TextAttribute", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -2029,12 +2302,18 @@ namespace Librarian.DB.Migrations
                     b.Property<int>("AttributeDefinitionId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTimeOffset>("DateUpdated")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("Editable")
                         .HasColumnType("boolean");
 
                     b.Property<int?>("FileId")
                         .IsRequired()
                         .HasColumnType("integer");
+
+                    b.Property<string>("ProviderAttributeId")
+                        .HasColumnType("text");
 
                     b.Property<string>("ProviderId")
                         .IsRequired()
@@ -2058,12 +2337,21 @@ namespace Librarian.DB.Migrations
 
                     b.HasIndex("SubResourceId");
 
-                    b.ToTable("TextMetadata");
+                    b.ToTable("TextAttributes");
                 });
 
-            modelBuilder.Entity("Librarian.Model.BlobMetadata", b =>
+            modelBuilder.Entity("Librarian.Model.AttributeAlias", b =>
                 {
-                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
+                    b.HasOne("Librarian.Model.AttributeDefinition", "AttributeDefinition")
+                        .WithMany()
+                        .HasForeignKey("AttributeDefinitionId");
+
+                    b.Navigation("AttributeDefinition");
+                });
+
+            modelBuilder.Entity("Librarian.Model.BlobAttribute", b =>
+                {
+                    b.HasOne("Librarian.Model.AttributeDefinition", "AttributeDefinition")
                         .WithMany()
                         .HasForeignKey("AttributeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2086,9 +2374,9 @@ namespace Librarian.DB.Migrations
                     b.Navigation("SubResource");
                 });
 
-            modelBuilder.Entity("Librarian.Model.DateMetadata", b =>
+            modelBuilder.Entity("Librarian.Model.DateAttribute", b =>
                 {
-                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
+                    b.HasOne("Librarian.Model.AttributeDefinition", "AttributeDefinition")
                         .WithMany()
                         .HasForeignKey("AttributeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2111,9 +2399,9 @@ namespace Librarian.DB.Migrations
                     b.Navigation("SubResource");
                 });
 
-            modelBuilder.Entity("Librarian.Model.FloatMetadata", b =>
+            modelBuilder.Entity("Librarian.Model.FloatAttribute", b =>
                 {
-                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
+                    b.HasOne("Librarian.Model.AttributeDefinition", "AttributeDefinition")
                         .WithMany()
                         .HasForeignKey("AttributeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2147,9 +2435,9 @@ namespace Librarian.DB.Migrations
                     b.Navigation("File");
                 });
 
-            modelBuilder.Entity("Librarian.Model.IntegerMetadata", b =>
+            modelBuilder.Entity("Librarian.Model.IntegerAttribute", b =>
                 {
-                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
+                    b.HasOne("Librarian.Model.AttributeDefinition", "AttributeDefinition")
                         .WithMany()
                         .HasForeignKey("AttributeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2172,15 +2460,6 @@ namespace Librarian.DB.Migrations
                     b.Navigation("SubResource");
                 });
 
-            modelBuilder.Entity("Librarian.Model.MetadataAttributeAlias", b =>
-                {
-                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
-                        .WithMany()
-                        .HasForeignKey("AttributeDefinitionId");
-
-                    b.Navigation("AttributeDefinition");
-                });
-
             modelBuilder.Entity("Librarian.Model.SubResource", b =>
                 {
                     b.HasOne("Librarian.Model.IndexedFile", "File")
@@ -2192,9 +2471,9 @@ namespace Librarian.DB.Migrations
                     b.Navigation("File");
                 });
 
-            modelBuilder.Entity("Librarian.Model.TextMetadata", b =>
+            modelBuilder.Entity("Librarian.Model.TextAttribute", b =>
                 {
-                    b.HasOne("Librarian.Model.MetadataAttributeDefinition", "AttributeDefinition")
+                    b.HasOne("Librarian.Model.AttributeDefinition", "AttributeDefinition")
                         .WithMany()
                         .HasForeignKey("AttributeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)

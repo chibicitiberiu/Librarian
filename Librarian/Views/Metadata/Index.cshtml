@@ -70,48 +70,48 @@
                                 <td class="col-input">
                                     @switch (field.AttributeDefinition.Type)
                                     {
-                                        case Librarian.Model.MetadataType.Text:
+                                        case Librarian.Model.AttributeType.Text:
                                             {
-                                                var textMetadata = (TextMetadata)field;
+                                                var textMetadata = (TextAttribute)field;
                                                 <input id="@fieldId" name="@fieldId" type="text" value="@textMetadata.Value" readonly="@(!textMetadata.Editable)">
                                                 break;
                                             }
-                                        case Librarian.Model.MetadataType.BigText:
-                                        case Librarian.Model.MetadataType.FormattedText:
+                                        case Librarian.Model.AttributeType.BigText:
+                                        case Librarian.Model.AttributeType.FormattedText:
                                             {
-                                                var textMetadata = (TextMetadata)field;
+                                                var textMetadata = (TextAttribute)field;
                                                 <textarea id="@fieldId" name="@fieldId" type="text" readonly="@(!textMetadata.Editable)">@textMetadata.Value</textarea>
                                                 break;
                                             }
-                                        case Librarian.Model.MetadataType.Integer:
+                                        case Librarian.Model.AttributeType.Integer:
                                             {
-                                                var intMetadata = (IntegerMetadata)field;
+                                                var intMetadata = (IntegerAttribute)field;
                                                 <input id="@fieldId" name="@fieldId" type="number" value="@intMetadata.Value" readonly="@(!intMetadata.Editable)">
                                                 break;
                                             }
-                                        case Librarian.Model.MetadataType.Float:
+                                        case Librarian.Model.AttributeType.Float:
                                             {
-                                                var floatMetadata = (FloatMetadata)field;
+                                                var floatMetadata = (FloatAttribute)field;
                                                 <input id="@fieldId" name="@fieldId" type="text" value="@floatMetadata.Value" readonly="@(!floatMetadata.Editable)">
                                                 break;
                                             }
-                                        case Librarian.Model.MetadataType.Date:
+                                        case Librarian.Model.AttributeType.Date:
                                             {
-                                                var dateMetadata = (DateMetadata)field;
+                                                var dateMetadata = (DateAttribute)field;
                                                 <input id="@fieldId" name="@fieldId" type="text" value="@dateMetadata.Value" readonly="@(!dateMetadata.Editable)">
                                                 break;
                                             }
-                                        case Librarian.Model.MetadataType.TimeSpan:
+                                        case Librarian.Model.AttributeType.TimeSpan:
                                             {
-                                                var floatMetadata = (FloatMetadata)field;
+                                                var floatMetadata = (FloatAttribute)field;
                                                 var value = TimeSpan.FromSeconds(floatMetadata.Value);
 
                                                 <input id="@fieldId" name="@fieldId" type="text" value="@value" readonly="@(!floatMetadata.Editable)">
                                                 break;
                                             }
-                                        case Librarian.Model.MetadataType.Blob:
+                                        case Librarian.Model.AttributeType.Blob:
                                             {
-                                                var blobMetadata = (BlobMetadata)field;
+                                                var blobMetadata = (BlobAttribute)field;
                                                 string value = Convert.ToHexString(blobMetadata.Value);
                                                 <input id="@fieldId" name="@fieldId" type="text" value="@value" readonly="@(!blobMetadata.Editable)">
                                                 break;

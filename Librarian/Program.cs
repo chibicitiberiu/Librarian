@@ -1,5 +1,6 @@
 using Librarian.DB;
 using Librarian.Indexing;
+using Librarian.Jobs;
 using Librarian.Metadata;
 using Librarian.Metadata.Providers;
 using Librarian.Metadata.Providers.MetadataCli;
@@ -45,8 +46,10 @@ namespace Librarian
                 //               .UsingJobData("mode", "full"));
             });
             builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
+            builder.Services.AddSingleton<JobTracker>();
 
             builder.Services.AddSingleton<FileService>();
+            builder.Services.AddHostedService<IndexingService>();
             builder.Services.AddScoped<MetadataService>();
             builder.Services.AddScoped<MetadataFactory>();
             builder.Services.AddScoped<MetadataSerializer>();

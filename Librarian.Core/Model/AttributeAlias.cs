@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Librarian.Model
 {
-    public class MetadataAttributeAlias
+    public class AttributeAlias
     {
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
@@ -17,7 +17,7 @@ namespace Librarian.Model
 
         #region Foreign keys
 
-        public MetadataAttributeDefinition? AttributeDefinition { get; set; }
+        public AttributeDefinition? AttributeDefinition { get; set; }
 
         #endregion
     }
