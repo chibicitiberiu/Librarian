@@ -57,7 +57,7 @@ namespace Librarian.Metadata.Providers
             {
                 var (exitCode, output, _) = await ProcessHelper.RunProcessAsync(FileCommand, "-b", filePath);
                 if (exitCode == 0)
-                    result.Metadata.Add(metadataFactory.Create(FileAttributes.FileType, output.Trim(), ProviderId, editable: false));
+                    result.Attributes.Add(metadataFactory.Create(FileAttributes.FileType, output.Trim(), ProviderId, editable: false));
             }
         }
 

@@ -112,7 +112,8 @@ namespace Librarian.Services
         #endregion
 
         #region Scoped services
-        private ScopedServices GetScopedServices(IServiceScope scope)
+
+        private static ScopedServices GetScopedServices(IServiceScope scope)
         {
             return new ScopedServices()
             {
@@ -129,6 +130,7 @@ namespace Librarian.Services
         {
             try
             {
+                logger.LogTrace("FsWatcher: created {file} [{change}]", e.FullPath, e.ChangeType);
                 await OnFileCreated(e.FullPath);
             }
             catch (Exception ex)
@@ -141,6 +143,7 @@ namespace Librarian.Services
         {
             try
             {
+                logger.LogTrace("FsWatcher: changed {file} [{change}]", e.FullPath, e.ChangeType);
                 await OnFileChanged(e.FullPath);
             }
             catch (Exception ex)
@@ -153,6 +156,7 @@ namespace Librarian.Services
         {
             try
             {
+                logger.LogTrace("FsWatcher: renamed {file} [{change}]", e.FullPath, e.ChangeType);
                 await OnFileRenamed(e.FullPath, e.OldFullPath);
             }
             catch (Exception ex)
@@ -165,6 +169,7 @@ namespace Librarian.Services
         {
             try
             {
+                logger.LogTrace("FsWatcher: deleted {file} [{change}]", e.FullPath, e.ChangeType);
                 await OnFileDeleted(e.FullPath);
             }
             catch (Exception ex)
@@ -185,7 +190,7 @@ namespace Librarian.Services
         public async Task IndexAll()
         {
             var jobToken = jobTracker.StartJob(Strings.IndexingAll);
-            
+
             using var scope = serviceProvider.CreateScope();
             var scopedServices = GetScopedServices(scope);
 
@@ -262,8 +267,8 @@ namespace Librarian.Services
                             await IndexDirectoryInternal(dir, false, jobToken, scopedServices);
 
                             var opts = new EnumerationOptions() { IgnoreInaccessible = true, ReturnSpecialDirectories = false };
-                            queue.EnqueueRange(directory.EnumerateDirectories("*", opts));
-                            queue.EnqueueRange(directory.EnumerateFiles("*", opts));
+                            queue.EnqueueRange(dir.EnumerateDirectories("*", opts));
+                            queue.EnqueueRange(dir.EnumerateFiles("*", opts));
 
                             jobToken.TotalUnits = jobToken.Done + queue.Count;
                         }
@@ -474,12 +479,6 @@ namespace Librarian.Services
         #endregion
 
         #region Other operations
-
-        private IndexedFile? GetIndexedFile(FileSystemInfo info, DatabaseContext dbContext)
-        {
-            var relPath = fileService.GetRelativePath(info.FullName);
-            return dbContext.IndexedFiles.FirstOrDefault(x => x.Path == relPath);
-        }
 
         private FileSystemInfo CreateFileSystemInfo(string path)
         {

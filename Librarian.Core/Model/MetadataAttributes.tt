@@ -27,7 +27,7 @@ namespace Librarian.Model.MetadataAttributes
         foreach (var attribute in group.OrderBy(attr => attr.Name))
         {
 #>
-        public static readonly AttributeDefinition <#= ToCamelCase(attribute.Name) #> = new (id: <#= attribute.Id #>, name: "<#= attribute.Name #>", group: "<#= attribute.Group #>", type: AttributeType.<#= attribute.Type #>, description: "<#= attribute.Description #>", isReadOnly: <#= attribute.IsReadOnly.ToString().ToLower() #>, unit: "<#= attribute.Unit #>");
+        public static readonly int <#= ToCamelCase(attribute.Name) #> = <#= attribute.Id #>;
 <#
         }
 #>

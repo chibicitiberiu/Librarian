@@ -177,7 +177,7 @@ namespace Librarian.Metadata
                                   name,
                                   type,
                                   valueStr,
-                                  providerId: Guid.Empty,
+                                  providerId: null,
                                   providerAttributeId: null,
                                   editable: true,
                                   subResource: subResource);

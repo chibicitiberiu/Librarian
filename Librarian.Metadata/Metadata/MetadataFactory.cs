@@ -21,6 +21,17 @@ namespace Librarian.Metadata
             this.logger = logger;
         }
 
+        public AttributeBase Create(int definitionId,
+                                    object value,
+                                    Guid? providerId,
+                                    string? providerAttributeId = null,
+                                    bool editable = false,
+                                    SubResource? subResource = null)
+        {
+            var definition = dbContext.AttributeDefinitions.Find(definitionId)!;
+            return Create(definition, value, providerId, providerAttributeId, editable, subResource);
+        }
+
         public AttributeBase Create(AttributeDefinition definition,
                                     object value,
                                     Guid? providerId,
@@ -173,6 +184,7 @@ namespace Librarian.Metadata
             var newAttribute = new AttributeDefinition(cleanedName, "Other", GetDatatype(value));
 
             dbContext.Add(newAttribute);
+            dbContext.SaveChanges();
 
             logger.LogTrace("Create {name} (original: '{rawName}') = {value} >> New attribute {attributeId} : {attributeGroup} : {attributeName}",
                 cleanedName, rawName, value, newAttribute.Id, newAttribute.Group, newAttribute.Name);

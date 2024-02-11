@@ -1,6 +1,7 @@
 ﻿using Librarian.Model;
 using Librarian.Model.MetadataAttributes;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace Librarian.Metadata.Providers.MetadataCli
 {
@@ -10,6 +11,8 @@ namespace Librarian.Metadata.Providers.MetadataCli
         private readonly MetadataCliService cliService;
         private readonly MetadataFactory metadataFactory;
         private readonly ILogger logger;
+
+        private Regex DiscAndTotalDiscsRegex = new(@"(\d+)\s*[/\\]\s*(\d+)");
 
         public MetadataCliProvider(MetadataCliService cliService,
                                    MetadataFactory metadataFactory,
@@ -27,9 +30,18 @@ namespace Librarian.Metadata.Providers.MetadataCli
         public async Task<MetadataCollection> GetMetadataAsync(string filePath)
         {
             MetadataCollection result = new();
-            var metadata = await cliService.GetMetadataAsync(filePath);
+            MetadataCliResult? metadata = null;
 
-            if (metadata == null)
+            try
+            {
+                metadata = await cliService.GetMetadataAsync(filePath);
+            }
+            catch (Exception ex)
+            {
+                logger.LogTrace(ex, "Could not retreive metadata for file {file}", filePath);
+            }
+
+            if (metadata is null)
                 return result;
 
             if (metadata.Parser != "avformat")
@@ -84,20 +96,25 @@ namespace Librarian.Metadata.Providers.MetadataCli
             {
                 foreach (var pair in metadata.Metadata)
                 {
-                    if (MetadataFactory.IsStreamLanguageAttribute(pair.Key))
+                    string key = pair.Key.Trim();
+
+                    if (MetadataFactory.IsStreamLanguageAttribute(key))
                     {
-                        int streamId = MetadataFactory.StreamLanguageGetStreamId(pair.Key);
+                        int streamId = MetadataFactory.StreamLanguageGetStreamId(key);
                         var stream = result.SubResources.FirstOrDefault(res => res.Kind == SubResourceKind.Stream && res.InternalId == streamId);
                         if (stream != null)
-                            result.Add(metadataFactory.Create(General.Language, pair.Value, ProviderId, editable: false, subResource: stream));
+                            result.Add(metadataFactory.Create(General.Language, pair.Value, ProviderId, providerAttributeId: key, editable: false, subResource: stream));
+                    }
+                    else if (string.Equals(key, "disc", StringComparison.CurrentCultureIgnoreCase)
+                        && DiscAndTotalDiscsRegex.IsMatch(pair.Value.ToString() ?? ""))
+                    {
+                        var match = DiscAndTotalDiscsRegex.Match(pair.Value.ToString()!);
+                        result.Add(metadataFactory.Create(Media.Disc, match.Groups[1].Value, providerId, providerAttributeId: key, editable: true));
+                        result.Add(metadataFactory.Create(Media.TotalDiscs, match.Groups[2].Value, providerId, providerAttributeId: "disctotal", editable: true));
                     }
                     else
                     {
-                        var metadataBase = metadataFactory.Create(pair.Key, pair.Value, ProviderId, editable: true);
-                        if (metadataBase == null)
-                            continue;
-
-                        result.Add(metadataBase);
+                        result.Add(metadataFactory.Create(key, pair.Value, ProviderId, providerAttributeId: key, editable: true));
                     }
                 }
             }
@@ -201,13 +218,13 @@ namespace Librarian.Metadata.Providers.MetadataCli
                     if (metadataBase == null)
                         continue;
 
-                    if (metadataBase.AttributeDefinition == General.Title)
+                    if (metadataBase.AttributeDefinition.Id == General.Title)
                         stream.Title = pair.Value.ToString()!.Trim();
-                    else if (metadataBase.AttributeDefinition == Media.BitRate)
+                    else if (metadataBase.AttributeDefinition.Id == Media.BitRate)
                         stream.BitRate ??= Convert.ToInt64(pair.Value);
-                    else if (metadataBase.AttributeDefinition == Media.Duration)
+                    else if (metadataBase.AttributeDefinition.Id == Media.Duration)
                         stream.Duration ??= TimeSpan.Parse(pair.Value.ToString()!).TotalSeconds;
-                    else if (metadataBase.AttributeDefinition == Video.Frames)
+                    else if (metadataBase.AttributeDefinition.Id == Video.Frames)
                         stream.Frames ??= Convert.ToInt64(pair.Value);
                     else result.Add(metadataBase);
                 }
@@ -270,7 +287,7 @@ namespace Librarian.Metadata.Providers.MetadataCli
                     if (metadataBase == null)
                         continue;
 
-                    if (metadataBase.AttributeDefinition == General.Title)
+                    if (metadataBase.AttributeDefinition.Id == General.Title)
                         chapter.Title = pair.Value.ToString()!.Trim();
                     else result.Add(metadataBase);
                 }

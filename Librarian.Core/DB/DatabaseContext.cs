@@ -1,6 +1,10 @@
 ﻿using Librarian.Data;
 using Librarian.Model;
 using Microsoft.EntityFrameworkCore;
+#if DEBUG_DATABASE
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
+#endif
 
 namespace Librarian.DB
 {
@@ -26,6 +30,15 @@ namespace Librarian.DB
         {
         }
 
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+#if DEBUG_DATABASE
+            optionsBuilder
+                .LogTo(Console.WriteLine)
+                .EnableSensitiveDataLogging();
+#endif
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<IndexedFile>()
@@ -44,6 +57,12 @@ namespace Librarian.DB
                 .HasData(Datasets.GetAliases());
 
             base.OnModelCreating(modelBuilder);
+        }
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            configurationBuilder.Properties<DateTimeOffset>()
+                .HaveConversion<DateTimeOffsetConverter>();
         }
     }
 }

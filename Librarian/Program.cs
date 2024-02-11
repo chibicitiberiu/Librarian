@@ -35,10 +35,10 @@ namespace Librarian
                 opts.AddJob<IndexingJob>(IndexingJob.Key, job => job.StoreDurably().DisallowConcurrentExecution());
                 opts.AddJob<MetadataUpdateJob>(MetadataUpdateJob.Key, job => job.StoreDurably());
 
-                //opts.AddTrigger(trigger =>
-                //        trigger.ForJob(IndexingJob.Key)
-                //               .WithSimpleSchedule(SimpleScheduleBuilder.RepeatHourlyForever(1))
-                //               .UsingJobData("mode", "quick"));
+                opts.AddTrigger(trigger =>
+                        trigger.ForJob(IndexingJob.Key)
+                               .WithSimpleSchedule(SimpleScheduleBuilder.RepeatHourlyForever(24)));
+                               //.UsingJobData("mode", "quick"));
 
                 //opts.AddTrigger(trigger =>
                 //        trigger.ForJob(IndexingJob.Key)
@@ -49,7 +49,8 @@ namespace Librarian
             builder.Services.AddSingleton<JobTracker>();
 
             builder.Services.AddSingleton<FileService>();
-            builder.Services.AddHostedService<IndexingService>();
+            builder.Services.AddSingleton<IndexingService>();
+            builder.Services.AddHostedService(provider => provider.GetService<IndexingService>()!);
             builder.Services.AddScoped<MetadataService>();
             builder.Services.AddScoped<MetadataFactory>();
             builder.Services.AddScoped<MetadataSerializer>();

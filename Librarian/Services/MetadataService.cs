@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -45,6 +46,9 @@ namespace Librarian.Services
         {
             await foreach (var attribute in CollectMetadataAsync(indexedFile))
             {
+                if (attribute.SubResource is not null)
+                    attribute.SubResource = AddOrUpdate(attribute.SubResource, dbContext.SubResources);
+
                 if (attribute is BlobAttribute blobAttribute)
                     AddOrUpdate(blobAttribute, dbContext.BlobAttributes);
                 else if (attribute is DateAttribute dateAttribute)
@@ -75,6 +79,26 @@ namespace Librarian.Services
                 dbSet.Add(attribute);
         }
 
+        private static SubResource AddOrUpdate(SubResource subResource, DbSet<SubResource> dbSet)
+        {
+            var existingSubResource = dbSet
+                .Where(x => x.File == subResource.File
+                                        && x.InternalId == subResource.InternalId
+                                        && x.Kind == subResource.Kind
+                                        && x.Name == subResource.Name)
+                .FirstOrDefault();
+
+            if (existingSubResource is not null)
+            {
+                return existingSubResource;
+            }
+            else
+            {
+                dbSet.Add(subResource);
+                return subResource;
+            }
+        }
+
         /// <summary>
         /// Collects metadata for given file from providers and .meta file.
         /// Does not store the metadata in the database.
@@ -89,6 +113,8 @@ namespace Librarian.Services
             await foreach (var attribute in CollectMetadataAsync(filePath))
             {
                 attribute.File = file;
+                if (attribute.SubResource != null)
+                    attribute.SubResource.File = file;
                 yield return attribute;
             }
         }
@@ -116,7 +142,7 @@ namespace Librarian.Services
 
                 if (metadataCollection != null)
                 {
-                    foreach (var attribute in metadataCollection.Metadata)
+                    foreach (var attribute in metadataCollection.Attributes)
                         yield return attribute;
                 }
             }
@@ -131,7 +157,10 @@ namespace Librarian.Services
         private async Task<IEnumerable<AttributeBase>> LoadMetaFile(string fileName)
         {
             var metaFile = GetMetaFile(fileName);
-            return await serializer.Deserialize(metaFile);
+            if (File.Exists(metaFile))
+                return await serializer.Deserialize(metaFile);
+
+            return Enumerable.Empty<AttributeBase>();
         }
 
         private async Task SaveMetaFile(string fileName, IEnumerable<AttributeBase> fields)
