@@ -38,7 +38,10 @@ namespace Librarian.Metadata.Providers.MetadataCli
             }
             catch (Exception ex)
             {
-                logger.LogTrace(ex, "Could not retreive metadata for file {file}", filePath);
+                // meta-cli (libavformat) only handles media files, so failing to open a
+                // non-media file (.txt, .html, .zip, …) is the expected common case — log a
+                // concise reason, not a full stack trace, so it doesn't read as an error.
+                logger.LogDebug("meta-cli skipped {file}: {reason}", filePath, ex.Message.Replace("\n", " ").Trim());
             }
 
             if (metadata is null)
