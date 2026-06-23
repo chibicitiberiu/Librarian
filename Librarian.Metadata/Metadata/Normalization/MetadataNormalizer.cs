@@ -50,6 +50,10 @@ namespace Librarian.Metadata.Normalization
             return attribute;
         }
 
+        /// <summary>True if a promotion rule exists for the given (namespace, key).</summary>
+        public bool IsMapped(string @namespace, string key)
+            => rules.ContainsKey((Normalize(@namespace), Normalize(key)));
+
         #region Rules
 
         // The mapping from a source's raw keys to canonical attributes. A custom coercer is
