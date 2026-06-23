@@ -15,6 +15,7 @@ namespace Librarian.DB
         public DbSet<AttributeDefinition> AttributeDefinitions { get; set; }
         public DbSet<AttributeAlias> AttributeAliases { get; set; }
         public DbSet<SubResource> SubResources { get; set; }
+        public DbSet<RawMetadataAttribute> RawMetadataAttributes { get; set; }
 
         public DbSet<BlobAttribute> BlobAttributes { get; set; }
         public DbSet<DateAttribute> DateAttributes { get; set; }
@@ -55,6 +56,11 @@ namespace Librarian.DB
                 .IsUnique(true);
             modelBuilder.Entity<AttributeAlias>()
                 .HasData(Datasets.GetAliases());
+
+            modelBuilder.Entity<RawMetadataAttribute>()
+                .HasIndex(nameof(RawMetadataAttribute.FileId));
+            modelBuilder.Entity<RawMetadataAttribute>()
+                .HasIndex(nameof(RawMetadataAttribute.Namespace), nameof(RawMetadataAttribute.Key));
 
             base.OnModelCreating(modelBuilder);
         }

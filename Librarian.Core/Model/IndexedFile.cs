@@ -37,6 +37,7 @@ namespace Librarian.Model
 
         #region Foreign keys
         public virtual IndexedFileContents? Contents { get; set; }
+        public virtual ICollection<RawMetadataAttribute> RawMetadata { get; set; } = null!;
         public virtual ICollection<TextAttribute> TextMetadata { get; set; } = null!;
         public virtual ICollection<IntegerAttribute> IntegerMetadata { get; set; } = null!;
         public virtual ICollection<FloatAttribute> FloatMetadata { get; set; } = null!;
