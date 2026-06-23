@@ -8,6 +8,7 @@
 
 extern "C" {
 #   include <libavformat/avformat.h>
+#   include <libavcodec/avcodec.h>
 #   include <libavutil/dict.h>
 }
 
@@ -132,23 +133,26 @@ nlohmann::json getStream(AVStream* stream)
     if (stream->metadata)
         streamMeta["metadata"] = getDict(stream->metadata);
 
-    if (stream->codec) {
-        streamMeta["type"] = getCodecType(stream->codec->codec_type);
-        streamMeta["codec"] = avcodec_get_name(stream->codec->codec_id);
-        if (stream->codec->bit_rate != std::numeric_limits<int64_t>::min())
-            streamMeta["bit_rate"] = stream->codec->bit_rate;
-        if (stream->codec->width != 0)
-            streamMeta["width"] = stream->codec->width;
-        if (stream->codec->height != 0)
-            streamMeta["height"] = stream->codec->height;
-        if (stream->codec->sample_rate != 0)
-            streamMeta["sample_rate"] = stream->codec->sample_rate;
-        if (stream->codec->channels != 0)
-            streamMeta["channels"] = stream->codec->channels;
-        if (stream->codec->bits_per_coded_sample != 0)
-            streamMeta["bits_per_sample"] = stream->codec->bits_per_coded_sample;
-        else if (stream->codec->bits_per_raw_sample != 0)
-            streamMeta["bits_per_sample"] = stream->codec->bits_per_raw_sample;
+    // AVStream::codec (AVCodecContext) was deprecated and removed; use codecpar.
+    if (stream->codecpar) {
+        AVCodecParameters* codecpar = stream->codecpar;
+        streamMeta["type"] = getCodecType(codecpar->codec_type);
+        streamMeta["codec"] = avcodec_get_name(codecpar->codec_id);
+        if (codecpar->bit_rate != 0)
+            streamMeta["bit_rate"] = codecpar->bit_rate;
+        if (codecpar->width != 0)
+            streamMeta["width"] = codecpar->width;
+        if (codecpar->height != 0)
+            streamMeta["height"] = codecpar->height;
+        if (codecpar->sample_rate != 0)
+            streamMeta["sample_rate"] = codecpar->sample_rate;
+        // AVCodecParameters::channels was replaced by the AVChannelLayout API.
+        if (codecpar->ch_layout.nb_channels != 0)
+            streamMeta["channels"] = codecpar->ch_layout.nb_channels;
+        if (codecpar->bits_per_coded_sample != 0)
+            streamMeta["bits_per_sample"] = codecpar->bits_per_coded_sample;
+        else if (codecpar->bits_per_raw_sample != 0)
+            streamMeta["bits_per_sample"] = codecpar->bits_per_raw_sample;
     }
 
     return streamMeta;
@@ -172,7 +176,12 @@ void doGet(argparse::ArgumentParser& args)
         std::cerr << "Failed to open file";
         std::exit(-2);
     }
-    
+
+    // Populate codec parameters (sample rate, channels, resolution, bit rate, ...)
+    // that are not available from just opening the container. Non-fatal on failure.
+    if (avformat_find_stream_info(fmt_ctx, NULL) < 0)
+        std::cerr << "Warning: could not read stream info" << std::endl;
+
     nlohmann::json result;
     result["parser"] = "avformat";
     result["url"] = fmt_ctx->url;
