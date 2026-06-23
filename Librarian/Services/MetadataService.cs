@@ -64,6 +64,7 @@ namespace Librarian.Services
         private async Task UpdateRawMetadata(IndexedFile indexedFile)
         {
             string filePath = fileService.Resolve(indexedFile.Path);
+            string? content = null;
 
             // Replace this file's raw layer.
             dbContext.RawMetadataAttributes.RemoveRange(
@@ -87,6 +88,9 @@ namespace Librarian.Services
                 }
                 if (result is null)
                     continue;
+
+                if (string.IsNullOrWhiteSpace(content) && !string.IsNullOrWhiteSpace(result.Content))
+                    content = result.Content;
 
                 foreach (var item in result.Items)
                 {
@@ -116,7 +120,29 @@ namespace Librarian.Services
                 }
             }
 
+            StoreContent(indexedFile, content);
             await dbContext.SaveChangesAsync();
+        }
+
+        /// <summary>Stores (or clears) the file's extracted text content.</summary>
+        private void StoreContent(IndexedFile indexedFile, string? content)
+        {
+            var contents = dbContext.IndexedFileContents.FirstOrDefault(c => c.FileId == indexedFile.Id);
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                if (contents is not null)
+                    dbContext.IndexedFileContents.Remove(contents);
+                return;
+            }
+
+            if (contents is null)
+            {
+                contents = new IndexedFileContents { FileId = indexedFile.Id };
+                dbContext.IndexedFileContents.Add(contents);
+            }
+
+            contents.Content = content;
         }
 
         private void RemoveCanonicalForProvider(int fileId, string providerId)
