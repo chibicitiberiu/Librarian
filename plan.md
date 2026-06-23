@@ -82,6 +82,11 @@ make everything searchable — delivered as a self-hosted server via docker-comp
       MVC `SearchController` (server-rendered) and `GET /api/search` (JSON).
 - [x] Search results UI — query box, content/metadata toggles, `<mark>` snippets, paging, links to
       metadata/browse; functional Advanced search (folder filter). XSS-safe snippet rendering.
+- [x] Seamless multilingual search: the language-agnostic `simple` pass is accent-folded (the
+      `unaccent` extension, `AddUnaccentExtension` migration) and prefix-matched, so partial and
+      accented words match in **any** language with no language selection — verified `cafe`→café,
+      `hauser`→Häuser, `resume`→résumé, `biblio`→Bibliothek, `управлен`→управление. Configured
+      `Languages` still add proper (accented) stemming on top. CJK still needs an extension.
 
 ### Dockerization
 - [x] Multi-stage `Dockerfile` (.NET 10): SDK build → meta-cli build (cmake + ffmpeg-dev on the
@@ -110,6 +115,8 @@ make everything searchable — delivered as a self-hosted server via docker-comp
   debounce; full-subtree reindex per event. Worth hardening as per-file work gets heavier.
 - **Vocabulary data bugs:** some units in `MetadataAttributes.csv` are wrong (e.g. Artist = "dB").
   Add a validation test.
+- **CJK search:** stock Postgres can't word-segment Chinese/Japanese/Thai. If that content
+  matters, add an extension (`pgroonga` / `zhparser`). Latin/Cyrillic/Greek work today.
 
 ## Dev workflow
 

@@ -70,9 +70,25 @@ namespace Librarian.Services
         private (string sql, object[] parameters) BuildSql(
             SearchRequest request, bool includeContent, bool includeMetadata, int limit, int offset)
         {
-            // {0} is the (single) user-supplied query text, reused for each language dictionary.
-            string tsquery = string.Join(" || ",
-                languages.Select(l => $"websearch_to_tsquery('{l}', {{0}})"));
+            // {0} = the user query text; {1} (when present) = the prefix terms. Both are real SQL
+            // parameters. The universal "simple" pass is accent-folded with unaccent() and also
+            // matched as a prefix, so partial words match in any language without the user
+            // selecting one (e.g. "haus" finds "Häuser"); the configured languages add stemming.
+            var queryParts = languages.Select(l =>
+                l == "simple"
+                    ? "websearch_to_tsquery('simple', unaccent({0}))"
+                    : $"websearch_to_tsquery('{l}', {{0}})").ToList();
+
+            var parameters = new List<object> { request.Query };
+
+            string? prefixTerms = BuildPrefixQuery(request.Query);
+            if (prefixTerms is not null)
+            {
+                parameters.Add(prefixTerms);
+                queryParts.Add("to_tsquery('simple', unaccent({1}))");
+            }
+
+            string tsquery = string.Join(" || ", queryParts);
             string headlineLang = languages[0];
 
             var unionParts = new List<string>();
@@ -96,8 +112,6 @@ namespace Librarian.Services
                     FROM ""TextAttributes"" t, q
                     WHERE t.""ValueSearch"" @@ q.query");
             }
-
-            var parameters = new List<object> { request.Query };
 
             string pathFilter = string.Empty;
             if (!string.IsNullOrWhiteSpace(request.PathPrefix))
@@ -123,6 +137,24 @@ namespace Librarian.Services
                 LIMIT {limit} OFFSET {offset}";
 
             return (sql, parameters.ToArray());
+        }
+
+        /// <summary>
+        /// Builds a prefix tsquery body ("term1:* &amp; term2:*") from the user's query, keeping
+        /// only letter/digit characters per term so the result is always valid to_tsquery input
+        /// (accents are folded later by unaccent() in SQL). Returns null when there are no usable
+        /// terms.
+        /// </summary>
+        private static string? BuildPrefixQuery(string query)
+        {
+            var terms = query
+                .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+                .Select(term => new string(term.Where(char.IsLetterOrDigit).ToArray()))
+                .Where(term => term.Length > 0)
+                .Select(term => term + ":*");
+
+            string joined = string.Join(" & ", terms);
+            return joined.Length == 0 ? null : joined;
         }
 
         private static SearchResultItem ToResultItem(SearchHit hit)

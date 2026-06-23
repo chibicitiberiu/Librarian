@@ -84,6 +84,10 @@ namespace Librarian.Services
         /// trusted quoted column reference, never user input.
         /// </summary>
         private string VectorExpr(string column) =>
-            string.Join(" || ", languages.Select(l => $"to_tsvector('{l}', coalesce({column}, ''))"));
+            string.Join(" || ", languages.Select(l =>
+                l == "simple"
+                    // Accent-fold the universal pass so e.g. "café" and "cafe" share a lexeme.
+                    ? $"to_tsvector('simple', unaccent(coalesce({column}, '')))"
+                    : $"to_tsvector('{l}', coalesce({column}, ''))"));
     }
 }
