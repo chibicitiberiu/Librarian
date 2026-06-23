@@ -23,3 +23,8 @@
 **/values.dev.yaml
 LICENSE
 README.md
+# Local dev artifacts that must never leak into the image build context.
+.dev-library
+.dev-appdata
+meta-cli/build
+**/*.user

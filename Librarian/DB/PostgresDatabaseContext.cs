@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Librarian.Model;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -18,6 +19,22 @@ namespace Librarian.DB
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.UseNpgsql(Configuration.GetConnectionString("DB"));
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Postgres-specific GIN indexes backing the full-text search. These live here
+            // (not in the provider-agnostic base context) because HasMethod is Npgsql-only.
+            // The schema is provisioned through this context's migrations, so declaring them
+            // here is enough for them to be created.
+            modelBuilder.Entity<IndexedFileContents>()
+                .HasIndex(c => c.ContentSearch)
+                .HasMethod("gin");
+            modelBuilder.Entity<TextAttribute>()
+                .HasIndex(a => a.ValueSearch)
+                .HasMethod("gin");
         }
     }
 

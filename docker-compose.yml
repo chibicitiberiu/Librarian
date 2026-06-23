@@ -1,0 +1,67 @@
+# Librarian — self-hosted stack: PostgreSQL + Apache Tika + the app.
+#
+#   make up         # build + start everything in the background
+#   make down       # stop everything
+#
+# Point it at your real data with LIBRARY_DIR, and expose a different port with HTTP_PORT:
+#   make up LIBRARY_DIR=/srv/media HTTP_PORT=8080
+#
+# The app applies its database migrations automatically on startup, so the schema is
+# provisioned on first run with no extra step.
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: librarian
+      POSTGRES_PASSWORD: librarian
+      POSTGRES_DB: librarian
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U librarian -d librarian"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  tika:
+    image: apache/tika:latest
+    healthcheck:
+      # The image has bash but no curl/wget, so probe the port with bash's /dev/tcp.
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/localhost/9998' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  librarian:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      # The app degrades gracefully if Tika is unavailable, so we only wait for it
+      # to have started rather than blocking startup on its healthcheck.
+      tika:
+        condition: service_started
+    environment:
+      ConnectionStrings__DB: "Host=db;Port=5432;Database=librarian;Username=librarian;Password=librarian;Include Error Detail=true"
+      BaseDirectory: /library
+      AppDataDirectory: /data
+      TikaUrl: "http://tika:9998"
+      MetadataCliPath: /app/meta-cli/meta-cli
+    volumes:
+      # The data collection to index. Defaults to the throwaway dev library; override
+      # with LIBRARY_DIR=/path/to/media. Mounted read-write because the browser supports
+      # file management (rename/move/delete) and writes .meta sidecars.
+      - ${LIBRARY_DIR:-./.dev-library}:/library
+      - app-data:/data
+    ports:
+      - "${HTTP_PORT:-5080}:8080"
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  app-data:

@@ -10,6 +10,25 @@ In the "Librarian", the data collection is simply a big folder on the server. Th
 
 Another important feature is indexing. The goal of Librarian is to index the entire data collection (metadata and content where possible), and provide tools for searching through that index.
 
+## Running with Docker (the whole stack)
+
+The easiest way to run Librarian is the bundled `docker-compose.yml`, which starts three
+services: **PostgreSQL**, **Apache Tika** (broad-format metadata/content extraction), and the
+**Librarian** app itself (built from the multi-stage `Dockerfile`, which also compiles `meta-cli`
+and ships the ffmpeg runtime libraries). The database schema is applied automatically on startup.
+
+```sh
+make up                                   # build images + start everything in the background
+make up LIBRARY_DIR=/srv/media HTTP_PORT=8080   # point at real data, change the port
+make logs                                 # follow the app logs
+make down                                 # stop the stack (the database volume is kept)
+```
+
+By default the app serves the throwaway `./.dev-library` on <http://localhost:5080>; set
+`LIBRARY_DIR` to index your own collection. The library is mounted read-write because the
+browser can rename/move/delete files and writes `.meta` sidecars. The only prerequisite is
+**Docker** (or **Podman**) with the Compose plugin — everything else is built in the image.
+
 ## Development
 
 The project is an ASP.NET web application targeting **.NET 10**, backed by PostgreSQL. There is a small helper utility written in C++ (`meta-cli`) that uses libavformat to collect media metadata; it is optional — without it, media metadata is simply skipped.
@@ -37,6 +56,9 @@ Run `make help` for the full list of targets:
 | `make cli` | Build `meta-cli` (needs `cmake` + ffmpeg dev libraries) |
 | `make run` | Build and run the web server |
 | `make start-db` / `make stop-db` / `make clean-db` | Start / stop / delete the dev database container |
+| `make start-tika` / `make stop-tika` / `make clean-tika` | Start / stop / delete the Apache Tika container |
+| `make up` / `make down` | Build and run / stop the full self-hosted stack (docker-compose) |
+| `make logs` / `make ps` | Follow the app logs / show the compose stack status |
 | `make check-deps` | Check that build/run dependencies are installed |
 | `make clean` | Remove build artifacts |
 
@@ -75,4 +97,6 @@ Some things I want to change:
 Metadata editor:
 ![Screenshot 2024-01-27 170754](https://github.com/chibicitiberiu/Librarian/assets/5184913/e92c1c6a-317f-4b2b-8f98-bdc926ca3376)
 
-Search is not yet implemented.
+Search combines PostgreSQL full-text search over extracted file content and text metadata in a
+single query, with highlighted snippets and an optional folder filter (`/search`). The `Languages`
+setting controls which text-search dictionaries are used.

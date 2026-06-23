@@ -20,14 +20,17 @@ namespace Librarian.Services
     {
         private readonly DatabaseContext dbContext;
         private readonly MetadataNormalizer normalizer;
+        private readonly SearchVectorService searchVectors;
         private readonly ILogger<RenormalizationService> logger;
 
         public RenormalizationService(DatabaseContext dbContext,
                                       MetadataNormalizer normalizer,
+                                      SearchVectorService searchVectors,
                                       ILogger<RenormalizationService> logger)
         {
             this.dbContext = dbContext;
             this.normalizer = normalizer;
+            this.searchVectors = searchVectors;
             this.logger = logger;
         }
 
@@ -74,6 +77,9 @@ namespace Librarian.Services
             }
 
             await dbContext.SaveChangesAsync();
+
+            // The promoted text attributes changed; refresh their search vectors.
+            await searchVectors.UpdateFileVectorsAsync(fileId);
             return produced;
         }
 

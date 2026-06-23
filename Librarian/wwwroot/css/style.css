@@ -280,3 +280,65 @@ td.fill {
 .metadata-group-title {
   margin-bottom: 0.15em;
 }
+
+.search-bar .input {
+  margin-right: 0.25em;
+}
+
+.search-options {
+  gap: 0.75em;
+}
+.search-options label {
+  cursor: default;
+}
+
+.search-hint, .search-summary {
+  margin: 0.5em 0.25em;
+}
+
+.search-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.search-result {
+  padding: 0.4em 0.25em;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+}
+.search-result-title {
+  font-weight: bold;
+}
+.search-result-path {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+.search-result-snippet {
+  margin-top: 0.2em;
+  font-size: 0.9em;
+}
+.search-result-snippet mark {
+  padding: 0 1px;
+  font-weight: bold;
+  background: yellow;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.4em;
+  padding: 0 0.4em;
+  border-radius: 0.4em;
+  font-size: 0.75em;
+  font-weight: normal;
+  vertical-align: middle;
+  color: #fff;
+}
+.badge-content {
+  background: #3a6ea5;
+}
+.badge-metadata {
+  background: #6a8a3a;
+}
+
+.search-pager {
+  margin-top: 0.5em;
+}

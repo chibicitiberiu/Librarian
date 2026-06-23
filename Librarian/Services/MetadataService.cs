@@ -22,6 +22,7 @@ namespace Librarian.Services
         private readonly MetadataSerializer serializer;
         private readonly FileService fileService;
         private readonly DatabaseContext dbContext;
+        private readonly SearchVectorService searchVectors;
 
         public MetadataService(ILogger<MetadataService> logger,
                                IEnumerable<IMetadataProvider> providers,
@@ -29,7 +30,8 @@ namespace Librarian.Services
                                MetadataNormalizer normalizer,
                                MetadataSerializer serializer,
                                FileService fileService,
-                               DatabaseContext dbContext)
+                               DatabaseContext dbContext,
+                               SearchVectorService searchVectors)
         {
             this.logger = logger;
             this.serializer = serializer;
@@ -41,6 +43,7 @@ namespace Librarian.Services
             this.normalizer = normalizer;
             this.fileService = fileService;
             this.dbContext = dbContext;
+            this.searchVectors = searchVectors;
         }
 
         #region Updating, collecting metadata
@@ -59,6 +62,9 @@ namespace Librarian.Services
 
             // Raw providers (Tika): persist the raw layer and promote it to canonical.
             await UpdateRawMetadata(indexedFile);
+
+            // Refresh the FTS vectors for the content + text attributes just written.
+            await searchVectors.UpdateFileVectorsAsync(indexedFile.Id);
         }
 
         private async Task UpdateRawMetadata(IndexedFile indexedFile)

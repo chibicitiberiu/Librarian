@@ -15,12 +15,17 @@ namespace Librarian.Controllers.Api
     public class MetadataAdminController : ControllerBase
     {
         private readonly RenormalizationService renormalizationService;
+        private readonly SearchVectorService searchVectors;
         private readonly DatabaseContext db;
         private readonly MetadataNormalizer normalizer;
 
-        public MetadataAdminController(RenormalizationService renormalizationService, DatabaseContext db, MetadataNormalizer normalizer)
+        public MetadataAdminController(RenormalizationService renormalizationService,
+                                       SearchVectorService searchVectors,
+                                       DatabaseContext db,
+                                       MetadataNormalizer normalizer)
         {
             this.renormalizationService = renormalizationService;
+            this.searchVectors = searchVectors;
             this.db = db;
             this.normalizer = normalizer;
         }
@@ -34,6 +39,17 @@ namespace Librarian.Controllers.Api
         {
             int produced = await renormalizationService.RenormalizeAllAsync();
             return Ok(new { reprocessed = produced });
+        }
+
+        /// <summary>
+        /// Rebuilds every full-text-search vector (content + text attributes) from the stored
+        /// text. Useful after backfilling existing data or changing the configured languages.
+        /// </summary>
+        [HttpPost("reindex-search")]
+        public async Task<IActionResult> ReindexSearch()
+        {
+            int updated = await searchVectors.RebuildAllAsync();
+            return Ok(new { updated });
         }
 
         /// <summary>

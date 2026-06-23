@@ -55,6 +55,8 @@ namespace Librarian
             builder.Services.AddHostedService(provider => provider.GetService<IndexingService>()!);
             builder.Services.AddScoped<MetadataService>();
             builder.Services.AddScoped<RenormalizationService>();
+            builder.Services.AddScoped<SearchVectorService>();
+            builder.Services.AddScoped<SearchService>();
             builder.Services.AddScoped<MetadataFactory>();
             builder.Services.AddScoped<MetadataSerializer>();
 

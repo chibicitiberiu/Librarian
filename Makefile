@@ -38,9 +38,15 @@ TIKA_PORT      ?= 9998
 
 # Container engine: prefer docker, fall back to podman
 CONTAINER_ENGINE ?= $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
+COMPOSE          ?= $(CONTAINER_ENGINE) compose
+
+# ---- Full self-hosted stack (docker-compose) ----
+# Override the library folder / published port: make up LIBRARY_DIR=/srv/media HTTP_PORT=8080
+export LIBRARY_DIR
+export HTTP_PORT
 
 .DEFAULT_GOAL := all
-.PHONY: all app cli submodules run check-deps start-db stop-db clean-db start-tika stop-tika clean-tika clean help
+.PHONY: all app cli submodules run check-deps start-db stop-db clean-db start-tika stop-tika clean-tika clean help up down logs ps
 
 all: app cli ## Build everything (.NET solution + meta-cli)
 
@@ -144,6 +150,20 @@ check-deps: ## Check that build/run dependencies are installed
 	@printf "  %-20s" "libavformat"; \
 		if pkg-config --exists libavformat 2>/dev/null; then echo "OK"; \
 		else echo "MISSING  -> meta-cli media metadata disabled (install ffmpeg dev libs)"; fi
+
+up: ## Build and start the full stack (db + tika + app) via docker-compose
+	@[ -n "$(CONTAINER_ENGINE)" ] || { echo "ERROR: neither docker nor podman found."; exit 1; }
+	$(COMPOSE) up -d --build
+	@echo "Librarian is starting at http://localhost:$(or $(HTTP_PORT),5080)"
+
+down: ## Stop the full stack (keeps the database volume)
+	$(COMPOSE) down
+
+logs: ## Follow the app logs from the compose stack
+	$(COMPOSE) logs -f librarian
+
+ps: ## Show the status of the compose stack
+	$(COMPOSE) ps
 
 clean: ## Remove build artifacts (.NET + meta-cli)
 	dotnet clean "$(SOLUTION)" -c $(CONFIG)
