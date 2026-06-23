@@ -4,6 +4,7 @@ using Librarian.Jobs;
 using Librarian.Metadata;
 using Librarian.Metadata.Providers;
 using Librarian.Metadata.Providers.MetadataCli;
+using Librarian.Metadata.Normalization;
 using Librarian.Metadata.Providers.Tika;
 using Librarian.Services;
 using Microsoft.AspNetCore.Builder;
@@ -59,7 +60,8 @@ namespace Librarian
             builder.Services.AddScoped<IMetadataProvider, FileMetadataProvider>();
             //builder.Services.AddScoped<IMetadataProvider, MetadataExtractorProvider>();
             builder.Services.AddScoped<IMetadataProvider, MetadataCliProvider>();
-            builder.Services.AddScoped<IMetadataProvider, TikaProvider>();
+            builder.Services.AddScoped<IRawMetadataProvider, TikaProvider>();
+            builder.Services.AddSingleton<MetadataNormalizer>();
             builder.Services.AddSession(opts =>
             {
                 opts.Cookie.HttpOnly = true;

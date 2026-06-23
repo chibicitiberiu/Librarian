@@ -4,32 +4,31 @@ using Microsoft.Extensions.Logging;
 namespace Librarian.Metadata.Providers.Tika
 {
     /// <summary>
-    /// Metadata provider backed by an Apache Tika server. Extracts metadata from a
-    /// broad range of document, image and archive formats. Content text is also
-    /// returned by Tika and will be stored once the content-indexing pipeline lands.
+    /// Raw metadata provider backed by an Apache Tika server. Emits each Tika key as a raw
+    /// record, deriving the namespace from the key's schema prefix (e.g. "dc:title" becomes
+    /// namespace "dc", key "title"). Embedded resources (e.g. archive entries) become
+    /// sub-resources. Normalization to canonical attributes is done by the MetadataNormalizer.
     /// </summary>
-    public class TikaProvider : IMetadataProvider
+    public class TikaProvider : IRawMetadataProvider
     {
         private static readonly Guid providerId = new("b7e2a9c4-1d83-4f6e-9a05-3c8d7e21f4b6");
 
         private readonly TikaService tikaService;
-        private readonly MetadataFactory metadataFactory;
         private readonly ILogger logger;
 
         public Guid ProviderId => providerId;
 
         public string DisplayName => "Apache Tika";
 
-        public TikaProvider(TikaService tikaService, MetadataFactory metadataFactory, ILogger<TikaProvider> logger)
+        public TikaProvider(TikaService tikaService, ILogger<TikaProvider> logger)
         {
             this.tikaService = tikaService;
-            this.metadataFactory = metadataFactory;
             this.logger = logger;
         }
 
-        public async Task<MetadataCollection> GetMetadataAsync(string filePath)
+        public async Task<RawMetadataResult> GetRawMetadataAsync(string filePath)
         {
-            var result = new MetadataCollection();
+            var result = new RawMetadataResult();
 
             // Tika handles files, not directories.
             if (Directory.Exists(filePath))
@@ -50,7 +49,8 @@ namespace Librarian.Metadata.Providers.Tika
                 return result;
 
             // The first resource is the top-level document.
-            CollectAttributes(result, resources[0], subResource: null);
+            CollectItems(result, resources[0], subResource: null);
+            result.Content = resources[0].Content;
 
             // Any further resources are files embedded within it (e.g. archive entries).
             for (int i = 1; i < resources.Count; i++)
@@ -62,13 +62,13 @@ namespace Librarian.Metadata.Providers.Tika
                     Name = resource.EmbeddedPath ?? $"Embedded resource {i}"
                 };
                 result.AddSubResource(subResource);
-                CollectAttributes(result, resource, subResource);
+                CollectItems(result, resource, subResource);
             }
 
             return result;
         }
 
-        private void CollectAttributes(MetadataCollection result, TikaResource resource, SubResource? subResource)
+        private static void CollectItems(RawMetadataResult result, TikaResource resource, SubResource? subResource)
         {
             foreach (var (key, values) in resource.Metadata)
             {
@@ -76,28 +76,27 @@ namespace Librarian.Metadata.Providers.Tika
                 if (key.StartsWith("X-TIKA:", StringComparison.OrdinalIgnoreCase))
                     continue;
 
+                var (@namespace, name) = SplitKey(key);
+
                 foreach (var value in values)
                 {
-                    if (string.IsNullOrWhiteSpace(value))
-                        continue;
-
-                    try
-                    {
-                        var attribute = metadataFactory.Create(key, value, ProviderId, providerAttributeId: key, editable: true, subResource: subResource);
-                        result.Add(attribute);
-                    }
-                    catch (Exception ex)
-                    {
-                        // A single unparseable value must not lose the rest of the file's metadata.
-                        logger.LogTrace(ex, "Could not map Tika attribute {key}={value} for a file", key, value);
-                    }
+                    if (!string.IsNullOrWhiteSpace(value))
+                        result.Add(@namespace, name, value, subResource);
                 }
             }
         }
 
-        public Task SaveMetadataAsync(string filePath, MetadataCollection metadata)
+        /// <summary>
+        /// Splits a Tika key into (namespace, key) on its schema prefix, e.g. "dc:title" =>
+        /// ("dc", "title"). Keys without a prefix go under the generic "tika" namespace.
+        /// </summary>
+        private static (string Namespace, string Key) SplitKey(string key)
         {
-            throw new NotImplementedException();
+            int separator = key.IndexOf(':');
+            if (separator > 0 && separator < key.Length - 1)
+                return (key[..separator], key[(separator + 1)..]);
+
+            return ("tika", key);
         }
     }
 }

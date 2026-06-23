@@ -1,5 +1,6 @@
-﻿using Librarian.DB;
+using Librarian.DB;
 using Librarian.Metadata;
+using Librarian.Metadata.Normalization;
 using Librarian.Metadata.Providers;
 using Librarian.Model;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,8 @@ namespace Librarian.Services
     public class MetadataService
     {
         private readonly Dictionary<Guid, IMetadataProvider> metadataProviders = new();
+        private readonly IReadOnlyList<IRawMetadataProvider> rawProviders;
+        private readonly MetadataNormalizer normalizer;
         private readonly ILogger logger;
         private readonly MetadataSerializer serializer;
         private readonly FileService fileService;
@@ -22,6 +25,8 @@ namespace Librarian.Services
 
         public MetadataService(ILogger<MetadataService> logger,
                                IEnumerable<IMetadataProvider> providers,
+                               IEnumerable<IRawMetadataProvider> rawProviders,
+                               MetadataNormalizer normalizer,
                                MetadataSerializer serializer,
                                FileService fileService,
                                DatabaseContext dbContext)
@@ -31,6 +36,9 @@ namespace Librarian.Services
 
             foreach (var provider in providers)
                 metadataProviders.Add(provider.ProviderId, provider);
+
+            this.rawProviders = rawProviders.ToList();
+            this.normalizer = normalizer;
             this.fileService = fileService;
             this.dbContext = dbContext;
         }
@@ -38,30 +46,115 @@ namespace Librarian.Services
         #region Updating, collecting metadata
 
         /// <summary>
-        /// Collects metadata and updates index
+        /// Collects metadata for a file and stores it: canonical providers and the .meta
+        /// sidecar are merged into the canonical tables, while raw providers populate the
+        /// raw layer and are promoted to canonical attributes through the normalizer.
         /// </summary>
-        /// <param name="indexedFile">File to update for</param>
-        /// <returns></returns>
         public async Task UpdateMetadata(IndexedFile indexedFile)
         {
-            await foreach (var attribute in CollectMetadataAsync(indexedFile))
-            {
-                if (attribute.SubResource is not null)
-                    attribute.SubResource = AddOrUpdate(attribute.SubResource, dbContext.SubResources);
+            // Canonical providers (file attributes, media) and the .meta sidecar.
+            await foreach (var attribute in CollectCanonicalAsync(indexedFile))
+                StoreCanonical(attribute);
+            await dbContext.SaveChangesAsync();
 
-                if (attribute is BlobAttribute blobAttribute)
-                    AddOrUpdate(blobAttribute, dbContext.BlobAttributes);
-                else if (attribute is DateAttribute dateAttribute)
-                    AddOrUpdate(dateAttribute, dbContext.DateAttributes);
-                else if (attribute is FloatAttribute floatAttribute)
-                    AddOrUpdate(floatAttribute, dbContext.FloatAttributes);
-                else if (attribute is IntegerAttribute intAttribute)
-                    AddOrUpdate(intAttribute, dbContext.IntegerAttributes);
-                else if (attribute is TextAttribute textAttribute)
-                    AddOrUpdate(textAttribute, dbContext.TextAttributes);
+            // Raw providers (Tika): persist the raw layer and promote it to canonical.
+            await UpdateRawMetadata(indexedFile);
+        }
+
+        private async Task UpdateRawMetadata(IndexedFile indexedFile)
+        {
+            string filePath = fileService.Resolve(indexedFile.Path);
+
+            // Replace this file's raw layer.
+            dbContext.RawMetadataAttributes.RemoveRange(
+                dbContext.RawMetadataAttributes.Where(r => r.FileId == indexedFile.Id));
+
+            foreach (var provider in rawProviders)
+            {
+                string providerId = provider.ProviderId.ToString();
+
+                // Replace the canonical attributes previously promoted from this provider.
+                RemoveCanonicalForProvider(indexedFile.Id, providerId);
+
+                RawMetadataResult? result = null;
+                try
+                {
+                    result = await provider.GetRawMetadataAsync(filePath);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Collecting raw data from provider {providerName} failed", provider.DisplayName);
+                }
+                if (result is null)
+                    continue;
+
+                foreach (var item in result.Items)
+                {
+                    SubResource? subResource = item.SubResource;
+                    if (subResource is not null)
+                    {
+                        subResource.File = indexedFile;
+                        subResource = AddOrUpdate(subResource, dbContext.SubResources);
+                    }
+
+                    dbContext.RawMetadataAttributes.Add(new RawMetadataAttribute
+                    {
+                        File = indexedFile,
+                        SubResource = subResource,
+                        Namespace = item.Namespace,
+                        Key = item.Key,
+                        Value = item.Value,
+                        ProviderId = providerId
+                    });
+
+                    var canonical = normalizer.Normalize(item.Namespace, item.Key, item.Value, provider.ProviderId, subResource);
+                    if (canonical is not null)
+                    {
+                        canonical.File = indexedFile;
+                        StoreNormalized(canonical);
+                    }
+                }
             }
 
             await dbContext.SaveChangesAsync();
+        }
+
+        private void RemoveCanonicalForProvider(int fileId, string providerId)
+        {
+            dbContext.TextAttributes.RemoveRange(dbContext.TextAttributes.Where(a => a.FileId == fileId && a.ProviderId == providerId));
+            dbContext.IntegerAttributes.RemoveRange(dbContext.IntegerAttributes.Where(a => a.FileId == fileId && a.ProviderId == providerId));
+            dbContext.FloatAttributes.RemoveRange(dbContext.FloatAttributes.Where(a => a.FileId == fileId && a.ProviderId == providerId));
+            dbContext.DateAttributes.RemoveRange(dbContext.DateAttributes.Where(a => a.FileId == fileId && a.ProviderId == providerId));
+            dbContext.BlobAttributes.RemoveRange(dbContext.BlobAttributes.Where(a => a.FileId == fileId && a.ProviderId == providerId));
+        }
+
+        /// <summary>Merges a canonical-provider attribute into the typed tables (keyed by provider).</summary>
+        private void StoreCanonical(AttributeBase attribute)
+        {
+            if (attribute.SubResource is not null)
+                attribute.SubResource = AddOrUpdate(attribute.SubResource, dbContext.SubResources);
+
+            switch (attribute)
+            {
+                case BlobAttribute a: AddOrUpdate(a, dbContext.BlobAttributes); break;
+                case DateAttribute a: AddOrUpdate(a, dbContext.DateAttributes); break;
+                case FloatAttribute a: AddOrUpdate(a, dbContext.FloatAttributes); break;
+                case IntegerAttribute a: AddOrUpdate(a, dbContext.IntegerAttributes); break;
+                case TextAttribute a: AddOrUpdate(a, dbContext.TextAttributes); break;
+            }
+        }
+
+        /// <summary>Adds a freshly-promoted attribute (the file's old ones were already removed).</summary>
+        private void StoreNormalized(AttributeBase attribute)
+        {
+            switch (attribute)
+            {
+                case BlobAttribute a: dbContext.BlobAttributes.Add(a); break;
+                case DateAttribute a: dbContext.DateAttributes.Add(a); break;
+                case FloatAttribute a: dbContext.FloatAttributes.Add(a); break;
+                case IntegerAttribute a: dbContext.IntegerAttributes.Add(a); break;
+                case TextAttribute a: dbContext.TextAttributes.Add(a); break;
+            }
         }
 
         private static void AddOrUpdate<TAttribute>(TAttribute attribute, DbSet<TAttribute> dbSet) where TAttribute : AttributeBase
@@ -89,28 +182,18 @@ namespace Librarian.Services
                 .FirstOrDefault();
 
             if (existingSubResource is not null)
-            {
                 return existingSubResource;
-            }
-            else
-            {
-                dbSet.Add(subResource);
-                return subResource;
-            }
+
+            dbSet.Add(subResource);
+            return subResource;
         }
 
-        /// <summary>
-        /// Collects metadata for given file from providers and .meta file.
-        /// Does not store the metadata in the database.
-        /// </summary>
-        /// <param name="file">File to collect for</param>
-        /// <returns></returns>
-        private async IAsyncEnumerable<AttributeBase> CollectMetadataAsync(IndexedFile file)
+        /// <summary>Canonical providers and the .meta sidecar for an indexed file (sets the file reference).</summary>
+        private async IAsyncEnumerable<AttributeBase> CollectCanonicalAsync(IndexedFile file)
         {
             string filePath = fileService.Resolve(file.Path);
 
-            // Fetch metadata from providers
-            await foreach (var attribute in CollectMetadataAsync(filePath))
+            await foreach (var attribute in CollectCanonicalAsync(filePath))
             {
                 attribute.File = file;
                 if (attribute.SubResource != null)
@@ -119,15 +202,9 @@ namespace Librarian.Services
             }
         }
 
-        /// <summary>
-        /// Collects metadata for given file from providers and .meta file.
-        /// Does not store the metadata in the database.
-        /// </summary>
-        /// <param name="filePath">Path to file to collect for</param>
-        /// <returns></returns>
-        public async IAsyncEnumerable<AttributeBase> CollectMetadataAsync(string filePath)
+        /// <summary>Canonical providers and the .meta sidecar (no raw providers, no persistence).</summary>
+        private async IAsyncEnumerable<AttributeBase> CollectCanonicalAsync(string filePath)
         {
-            // Fetch metadata from providers
             foreach (var provider in metadataProviders.Values)
             {
                 MetadataCollection? metadataCollection = null;
@@ -150,6 +227,42 @@ namespace Librarian.Services
             // Fetch metadata from .meta file
             foreach (var attribute in await LoadMetaFile(filePath))
                 yield return attribute;
+        }
+
+        /// <summary>
+        /// Collects all canonical metadata for display: canonical providers, the .meta
+        /// sidecar, and raw providers promoted through the normalizer. Does not persist.
+        /// </summary>
+        public async IAsyncEnumerable<AttributeBase> CollectMetadataAsync(string filePath)
+        {
+            await foreach (var attribute in CollectCanonicalAsync(filePath))
+                yield return attribute;
+
+            foreach (var provider in rawProviders)
+            {
+                RawMetadataResult? result = null;
+                try
+                {
+                    result = await provider.GetRawMetadataAsync(filePath);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Collecting raw data from provider {providerName} failed", provider.DisplayName);
+                }
+                if (result is null)
+                    continue;
+
+                foreach (var item in result.Items)
+                {
+                    var canonical = normalizer.Normalize(item.Namespace, item.Key, item.Value, provider.ProviderId, item.SubResource);
+                    if (canonical is null)
+                        continue;
+
+                    // Populate the definition reference so the view can show group/name.
+                    canonical.AttributeDefinition ??= dbContext.AttributeDefinitions.Find(canonical.AttributeDefinitionId)!;
+                    yield return canonical;
+                }
+            }
         }
 
         #endregion
