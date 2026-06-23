@@ -1,5 +1,9 @@
+using Librarian.DB;
+using Librarian.Metadata.Normalization;
 using Librarian.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Net.Mime;
 using System.Threading.Tasks;
 
@@ -11,10 +15,14 @@ namespace Librarian.Controllers.Api
     public class MetadataAdminController : ControllerBase
     {
         private readonly RenormalizationService renormalizationService;
+        private readonly DatabaseContext db;
+        private readonly MetadataNormalizer normalizer;
 
-        public MetadataAdminController(RenormalizationService renormalizationService)
+        public MetadataAdminController(RenormalizationService renormalizationService, DatabaseContext db, MetadataNormalizer normalizer)
         {
             this.renormalizationService = renormalizationService;
+            this.db = db;
+            this.normalizer = normalizer;
         }
 
         /// <summary>
@@ -26,6 +34,43 @@ namespace Librarian.Controllers.Api
         {
             int produced = await renormalizationService.RenormalizeAllAsync();
             return Ok(new { reprocessed = produced });
+        }
+
+        /// <summary>
+        /// Returns distinct raw metadata (Namespace, Key) pairs that have no promotion rule,
+        /// ordered by row count descending so the most common unmapped keys surface first.
+        /// </summary>
+        [HttpGet("unmapped")]
+        public async Task<IActionResult> GetUnmappedKeys()
+        {
+            // GroupBy and aggregate in the database, then pull into memory.
+            var grouped = await db.RawMetadataAttributes
+                .GroupBy(r => new { r.Namespace, r.Key })
+                .Select(g => new
+                {
+                    g.Key.Namespace,
+                    g.Key.Key,
+                    Count = g.Count(),
+                    SampleValue = g.Max(r => r.Value)
+                })
+                .ToListAsync();
+
+            // Filter with IsMapped in memory — it cannot be translated to SQL.
+            var unmapped = grouped
+                .Where(g => !normalizer.IsMapped(g.Namespace, g.Key))
+                .OrderByDescending(g => g.Count)
+                .ThenBy(g => g.Namespace)
+                .ThenBy(g => g.Key)
+                .Select(g => new
+                {
+                    g.Namespace,
+                    g.Key,
+                    g.Count,
+                    g.SampleValue
+                })
+                .ToList();
+
+            return Ok(unmapped);
         }
     }
 }
