@@ -31,11 +31,16 @@ CLI_DIR   := meta-cli
 CLI_BUILD := $(CLI_DIR)/build
 CLI_BIN   := $(CLI_BUILD)/meta-cli
 
+# ---- Apache Tika (broad-format metadata/content extraction) ----
+TIKA_CONTAINER ?= librarian-tika
+TIKA_IMAGE     ?= apache/tika:latest
+TIKA_PORT      ?= 9998
+
 # Container engine: prefer docker, fall back to podman
 CONTAINER_ENGINE ?= $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
 
 .DEFAULT_GOAL := all
-.PHONY: all app cli submodules run check-deps start-db stop-db clean-db clean help
+.PHONY: all app cli submodules run check-deps start-db stop-db clean-db start-tika stop-tika clean-tika clean help
 
 all: app cli ## Build everything (.NET solution + meta-cli)
 
@@ -70,6 +75,7 @@ run: app ## Build + run the web server against the dev database
 		BaseDirectory="$(LIBRARY_DIR)" \
 		AppDataDirectory="$(APPDATA_DIR)" \
 		MetadataCliPath="$(CURDIR)/$(CLI_BIN)" \
+		TikaUrl="http://localhost:$(TIKA_PORT)" \
 		dotnet run --project "$(WEB_PROJECT)" -c $(CONFIG) --no-build --no-launch-profile
 
 start-db: ## Start the PostgreSQL dev database container
@@ -97,6 +103,28 @@ stop-db: ## Stop the dev database container (keeps data)
 
 clean-db: ## Stop and delete the dev database container (destroys data)
 	-$(CONTAINER_ENGINE) rm -f "$(DB_CONTAINER)"
+
+start-tika: ## Start the Apache Tika server container
+	@[ -n "$(CONTAINER_ENGINE)" ] || { echo "ERROR: neither docker nor podman found."; exit 1; }
+	@if $(CONTAINER_ENGINE) ps -a --format '{{.Names}}' | grep -qx "$(TIKA_CONTAINER)"; then \
+		$(CONTAINER_ENGINE) start "$(TIKA_CONTAINER)" >/dev/null && \
+		echo "Started existing container '$(TIKA_CONTAINER)'."; \
+	else \
+		$(CONTAINER_ENGINE) run -d --name "$(TIKA_CONTAINER)" -p $(TIKA_PORT):9998 "$(TIKA_IMAGE)" >/dev/null && \
+		echo "Created and started container '$(TIKA_CONTAINER)' on port $(TIKA_PORT)."; \
+	fi
+	@echo "Waiting for Tika to be ready..."
+	@for i in $$(seq 1 30); do \
+		if curl -sf http://localhost:$(TIKA_PORT)/version >/dev/null 2>&1; then echo "Tika is ready."; exit 0; fi; \
+		sleep 1; \
+	done; \
+	echo "WARNING: Tika did not become ready in time."; exit 1
+
+stop-tika: ## Stop the Tika server container (keeps the container)
+	-$(CONTAINER_ENGINE) stop "$(TIKA_CONTAINER)"
+
+clean-tika: ## Stop and delete the Tika server container
+	-$(CONTAINER_ENGINE) rm -f "$(TIKA_CONTAINER)"
 
 check-deps: ## Check that build/run dependencies are installed
 	@echo "Dependencies:"

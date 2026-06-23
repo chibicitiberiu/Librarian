@@ -15,5 +15,7 @@ namespace Librarian.Model
         Stream = 1,
         [XmlEnum("chapter")]
         Chapter = 2,
+        [XmlEnum("embeddedFile")]
+        EmbeddedFile = 3,
     }
 }
