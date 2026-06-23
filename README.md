@@ -29,6 +29,11 @@ By default the app serves the throwaway `./.dev-library` on <http://localhost:50
 browser can rename/move/delete files and writes `.meta` sidecars. The only prerequisite is
 **Docker** (or **Podman**) with the Compose plugin — everything else is built in the image.
 
+> ⚠️ **Not safe to expose directly.** The app serves plain HTTP (it sends an HSTS header in
+> Production but terminates no TLS) and has **no authentication** — it exposes the whole mounted
+> library. Run it only on a trusted network, or behind a reverse proxy that terminates TLS and
+> handles auth.
+
 ## Development
 
 The project is an ASP.NET web application targeting **.NET 10**, backed by PostgreSQL. There is a small helper utility written in C++ (`meta-cli`) that uses libavformat to collect media metadata; it is optional — without it, media metadata is simply skipped.

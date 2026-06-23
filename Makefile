@@ -151,7 +151,7 @@ check-deps: ## Check that build/run dependencies are installed
 		if pkg-config --exists libavformat 2>/dev/null; then echo "OK"; \
 		else echo "MISSING  -> meta-cli media metadata disabled (install ffmpeg dev libs)"; fi
 
-up: ## Build and start the full stack (db + tika + app) via docker-compose
+up: submodules ## Build and start the full stack (db + tika + app) via docker-compose
 	@[ -n "$(CONTAINER_ENGINE)" ] || { echo "ERROR: neither docker nor podman found."; exit 1; }
 	$(COMPOSE) up -d --build
 	@echo "Librarian is starting at http://localhost:$(or $(HTTP_PORT),5080)"

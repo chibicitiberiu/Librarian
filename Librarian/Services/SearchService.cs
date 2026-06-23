@@ -104,11 +104,15 @@ namespace Librarian.Services
             }
             if (includeMetadata)
             {
-                unionParts.Add(@"
+                // ts_headline (not the raw Value) so long attribute values are bounded to a
+                // fragment and matches are highlighted. Highlighting uses the primary language;
+                // a value matched only via another language / the simple pass is still returned,
+                // just shown as a bounded leading fragment without a <mark>.
+                unionParts.Add($@"
                     SELECT t.""FileId"" AS file_id,
                            ts_rank(t.""ValueSearch"", q.query) AS rank,
                            'metadata' AS src,
-                           t.""Value"" AS snippet
+                           ts_headline('{headlineLang}', t.""Value"", q.query, '{HeadlineOptions}') AS snippet
                     FROM ""TextAttributes"" t, q
                     WHERE t.""ValueSearch"" @@ q.query");
             }

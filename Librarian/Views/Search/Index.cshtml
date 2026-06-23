@@ -3,9 +3,6 @@
     ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Query) ? "Search" : $"Search: {Model.Query}";
     ViewData["CurrentPage"] = "search";
 
-    string metadataBase = Url.Action("Index", "Metadata") ?? "/metadata";
-    string browseBase = Url.Action("Index", "Browse") ?? "/browse";
-
     string? ParentPath(string path)
     {
         int slash = path.LastIndexOf('/');
@@ -84,7 +81,9 @@
                     var parent = ParentPath(result.Path);
                     <li class="search-result">
                         <div class="search-result-title">
-                            <a href="@metadataBase/@result.Path">@result.Name</a>
+                            @* Url.Action routes through the {**path} catch-all, which URL-encodes
+                               special characters (#, ?, %, spaces) while preserving slashes. *@
+                            <a href="@Url.Action("Index", "Metadata", new { path = result.Path })">@result.Name</a>
                             @if (result.InContent)
                             {
                                 <span class="badge badge-content">content</span>
@@ -97,11 +96,11 @@
                         <div class="search-result-path">
                             @if (parent is not null)
                             {
-                                <a href="@browseBase/@parent">@parent/</a>
+                                <a href="@Url.Action("Index", "Browse", new { path = parent })">@parent/</a>
                             }
                             else
                             {
-                                <a href="@browseBase">/</a>
+                                <a href="@Url.Action("Index", "Browse", new { path = "" })">/</a>
                             }
                         </div>
                         @if (!string.IsNullOrEmpty(result.Snippet))

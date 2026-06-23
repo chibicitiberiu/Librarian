@@ -28,7 +28,9 @@ namespace Librarian.Model
                 throw new ArgumentException("Argument is not a " + nameof(TextAttribute));
 
             Value = otherText.Value;
-            ValueSearch = otherText.ValueSearch;
+            // ValueSearch is populated server-side from Value (see SearchVectorService), so it is
+            // always null on the incoming attribute. Don't copy it — that would clobber the stored
+            // tsvector with null on every merge. It is refreshed after Value changes are saved.
 
             base.Update(other);
         }
