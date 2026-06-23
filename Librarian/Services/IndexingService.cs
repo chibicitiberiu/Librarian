@@ -86,13 +86,12 @@ namespace Librarian.Services
         {
             fsWatcher = new FileSystemWatcher(fileService.BasePath)
             {
-                NotifyFilter = NotifyFilters.Attributes
-                                 | NotifyFilters.CreationTime
-                                 | NotifyFilters.DirectoryName
+                // Deliberately NOT watching LastAccess/Attributes: indexing reads files and
+                // directories, which updates their access time and would fire endless change
+                // events, causing an infinite re-indexing loop (especially on Linux/inotify).
+                NotifyFilter = NotifyFilters.DirectoryName
                                  | NotifyFilters.FileName
-                                 | NotifyFilters.LastAccess
                                  | NotifyFilters.LastWrite
-                                 | NotifyFilters.Security
                                  | NotifyFilters.Size,
                 IncludeSubdirectories = true,
                 EnableRaisingEvents = true

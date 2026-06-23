@@ -79,6 +79,8 @@ namespace Librarian
                 Environment.Exit(-1);
             }
 
+            ApplyMigrations(app);
+
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
             {
@@ -130,12 +132,30 @@ namespace Librarian
 
         private static void VerifyConfiguration(IConfiguration config)
         {
-            // ensure BaseDirectory is set 
+            // ensure BaseDirectory is set
             var baseDirectory = config["BaseDirectory"]
                 ?? throw new ArgumentException("Required BaseDirectory option is not set!");
 
             if (!Directory.Exists(baseDirectory))
                 throw new ArgumentException("BaseDirectory does not exist!");
+        }
+
+        private static void ApplyMigrations(WebApplication app)
+        {
+            try
+            {
+                // Migrations are associated with PostgresDatabaseContext (see
+                // PostgresDatabaseContextFactory), so they must be applied through it.
+                // It reads the connection string from configuration.
+                using var dbContext = new PostgresDatabaseContext(app.Configuration);
+                dbContext.Database.Migrate();
+                app.Logger.LogInformation("Database schema is up to date.");
+            }
+            catch (Exception ex)
+            {
+                app.Logger.LogCritical(ex, "Failed to apply database migrations. Is the database reachable and is the connection string correct?");
+                Environment.Exit(-1);
+            }
         }
     }
 }

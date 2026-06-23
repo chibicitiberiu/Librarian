@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
-using System.Collections.Generic;
+using System;
+using System.IO;
 
 namespace Librarian.DB
 {
@@ -20,17 +21,22 @@ namespace Librarian.DB
         }
     }
 
+    /// <summary>
+    /// Used by "dotnet ef" at design time. Reads the connection string from
+    /// appsettings.json and environment variables so migrations can target any
+    /// database (e.g. set ConnectionStrings__DB to override).
+    /// </summary>
     public class PostgresDatabaseContextFactory : IDesignTimeDbContextFactory<PostgresDatabaseContext>
     {
         public PostgresDatabaseContext CreateDbContext(string[] args)
         {
-            var dict = new Dictionary<string, string>()
-            {
-                { "ConnectionStrings:DB", "Database=postgres;Host=10.0.0.10;Port=5555;Username=postgres;Password=secretpassword123" }
-            };
+            string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
 
             IConfiguration config = new ConfigurationBuilder()
-                .AddInMemoryCollection(dict)
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true)
+                .AddJsonFile($"appsettings.{environment}.json", optional: true)
+                .AddEnvironmentVariables()
                 .Build();
 
             return new PostgresDatabaseContext(config);
