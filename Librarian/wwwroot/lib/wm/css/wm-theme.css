@@ -1,0 +1,208 @@
+﻿.wm-menu {
+  gap: 0.25em;
+}
+.wm-menu li {
+  gap: 0.25em;
+  padding: 0.25em;
+  border: 1px solid transparent;
+}
+.wm-menu li:hover, .wm-menu li.wm-state-active {
+  background: -webkit-gradient(linear, left top, left bottom, from(#435E9B), to(#5476C3));
+  background: -webkit-linear-gradient(#435E9B, #5476C3);
+  background: -moz-linear-gradient(#435E9B, #5476C3);
+  background: linear-gradient(#435E9B, #5476C3);
+  border-top: 1px solid #98B2ED;
+  border-left: 1px solid #98B2ED;
+  border-bottom: 1px solid #4468B8;
+  border-right: 1px solid #4468B8;
+  outline: 1px solid #3C4D71;
+  color: white;
+}
+.wm-menu ul {
+  height: auto !important;
+}
+
+.wm-panel, .wm-panel-bottom, .wm-panel-top, .wm-menu ul {
+  color: black;
+  background: #E6E6E6;
+  height: 2em;
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  border-bottom: 1px solid #CECECE;
+  border-right: 1px solid #CECECE;
+  padding: 0.25em;
+}
+.wm-panel > .wm-separator, .wm-panel-bottom > .wm-separator, .wm-panel-top > .wm-separator, .wm-menu ul > .wm-separator {
+  height: 1.5em;
+}
+
+.wm-panel-wide {
+  height: 2.6em;
+}
+.wm-panel-wide > .wm-separator {
+  height: 2.1em;
+}
+.wm-panel-wide > .wm-brand {
+  font-size: 14pt;
+}
+
+.wm-panel-top {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.wm-panel-bottom {
+  border-bottom: none;
+  border-left: none;
+  border-right: none;
+}
+
+.wm-brand {
+  font-weight: bold;
+  font-size: 12pt;
+  font-style: italic;
+  padding: 0.25em;
+}
+
+.wm-progress {
+  background: gray;
+}
+
+.wm-progress-bar {
+  background: orange;
+  height: 100%;
+}
+
+.wm-separator {
+  width: 4px;
+  background: url("../img/separator.gif");
+  margin: 0.5em 0.5em;
+}
+
+body {
+  color: #eee;
+  background: #25314B;
+  font-family: "Lucida Sans", "Lucida Sans Regular", "Lucida Grande", "Lucida Sans Unicode", "Luxi Sans", Geneva, Verdana, sans-serif;
+  font-size: 9pt;
+  padding: 1.5em;
+}
+
+a {
+  color: #0a1539;
+  text-decoration: none;
+}
+a.active {
+  color: #2649b4;
+}
+
+h1 {
+  margin-top: 0;
+  margin-bottom: 0.5em;
+}
+
+/*
+.nav {
+    .nav-brand {
+        font-weight: bold;
+        font-size: 14pt;
+        font-style: italic;
+    }
+    .nav-link {
+        @include common-button;
+        vertical-align: middle;
+        padding: .3em .5em;
+
+        &.active {
+            @include common-button-active;
+        }
+    }
+    a {
+        color: $color-link;
+        text-decoration: none;
+
+        &.active {
+            color: $color-link-active;
+        }
+    }
+}
+
+.window {
+    @include common-panel;
+    outline: 1px solid $color-outer-border-highlight;
+    border-radius: .25em;
+    box-shadow: 1px 1px 4px black;
+
+    .window-title {
+        background: url("/img/window-title-tile.png") repeat-x;
+        height: 18px;
+        border-bottom: 1px solid $color-outer-border-highlight;
+
+        .window-title-inner {
+            height: 100%;
+            background: url("/img/window-title-fade.png") no-repeat;
+            background-position: center;
+            background-position-y: top;
+        }
+
+        h1 {
+            color: $color-title;
+            font-size: 10pt;
+            font-weight: bolder;
+            text-align: center;
+            text-shadow: 1px 1px 2px #223256;
+            margin: 0;
+            padding: 0;
+        }
+    }
+
+    .window-content {
+        background: $color-content;
+        border-top: 1px solid $color-inner-border-light;
+        border-left: 1px solid $color-inner-border-light;
+        border-bottom: 1px solid $color-inner-border-dark;
+        border-right: 1px solid $color-inner-border-dark;
+    }
+}
+
+button, .button {
+    @include common-button;
+}
+
+.toolbar button, .toolbar-button, button.toolbar-button {
+    @include common-toolbar-button;
+}
+
+input, .input {
+    @include common-input;
+    display: block;
+    display: inline-block;
+}
+
+.location-bar {
+    min-width: 15em;
+    margin: 2px;
+}
+
+hr {
+    margin: 0 .5em;
+    border-top: 1px solid $color-inner-border-dark;
+    border-bottom: 1px solid $color-inner-border-light;
+}
+
+.separator {
+    display: inline;
+    display: inline-block;
+    width: 4px;
+    height: 25px;
+    background: url('/img/separator.gif');
+    margin: .5em .5em;
+}
+
+.disabled {
+    opacity: .5;
+}
+
+.invalid {
+    background-color: lightcoral;
+}*/

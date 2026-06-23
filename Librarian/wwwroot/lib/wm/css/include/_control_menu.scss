@@ -1,0 +1,40 @@
+﻿@import "browser_support";
+@import "layout";
+
+.wm-menu {
+    @extend .wm-layout-hbox;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+
+    li {
+        @extend .wm-layout-hbox;
+        position: relative;
+    }
+
+    ul {
+        @extend .wm-panel;
+        @include display-flex;
+        @include flex-direction-column;
+        @include align-items(left);
+        position: absolute;
+        min-width: 12em;
+
+        visibility: collapse;
+
+        &.wm-state-active {
+            visibility: visible;
+        }
+    }
+
+    // top level submenus
+    > li > ul {
+        top: 100%;
+
+        // nested submenus
+        ul {
+            top: 0;
+            left: 100%;
+        }
+    }
+}

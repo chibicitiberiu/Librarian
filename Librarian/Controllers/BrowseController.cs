@@ -4,7 +4,6 @@ using Librarian.Utils;
 using Librarian.ViewModels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.Extensions.Logging;
 using MimeMapping;
 using System;

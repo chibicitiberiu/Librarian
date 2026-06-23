@@ -33,3 +33,57 @@ function setupSortableTables() {
 }
 
 window.addEventListener("load", setupSortableTables);
+
+
+/********************************
+* App controller                *
+********************************/
+function AppController() {
+    this.statusMessage = document.getElementById("app-statusbar-message");
+    this.statusProgress = document.getElementById("app-statusbar-progress");
+    this.defaultStatus = this.statusMessage.innerHTML;
+    this.previousJobCount = 0;
+
+    var _this = this;
+    setInterval(function () { _this.updateStatus(); }, 2000);
+}
+
+AppController.prototype.updateStatus = function () {
+    var _this = this;
+    var request = new XMLHttpRequest();
+    request.onreadystatechange = function () {
+        if (this.readyState != 4)
+            return;
+
+        if (this.status == 200) {
+            _this.onUpdateStatus(JSON.parse(this.response));
+        }
+    }
+
+    request.open("GET", document.librarian_url_Jobs_GetJobsSummary);
+    request.send();
+}
+
+AppController.prototype.onUpdateStatus = function (jobsSummary) {
+    if (jobsSummary.runningJobCount != this.previousJobCount) {
+        if (jobsSummary.runningJobCount == 0) {
+            this.statusMessage.innerHTML = this.defaultStatus;
+            this.statusProgress.classList.add("collapsed");
+        }
+        else {
+            this.statusProgress.classList.remove("collapsed");
+        }
+        this.previousJobCount = jobsSummary.runningJobCount;
+    }
+
+    if (jobsSummary.runningJobCount > 0) {
+        this.statusMessage.innerText = jobsSummary.message;
+        this.statusProgress.value = jobsSummary.progress;
+    }
+}
+
+function app_setup() {
+    document.librarian_AppController = new AppController();
+}
+
+window.addEventListener("load", app_setup);

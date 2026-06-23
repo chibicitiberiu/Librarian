@@ -42,7 +42,7 @@
 }
 
 MetadataController.prototype.setStatusMessage = function (message) {
-    document.getElementById("msg-status").innerText = message;
+    document.getElementById("window-statusbar-message").innerText = message;
 }
 
 MetadataController.prototype.getFileSelected = function (fileEntry) {

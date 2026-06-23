@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WM Demo</title>
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="/css/wm.css" />
+    <link rel="stylesheet" href="/css/wm-theme.css" />
+</head>
+<body>
+    <div class="header wm-panel-top wm-panel-wide wm-layout-hbox">
+        <div class="wm-brand">
+            <a href="/">Librarian</a>
+        </div>
+        <div class="wm-separator"></div>
+        <ul class="wm-menu wm-layout-fill">
+            <li><img src="demo/icons/16/file-manager.png" /> Browse</li>
+            <li><img src="demo/icons/16/gnome-searchtool.png" /> Search</li>
+            <li>
+                Menu with submenus
+                <ul>
+                    <li><a href="#" onclick="alert('Hello');">Item 1</a></li>
+                    <li>Item 2</li>
+                    <li>
+                        Item 3 with submenu
+                        <ul>
+                            <li>Subitem 1</li>
+                            <li>Subitem 2</li>
+                            <li>Subitem 3</li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+        <div class="wm-separator"></div>
+        <ul class="wm-menu">
+            <li>Welcome, Tibi
+                <ul>
+                    <li><a href="#" onclick="alert('Settings');">Settings</a></li>
+                    <li><a href="#" onclick="alert('Log out');">Log out</a></li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+    <div class="main" role="main">
+        <h1>Hello world</h1>
+        <p>This is a demo application showing the capabilities of the WM framework.</p>
+    </div>
+    <div class="footer wm-panel-bottom wm-layout-hbox">
+        <div id="app-statusbar-message" class="wm-layout-fill">
+            &copy; 2023 - Librarian
+        </div>
+        <div class="wm-progress" style="width: 5em">
+            <div class="wm-progress-bar" style="width:33%"></div>
+        </div>
+    </div>
+    <script>
+    </script>
+    <script src="js/wm.js"></script>
+</body>
+</html>

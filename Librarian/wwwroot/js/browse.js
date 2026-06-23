@@ -42,7 +42,7 @@
 }
 
 BrowseController.prototype.setStatusMessage = function (message) {
-    document.getElementById("msg-status").innerText = message;
+    document.getElementById("window-statusbar-message").innerText = message;
 }
 
 BrowseController.prototype.getFileSelected = function (fileEntry) {

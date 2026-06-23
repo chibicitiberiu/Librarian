@@ -1,18 +1,30 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace Librarian.Jobs
 {
     public class JobTracker
     {
-        public Dictionary<Guid, JobDetails> Jobs { get; } = new();
+        public ConcurrentDictionary<Guid, JobDetails> Jobs { get; } = new();
+
+        public JobTracker()
+        {
+            // create a dummy job
+            var job = StartJob("Running away from the wolf");
+            job.TotalUnits = 100;
+            job.AdvanceProgress(25, "Testing");
+        }
 
         public JobToken StartJob(string jobName)
         {
-            Guid id = Guid.NewGuid();
-            Jobs.Add(id, new JobDetails(id, jobName));
+            Guid id;
+            do
+            {
+                id = Guid.NewGuid();
+            }
+            while (!Jobs.TryAdd(id, new JobDetails(id, jobName)));
 
-            var token = new JobToken(Guid.NewGuid(), 1);
+            var token = new JobToken(id, 1);
             token.Progressed += OnJobProgressed;
             token.Finished += OnJobFinished;
             return token;
@@ -20,7 +32,10 @@ namespace Librarian.Jobs
 
         private void OnJobFinished(object? sender, JobFinishedEventArgs e)
         {
-            Jobs.Remove(e.JobId);
+            if (Jobs.TryRemove(e.JobId, out var jobDetails))
+            {
+                jobDetails.CompletedTime = DateTimeOffset.UtcNow;
+            }
         }
 
         private void OnJobProgressed(object? sender, JobProgressEventArgs e)

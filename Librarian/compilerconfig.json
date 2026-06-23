@@ -6,5 +6,13 @@
   {
     "outputFile": "wwwroot/css/style.css",
     "inputFile": "wwwroot/css/style.scss"
+  },
+  {
+    "outputFile": "wwwroot/lib/wm/css/wm.css",
+    "inputFile": "wwwroot/lib/wm/css/wm.scss"
+  },
+  {
+    "outputFile": "wwwroot/lib/wm/css/wm-theme.css",
+    "inputFile": "wwwroot/lib/wm/css/wm-theme.scss"
   }
 ]

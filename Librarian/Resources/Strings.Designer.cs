@@ -86,5 +86,14 @@ namespace Librarian.Resources {
                 return ResourceManager.GetString("IndexingFile", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} jobs are running....
+        /// </summary>
+        internal static string RunningXJobs {
+            get {
+                return ResourceManager.GetString("RunningXJobs", resourceCulture);
+            }
+        }
     }
 }

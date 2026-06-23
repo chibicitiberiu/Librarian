@@ -1,0 +1,29 @@
+﻿@import "theme_colors";
+@import "browser_support";
+
+.wm-menu {
+    gap: .25em;
+
+    li {
+        gap: .25em;
+        padding: .25em;
+        //box-sizing: border-box;
+        border: 1px solid transparent;
+
+
+        &:hover, &.wm-state-active {
+            @include linear-gradient-vert(background, $color-menu-active-background-dark, $color-menu-active-background-light);
+            border-top: 1px solid $color-menu-active-inner-border-light;
+            border-left: 1px solid $color-menu-active-inner-border-light;
+            border-bottom: 1px solid $color-menu-active-inner-border-dark;
+            border-right: 1px solid $color-menu-active-inner-border-dark;
+            outline: 1px solid $color-menu-active-outer-border;
+            color: $color-menu-active-foreground;
+        }
+    }
+
+    ul {
+        @extend .wm-panel;
+        height: auto !important;
+    }
+}

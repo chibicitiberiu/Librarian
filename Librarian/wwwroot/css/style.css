@@ -252,6 +252,10 @@
   flex-grow: 1;
 }
 
+.collapsed {
+  visibility: collapse;
+}
+
 #txt-rename {
   width: 100%;
 }

@@ -1,0 +1,87 @@
+﻿@import "theme_colors";
+
+@mixin common-desktop {
+    color: $color-desktop-fg;
+    background: $color-desktop;
+}
+
+@mixin common-panel {
+    color: $color-foreground;
+    background: $color-panel;
+}
+
+@mixin common-button-highlight {
+    background: $color-panel-highlight;
+    border-top: 1px solid $color-inner-border-light;
+    border-left: 1px solid $color-inner-border-light;
+    border-bottom: 1px solid $color-inner-border-dark;
+    border-right: 1px solid $color-inner-border-dark;
+    outline-color: $color-outer-border-highlight;
+}
+
+@mixin common-button-normal {
+    background: $color-panel;
+    border-top: 1px solid $color-inner-border-light;
+    border-left: 1px solid $color-inner-border-light;
+    border-bottom: 1px solid $color-inner-border-dark;
+    border-right: 1px solid $color-inner-border-dark;
+    outline: 1px solid $color-outer-border;
+    margin: 1px;
+}
+
+@mixin common-button-transparent {
+    background: transparent;
+    border-top: 1px solid transparent;
+    border-left: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+    border-right: 1px solid transparent;
+    outline: 1px solid $color-panel;
+    outline: 1px solid rgba(255 255 255 / 0.01);
+    margin: 1px;
+}
+
+@mixin common-button-active {
+    background: $color-panel-active;
+    border-top-color: $color-inner-border-dark;
+    border-left-color: $color-inner-border-dark;
+    border-bottom-color: $color-inner-border-light;
+    border-right-color: $color-inner-border-light;
+    outline-color: $color-outer-border-highlight;
+}
+
+@mixin common-input {
+    background: $color-input-background;
+    border-top: 1px solid $color-input-inner-border-dark;
+    border-left: 1px solid $color-input-inner-border-dark;
+    border-bottom: 1px solid $color-input-inner-border-light;
+    border-right: 1px solid $color-input-inner-border-light;
+    outline: 1px solid $color-input-outer-border;
+}
+
+@mixin common-button {
+    @include common-button-normal;
+
+    &:hover {
+        @include common-button-highlight;
+    }
+    &:active {
+        @include common-button-active;
+    }
+    &:disabled, &.disabled {
+        opacity: .5;
+    }
+}
+
+@mixin common-toolbar-button {
+    @include common-button-transparent;
+
+    &:hover {
+        @include common-button-highlight;
+    }
+    &:active {
+        @include common-button-active;
+    }
+    &:disabled, &.disabled {
+        opacity: .5;
+    }
+}

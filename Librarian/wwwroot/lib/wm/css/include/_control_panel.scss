@@ -1,0 +1,21 @@
+﻿@import "browser_support";
+
+.wm-panel {
+    @include box-sizing(border-box);
+}
+
+.wm-panel-top {
+    @extend .wm-panel;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+.wm-panel-bottom {
+    @extend .wm-panel;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}

@@ -126,4 +126,7 @@
   <data name="IndexingFile" xml:space="preserve">
     <value>Indexing file {0}</value>
   </data>
+  <data name="RunningXJobs" xml:space="preserve">
+    <value>{0} jobs are running...</value>
+  </data>
 </root>
