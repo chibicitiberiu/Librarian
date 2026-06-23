@@ -21,7 +21,7 @@ namespace Librarian.Utils
                 Size = fileInfo.Length
             };
 
-            @this.Response.Headers.Add(HeaderNames.ContentDisposition, cd.ToString());
+            @this.Response.Headers[HeaderNames.ContentDisposition] = cd.ToString();
 
             return @this.File(File.OpenRead(fullPath),
                 contentType: MimeUtility.GetMimeMapping(fullPath),
@@ -42,7 +42,7 @@ namespace Librarian.Utils
                 Size = fileInfo.Length
             };
 
-            @this.Response.Headers.Add(HeaderNames.ContentDisposition, cd.ToString());
+            @this.Response.Headers[HeaderNames.ContentDisposition] = cd.ToString();
 
             return @this.File(File.OpenRead(fullPath),
                 contentType: MimeUtility.GetMimeMapping(fullPath),

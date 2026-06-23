@@ -7,14 +7,6 @@ namespace Librarian.Jobs
     {
         public ConcurrentDictionary<Guid, JobDetails> Jobs { get; } = new();
 
-        public JobTracker()
-        {
-            // create a dummy job
-            var job = StartJob("Running away from the wolf");
-            job.TotalUnits = 100;
-            job.AdvanceProgress(25, "Testing");
-        }
-
         public JobToken StartJob(string jobName)
         {
             Guid id;
