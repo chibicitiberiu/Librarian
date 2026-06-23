@@ -12,28 +12,56 @@ Another important feature is indexing. The goal of Librarian is to index the ent
 
 ## Development
 
-The project is created in ASP.NET using .NET 6.0. There is a small utilty written in C++ that can interact with libavformat to collect metadata.
+The project is an ASP.NET web application targeting **.NET 10**, backed by PostgreSQL. There is a small helper utility written in C++ (`meta-cli`) that uses libavformat to collect media metadata; it is optional — without it, media metadata is simply skipped.
 
 For the web UI, I'm simply using vanilla JS. The theme is inspired by Bluecurve, an old Fedora theme.
 
-### Setting up a dev environment
+### Quick start (Linux)
 
-* Install Visual Studio 2022 with the ASP.NET and Linux C++ workloads. I'm not sure if you need anything extra for working with WSL.
-* Enable WSL and install a distro
-* Install PostgreSQL, create a database and a user/password with full rights to that database
-* Open the meta-cli folder in Visual Studio. Note that this is a C++ cmake project.
-* Build the meta-cli project (make sure you build it for Linux in the Ubuntu WSL instance).
-* Open the main solution - New Librarian.sln.
-* Configure appsettings.json (see below)
-* Run the migrations (using MigratePostgres.cmd) to create the tables in the database
-* Run in WSL
+A top-level `Makefile` wraps the common tasks. From the repository root:
 
-### Setting up appsettings.json
-In the Librarian project, there is an "appsettings.json" file which contains the application's configuration. There are some things that need to be set up here for it to start up properly.
-* the `BaseDirectory` is the root folder of the data collection. I recommend creating a temporary folder and dumping some media files in there to be used for testing.
-* `ConnectionsStrings.DB` is the connection string to your postgres database. Note: when creating migrations, you will also need to set the connection string in PostgresDatabaseContext.cs.
-* `Languages` contains a list of languages to be used for full text search. Currently, this is implemented using PostgreSQL's full text search features. Use this query to find what languages are supported in your SQL instance: `SELECT cfgname FROM pg_ts_config;`. More can be added, read about it in the Postgres documentation.
-* `MetadataCliPath` set this to the path of the built meta-cli tool.
+```sh
+make check-deps   # see which dependencies are installed
+make start-db     # start a PostgreSQL container (Docker or Podman)
+make run          # build and run the server at http://localhost:5080
+```
+
+The database schema is created automatically on first run (migrations are applied at startup), so there is no separate migration step. By default `make run` serves a throwaway library in `./.dev-library`; point it at real data with `make run LIBRARY_DIR=/path/to/media`.
+
+Run `make help` for the full list of targets:
+
+| Target | Description |
+| --- | --- |
+| `make` / `make all` | Build everything (.NET solution + `meta-cli`) |
+| `make app` | Build just the .NET solution |
+| `make cli` | Build `meta-cli` (needs `cmake` + ffmpeg dev libraries) |
+| `make run` | Build and run the web server |
+| `make start-db` / `make stop-db` / `make clean-db` | Start / stop / delete the dev database container |
+| `make check-deps` | Check that build/run dependencies are installed |
+| `make clean` | Remove build artifacts |
+
+### Prerequisites
+
+* The **.NET 10 SDK**.
+* **Docker** or **Podman** (for the dev database via `make start-db`), or your own PostgreSQL instance.
+* Optional, only for building `meta-cli`: **cmake**, a **C++ compiler**, and the **ffmpeg development libraries** (Fedora: `ffmpeg-free-devel`, or `ffmpeg-devel` from RPM Fusion; Debian/Ubuntu: `libavformat-dev libavcodec-dev libavutil-dev`). The git submodules under `meta-cli/import` are checked out automatically by `make cli`.
+
+### Configuration
+
+Configuration lives in `Librarian/appsettings.json`. Every value can also be overridden with environment variables (which is how `make run` wires things up), e.g. `ConnectionStrings__DB`, `BaseDirectory`, `MetadataCliPath`.
+
+* `BaseDirectory` — the root folder of the data collection. For testing, create a temporary folder and drop some media files in it.
+* `ConnectionStrings:DB` — the PostgreSQL connection string. The same value is used both at runtime and when applying/creating migrations (the design-time factory reads `appsettings.json` and environment variables).
+* `Languages` — languages used for full-text search via PostgreSQL's full-text search. List the configurations supported by your server with `SELECT cfgname FROM pg_ts_config;`.
+* `MetadataCliPath` — path to the built `meta-cli` binary (`meta-cli/build/meta-cli` when built with `make cli`). Leave it pointing at a missing path to disable media metadata collection.
+
+### Creating migrations
+
+Migrations are applied automatically at startup. To create a new one after changing the model, install the EF tools (`dotnet tool install --global dotnet-ef`) and run `./make-migrations.sh <Name>` from the `Librarian` directory (or `make-migrations.cmd` on Windows).
+
+### Windows / Visual Studio
+
+The solution still opens and runs in Visual Studio 2022. The `meta-cli` C++ project can be built with the CMake presets (including the WSL/Linux remote workflow), and the `.cmd` scripts in the `Librarian` folder mirror the `.sh` helpers.
 
 ## Current state/screenshots
 

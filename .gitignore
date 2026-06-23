@@ -442,3 +442,10 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 _deps
+# Librarian local dev (Makefile)
+/.dev-library/
+/.dev-appdata/
+/meta-cli/build/
+
+# Track the top-level Makefile (the CMake rule above ignores all "Makefile"s)
+!/Makefile
