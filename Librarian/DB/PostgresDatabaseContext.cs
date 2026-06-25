@@ -35,6 +35,21 @@ namespace Librarian.DB
             modelBuilder.Entity<TextAttribute>()
                 .HasIndex(a => a.ValueSearch)
                 .HasMethod("gin");
+
+            // Each typed attribute is owned by exactly one of {File, Collection} (collection_plan.md §5.3).
+            // num_nonnulls is a Postgres built-in, hence the constraint lives in the Npgsql context.
+            AddAttributeOwnerCheck<TextAttribute>(modelBuilder, "CK_TextAttributes_Owner");
+            AddAttributeOwnerCheck<IntegerAttribute>(modelBuilder, "CK_IntegerAttributes_Owner");
+            AddAttributeOwnerCheck<FloatAttribute>(modelBuilder, "CK_FloatAttributes_Owner");
+            AddAttributeOwnerCheck<DateAttribute>(modelBuilder, "CK_DateAttributes_Owner");
+            AddAttributeOwnerCheck<BlobAttribute>(modelBuilder, "CK_BlobAttributes_Owner");
+        }
+
+        private static void AddAttributeOwnerCheck<TAttr>(ModelBuilder modelBuilder, string name)
+            where TAttr : AttributeBase
+        {
+            modelBuilder.Entity<TAttr>()
+                .ToTable(t => t.HasCheckConstraint(name, "num_nonnulls(\"FileId\", \"CollectionId\") = 1"));
         }
     }
 

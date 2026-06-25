@@ -20,6 +20,29 @@ namespace Librarian.Model
 
         #endregion
 
+        #region Physical / addressing layer (collection_plan.md §3.1)
+
+        /// <summary>Whether this file's bytes live on disk (<see cref="FileSource.Filesystem"/>) or inside
+        /// an archive (<see cref="FileSource.ArchiveEntry"/>). Disk I/O routes on this.</summary>
+        public FileSource Source { get; set; } = FileSource.Filesystem;
+
+        /// <summary>For an <see cref="FileSource.ArchiveEntry"/>, the archive <see cref="IndexedFile"/> this
+        /// entry lives in (null for filesystem files). Deleting the archive cascades to its entries.</summary>
+        [ForeignKey(nameof(ParentFile))]
+        public int? ParentFileId { get; set; }
+        public virtual IndexedFile? ParentFile { get; set; }
+
+        /// <summary>The archive's own entries (empty for a non-archive file).</summary>
+        public virtual ICollection<IndexedFile> Children { get; set; } = new List<IndexedFile>();
+
+        /// <summary>Path within the archive, e.g. "Disc1/03.flac". The canonical locator is
+        /// (<see cref="ParentFileId"/>, <see cref="InternalPath"/>) under a composite unique index;
+        /// <see cref="Path"/> stays a synthesized display string only. Null for filesystem files.</summary>
+        [MaxLength(4096)]
+        public string? InternalPath { get; set; }
+
+        #endregion
+
         #region Item association (plan.md Standing decisions)
 
         /// <summary>This file's role within its Item (primary content, metadata sidecar, or resource).</summary>
@@ -34,6 +57,13 @@ namespace Librarian.Model
         public int? ItemId { get; set; }
 
         public virtual Item? Item { get; set; }
+
+        /// <summary>The Collection that owns this file directly (collection-level art/nfo), as opposed to
+        /// belonging to an Item. A file is owned by at most one of <see cref="Item"/> or
+        /// <see cref="Collection"/> (collection_plan.md §3.2).</summary>
+        [ForeignKey(nameof(Collection))]
+        public int? CollectionId { get; set; }
+        public virtual Collection? Collection { get; set; }
 
         #endregion
 

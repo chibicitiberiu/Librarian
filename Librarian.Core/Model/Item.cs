@@ -19,6 +19,12 @@ namespace Librarian.Model
         /// <summary>Auto (owned by the heuristic) vs Manual (a user correction the pass must preserve).</summary>
         public RoleSource RoleSource { get; set; } = RoleSource.Auto;
 
+        /// <summary>The structural Collection this Item belongs to (e.g. the Season of an episode), or
+        /// null if the Item is not part of any collection (collection_plan.md §3.2).</summary>
+        [ForeignKey(nameof(ParentCollection))]
+        public int? ParentCollectionId { get; set; }
+        public virtual Collection? ParentCollection { get; set; }
+
         /// <summary>The files that make up this Item (one is the primary; the rest sidecars/companions).</summary>
         public virtual ICollection<IndexedFile> Files { get; set; } = null!;
     }

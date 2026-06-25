@@ -8,11 +8,20 @@ namespace Librarian.Model
         [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        [ForeignKey(nameof(File)), Required]
+        /// <summary>The file this attribute describes. Exactly one of <see cref="FileId"/> /
+        /// <see cref="CollectionId"/> is set (DB check constraint + writer guard); <see cref="SubResourceId"/>
+        /// is only valid alongside a file. No longer [Required] now that collection metadata reuses these
+        /// tables (collection_plan.md §3.3).</summary>
+        [ForeignKey(nameof(File))]
         public int? FileId { get; set; }
 
         [ForeignKey(nameof(SubResource))]
         public int? SubResourceId { get; set; }
+
+        /// <summary>The collection this attribute describes (collection-level metadata such as a Show
+        /// title), mutually exclusive with <see cref="FileId"/>.</summary>
+        [ForeignKey(nameof(Collection))]
+        public int? CollectionId { get; set; }
 
         [ForeignKey(nameof(AttributeDefinition))]
         public int AttributeDefinitionId { get; set; }
@@ -53,6 +62,11 @@ namespace Librarian.Model
         /// Associated file
         /// </summary>
         public virtual SubResource? SubResource { get; set; }
+
+        /// <summary>
+        /// Associated collection (when this attribute describes a collection rather than a file)
+        /// </summary>
+        public virtual Collection? Collection { get; set; }
 
         /// <summary>
         /// Metadata attribute
