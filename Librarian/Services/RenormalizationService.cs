@@ -60,20 +60,28 @@ namespace Librarian.Services
             foreach (var providerId in rawRows.Select(r => r.ProviderId).Where(p => p is not null).Distinct())
                 RemoveCanonicalForProvider(fileId, providerId!);
 
+            // De-dupe promotions by (field, sub-resource, value): several raw keys can map to the
+            // same canonical field+value, and we want one row per (field, value) on each sub-resource
+            // (distinct sub-resources are kept). See MetadataService for the rationale.
+            var promotedKeys = new HashSet<(int Def, int? Sub, string Value)>();
+
             int produced = 0;
             foreach (var raw in rawRows)
             {
                 if (!Guid.TryParse(raw.ProviderId, out var providerGuid))
                     continue;
 
-                var canonical = normalizer.Normalize(raw.Namespace, raw.Key, raw.Value, providerGuid);
-                if (canonical is null)
-                    continue;
+                foreach (var canonical in normalizer.NormalizeAll(raw.Namespace, raw.Key, raw.Value, providerGuid))
+                {
+                    canonical.FileId = raw.FileId;
+                    canonical.SubResourceId = raw.SubResourceId;
 
-                canonical.FileId = raw.FileId;
-                canonical.SubResourceId = raw.SubResourceId;
-                Store(canonical);
-                produced++;
+                    if (!promotedKeys.Add((canonical.AttributeDefinitionId, raw.SubResourceId, MetadataService.CanonicalValueKey(canonical))))
+                        continue;
+
+                    Store(canonical);
+                    produced++;
+                }
             }
 
             await dbContext.SaveChangesAsync();

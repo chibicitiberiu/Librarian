@@ -59,6 +59,10 @@
 
     <hr />
 
+    <div class="window-body">
+
+    <partial name="_Sidebar" />
+
     <div class="window-content">
         @if (Model.Results is null)
         {
@@ -126,6 +130,8 @@
                 </div>
             }
         }
+    </div>
+
     </div>
 
     <div class="window-statusbar">

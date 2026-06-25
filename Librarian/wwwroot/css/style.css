@@ -1,4 +1,4 @@
-﻿body {
+body {
   margin: 0;
   padding: 0;
 }
@@ -18,6 +18,60 @@
 .main {
   margin-top: 2.75em;
   margin-bottom: 2em;
+}
+
+.window-body {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -moz-box;
+  display: flex;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: row;
+  -moz-box-orient: horizontal;
+  -moz-box-direction: normal;
+  -ms-flex-direction: row;
+  flex-direction: row;
+  -webkit-box-align: stretch;
+  -webkit-align-items: stretch;
+  -moz-box-align: stretch;
+  -ms-flex-align: stretch;
+  align-items: stretch;
+  -webkit-box-flex: 1;
+  -webkit-flex-grow: 1;
+  -moz-box-flex: 1;
+  -ms-flex-positive: 1;
+  flex-grow: 1;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 13em;
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.25em 0;
+}
+
+.sidebar-section {
+  margin-bottom: 0.5em;
+}
+
+.sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-item img {
+  vertical-align: middle;
+  margin-right: 0.4em;
+  border: 0;
 }
 
 .footer {
@@ -281,64 +335,81 @@ td.fill {
   margin-bottom: 0.15em;
 }
 
-.search-bar .input {
-  margin-right: 0.25em;
+.item-header {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -moz-box;
+  display: flex;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: row;
+  -moz-box-orient: horizontal;
+  -moz-box-direction: normal;
+  -ms-flex-direction: row;
+  flex-direction: row;
+  -webkit-box-align: flex-start;
+  -webkit-align-items: flex-start;
+  -moz-box-align: flex-start;
+  -ms-flex-align: flex-start;
+  align-items: flex-start;
+  margin-bottom: 0.75em;
+  padding-bottom: 0.5em;
 }
 
-.search-options {
-  gap: 0.75em;
+.item-cover {
+  display: block;
+  margin-right: 1em;
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
 }
-.search-options label {
-  cursor: default;
+.item-cover img {
+  display: block;
+  max-width: 11em;
+  max-height: 11em;
+  border: 1px solid;
+  padding: 2px;
 }
 
-.search-hint, .search-summary {
-  margin: 0.5em 0.25em;
+.item-files {
+  -webkit-box-flex: 1;
+  -webkit-flex-grow: 1;
+  -moz-box-flex: 1;
+  -ms-flex-positive: 1;
+  flex-grow: 1;
+  min-width: 0;
 }
 
-.search-results {
+.item-file-list {
   list-style: none;
-  margin: 0;
+  margin: 0 0 0.25em 0;
   padding: 0;
 }
-.search-result {
-  padding: 0.4em 0.25em;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.25);
-}
-.search-result-title {
-  font-weight: bold;
-}
-.search-result-path {
-  font-size: 0.85em;
-  opacity: 0.7;
-}
-.search-result-snippet {
-  margin-top: 0.2em;
-  font-size: 0.9em;
-}
-.search-result-snippet mark {
-  padding: 0 1px;
-  font-weight: bold;
-  background: yellow;
-}
 
-.badge {
-  display: inline-block;
-  margin-left: 0.4em;
-  padding: 0 0.4em;
-  border-radius: 0.4em;
-  font-size: 0.75em;
-  font-weight: normal;
+.item-file {
+  padding: 1px 0.25em;
+}
+.item-file img {
   vertical-align: middle;
-  color: #fff;
-}
-.badge-content {
-  background: #3a6ea5;
-}
-.badge-metadata {
-  background: #6a8a3a;
+  margin-right: 0.4em;
+  border: 0;
 }
 
-.search-pager {
-  margin-top: 0.5em;
+.item-file-open {
+  margin-left: 0.4em;
+  text-decoration: none;
+}
+
+.badge-primary {
+  margin-left: 0.5em;
+  padding: 0 0.4em;
+  font-size: 0.75em;
+  vertical-align: middle;
+}
+
+.item-resources {
+  margin-top: 0.25em;
+}
+.item-resources summary {
+  cursor: pointer;
 }

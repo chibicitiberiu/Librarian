@@ -1,5 +1,7 @@
 ﻿using GitignoreParserNet;
 using Librarian.DB;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 using Librarian.Jobs;
 using Librarian.Model;
 using Librarian.Resources;
@@ -33,6 +35,10 @@ namespace Librarian.Services
 
         private GitignoreParser? gitIgnoreParser;
         private FileSystemWatcher? fsWatcher;
+
+        // Per-path debounce timers for watcher events (coalesce a write's event burst).
+        private readonly ConcurrentDictionary<string, CancellationTokenSource> debounce = new();
+        private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(750);
 
         private readonly bool removeIndexOnDelete;
 
@@ -71,15 +77,35 @@ namespace Librarian.Services
             CreateFileSystemWatcher();
         }
 
+        // Patterns ignored out of the box: partial downloads, editor/OS cruft and lock files that
+        // are never library content. The user's IgnoreListFile (if any) is layered on top, so it
+        // can add to — but cannot silently lose — these sensible defaults.
+        private const string DefaultIgnorePatterns = """
+            *.part
+            *.crdownload
+            *.download
+            *.tmp
+            *.temp
+            *.partial
+            ~$*
+            .~lock.*
+            Thumbs.db
+            desktop.ini
+            .DS_Store
+            @eaDir/
+            """;
+
         private async Task LoadIgnoreFile()
         {
-            // not configured
-            string? ignoreFile = config["Indexing:IgnoreListFile"];
-            if (string.IsNullOrWhiteSpace(ignoreFile))
-                return;
+            string patterns = DefaultIgnorePatterns;
 
-            string content = await File.ReadAllTextAsync(ignoreFile);
-            gitIgnoreParser = new GitignoreParser(content);
+            string? ignoreFile = config["Indexing:IgnoreListFile"];
+            if (!string.IsNullOrWhiteSpace(ignoreFile) && File.Exists(ignoreFile))
+                patterns += "\n" + await File.ReadAllTextAsync(ignoreFile);
+            else if (!string.IsNullOrWhiteSpace(ignoreFile))
+                logger.LogWarning("Configured ignore list file '{ignoreFile}' was not found; using defaults only.", ignoreFile);
+
+            gitIgnoreParser = new GitignoreParser(patterns);
         }
 
         private void CreateFileSystemWatcher()
@@ -125,30 +151,42 @@ namespace Librarian.Services
 
         #region File system watching
 
-        private async void FsWatcher_Created(object sender, FileSystemEventArgs e)
+        // Created and Changed are debounced: writing a single file fires a burst of these events, and
+        // coalescing them per path avoids re-indexing the same file many times mid-write.
+        private void FsWatcher_Created(object sender, FileSystemEventArgs e)
         {
-            try
-            {
-                logger.LogTrace("FsWatcher: created {file} [{change}]", e.FullPath, e.ChangeType);
-                await OnFileCreated(e.FullPath);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Exception occurred while updating index on file created.");
-            }
+            logger.LogTrace("FsWatcher: created {file} [{change}]", e.FullPath, e.ChangeType);
+            ScheduleIndex(e.FullPath);
         }
 
-        private async void FsWatcher_Changed(object sender, FileSystemEventArgs e)
+        private void FsWatcher_Changed(object sender, FileSystemEventArgs e)
         {
-            try
+            logger.LogTrace("FsWatcher: changed {file} [{change}]", e.FullPath, e.ChangeType);
+            ScheduleIndex(e.FullPath);
+        }
+
+        /// <summary>Debounce: (re)start a timer per path; only the last event in a burst actually
+        /// re-indexes, once the file has been quiet for <see cref="DebounceDelay"/>.</summary>
+        private void ScheduleIndex(string fullPath)
+        {
+            var cts = new CancellationTokenSource();
+            debounce.AddOrUpdate(fullPath, cts, (_, existing) => { existing.Cancel(); return cts; });
+
+            _ = Task.Run(async () =>
             {
-                logger.LogTrace("FsWatcher: changed {file} [{change}]", e.FullPath, e.ChangeType);
-                await OnFileChanged(e.FullPath);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Exception occurred while updating index on file changed.");
-            }
+                try
+                {
+                    await Task.Delay(DebounceDelay, cts.Token);
+                    debounce.TryRemove(new KeyValuePair<string, CancellationTokenSource>(fullPath, cts));
+                    await OnFileChanged(fullPath);
+                }
+                catch (OperationCanceledException) { /* superseded by a newer event for this path */ }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Exception occurred while updating index on file change.");
+                }
+                finally { cts.Dispose(); }
+            });
         }
 
         private async void FsWatcher_Renamed(object sender, RenamedEventArgs e)
@@ -169,6 +207,9 @@ namespace Librarian.Services
             try
             {
                 logger.LogTrace("FsWatcher: deleted {file} [{change}]", e.FullPath, e.ChangeType);
+                // Drop any pending re-index for a path that no longer exists.
+                if (debounce.TryRemove(e.FullPath, out var pending))
+                    pending.Cancel();
                 await OnFileDeleted(e.FullPath);
             }
             catch (Exception ex)
@@ -186,16 +227,42 @@ namespace Librarian.Services
 
         #region Indexing
 
-        public async Task IndexAll()
+        /// <summary>Full index. <paramref name="force"/> re-extracts every file even when it looks
+        /// unchanged — a "full reindex" that rebuilds the canonical layer from scratch.</summary>
+        public async Task IndexAll(bool force = false)
         {
             var jobToken = jobTracker.StartJob(Strings.IndexingAll);
 
-            using var scope = serviceProvider.CreateScope();
-            var scopedServices = GetScopedServices(scope);
+            await IndexDirectoryInternal(new DirectoryInfo(fileService.BasePath), recurse: true, force: force, jobToken: jobToken);
 
-            await IndexDirectoryInternal(new DirectoryInfo(fileService.BasePath), recurse: true, jobToken: jobToken, scopedServices: scopedServices);
+            using (var scope = serviceProvider.CreateScope())
+                await PruneMissing(GetScopedServices(scope));
 
             jobToken.Finish();
+        }
+
+        /// <summary>After a full walk, marks files that are no longer on disk as not-existing (soft,
+        /// like the delete watcher) — clears out leftovers such as completed/removed <c>.part</c>
+        /// downloads and anything deleted while the app was offline.</summary>
+        private async Task PruneMissing(ScopedServices scopedServices)
+        {
+            var indexed = await scopedServices.DbContext.IndexedFiles
+                .Where(f => f.Exists)
+                .Select(f => new { f.Id, f.Path })
+                .ToListAsync();
+
+            var missing = indexed
+                .Where(f => { string p = fileService.Resolve(f.Path); return !File.Exists(p) && !Directory.Exists(p); })
+                .Select(f => f.Id)
+                .ToList();
+
+            if (missing.Count == 0)
+                return;
+
+            await scopedServices.DbContext.IndexedFiles
+                .Where(f => missing.Contains(f.Id))
+                .ExecuteUpdateAsync(u => u.SetProperty(f => f.Exists, false));
+            logger.LogInformation("Pruned {count} files no longer on disk.", missing.Count);
         }
 
         public async Task Index(FileSystemInfo fsInfo, bool recurseIfDirectory)
@@ -211,10 +278,7 @@ namespace Librarian.Services
             var relativePath = fileService.GetRelativePath(directory);
             var jobToken = jobTracker.StartJob(string.Format(Strings.IndexingDirectory, relativePath));
 
-            using var scope = serviceProvider.CreateScope();
-            var scopedServices = GetScopedServices(scope);
-
-            await IndexDirectoryInternal(directory, recurse: recurse, jobToken: jobToken, scopedServices: scopedServices);
+            await IndexDirectoryInternal(directory, recurse: recurse, force: false, jobToken: jobToken);
 
             jobToken.Finish();
         }
@@ -224,15 +288,14 @@ namespace Librarian.Services
             var relativePath = fileService.GetRelativePath(file);
             var jobToken = jobTracker.StartJob(string.Format(Strings.IndexingFile, relativePath));
 
-            using var scope = serviceProvider.CreateScope();
-            var scopedServices = GetScopedServices(scope);
-
-            await IndexFileInternal(file, scopedServices: scopedServices);
+            await IndexFileInternal(file, force: false);
 
             jobToken.Finish();
         }
 
-        private async Task IndexDirectoryInternal(DirectoryInfo directory, bool recurse, JobToken jobToken, ScopedServices scopedServices)
+        // Each file/directory is indexed in its OWN scope (and DbContext), so the change tracker never
+        // accumulates the whole library — a unit of work per item (RC-6).
+        private async Task IndexDirectoryInternal(DirectoryInfo directory, bool recurse, bool force, JobToken jobToken)
         {
             if (ShouldIgnoreDirectory(directory))
             {
@@ -241,7 +304,8 @@ namespace Librarian.Services
             }
 
             logger.LogTrace("Indexing directory {folderName}", directory.FullName);
-            await UpdateIndex(directory, scopedServices);
+            using (var scope = serviceProvider.CreateScope())
+                await UpdateIndex(directory, force, GetScopedServices(scope));
 
             if (recurse)
             {
@@ -251,19 +315,17 @@ namespace Librarian.Services
                 while (queue.Count > 0)
                 {
                     var item = queue.Dequeue();
-
-                    var relativePath = fileService.GetRelativePath(directory);
-                    jobToken.AdvanceProgress(1, relativePath);
+                    jobToken.AdvanceProgress(1, fileService.GetRelativePath(item.FullName));
 
                     try
                     {
                         if (item is FileInfo file)
                         {
-                            await IndexFileInternal(file, scopedServices);
+                            await IndexFileInternal(file, force);
                         }
                         else if (item is DirectoryInfo dir)
                         {
-                            await IndexDirectoryInternal(dir, false, jobToken, scopedServices);
+                            await IndexDirectoryInternal(dir, false, force, jobToken);
 
                             var opts = new EnumerationOptions() { IgnoreInaccessible = true, ReturnSpecialDirectories = false };
                             queue.EnqueueRange(dir.EnumerateDirectories("*", opts));
@@ -280,8 +342,11 @@ namespace Librarian.Services
             }
         }
 
-        private async Task IndexFileInternal(FileInfo file, ScopedServices scopedServices)
+        private async Task IndexFileInternal(FileInfo file, bool force)
         {
+            using var scope = serviceProvider.CreateScope();
+            var scopedServices = GetScopedServices(scope);
+
             if (ShouldIgnoreFile(file, scopedServices))
             {
                 logger.LogTrace("Ignoring file {fileName}", file.FullName);
@@ -289,10 +354,7 @@ namespace Librarian.Services
             }
 
             logger.LogTrace("Indexing file {fileName}", file.FullName);
-
-            using var scope = serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetService<DatabaseContext>()!;
-            await UpdateIndex(file, scopedServices);
+            await UpdateIndex(file, force, scopedServices);
         }
 
         #endregion
@@ -329,14 +391,18 @@ namespace Librarian.Services
 
         #region Updating index
 
-        private async Task UpdateIndex(DirectoryInfo directory, ScopedServices scopedServices)
+        private async Task UpdateIndex(DirectoryInfo directory, bool force, ScopedServices scopedServices)
         {
             var relPath = fileService.GetRelativePath(directory);
 
             var indexedFile = scopedServices.DbContext.IndexedFiles.FirstOrDefault(x => x.Path == relPath);
+            // Re-extract only when the directory actually changed (its mtime moves when its contents
+            // change) — otherwise every full index needlessly re-ran metadata for every folder.
+            bool changed = force || indexedFile == null || HasTimestampChanged(directory.LastWriteTimeUtc, indexedFile.Modified);
+
             if (indexedFile == null)
             {
-                indexedFile = new IndexedFile() { Path = relPath, };
+                indexedFile = new IndexedFile() { Path = relPath };
                 scopedServices.DbContext.Add(indexedFile);
             }
 
@@ -346,15 +412,16 @@ namespace Librarian.Services
             indexedFile.Modified = directory.LastWriteTimeUtc;
             await scopedServices.DbContext.SaveChangesAsync();
 
-            await scopedServices.MetadataService.UpdateMetadata(indexedFile);
+            if (changed)
+                await scopedServices.MetadataService.UpdateMetadata(indexedFile);
         }
 
-        private async Task UpdateIndex(FileInfo file, ScopedServices scopedServices)
+        private async Task UpdateIndex(FileInfo file, bool force, ScopedServices scopedServices)
         {
             var relPath = fileService.GetRelativePath(file);
             var indexedFile = scopedServices.DbContext.IndexedFiles.FirstOrDefault(x => x.Path == relPath);
 
-            if (indexedFile == null || HasFileChanged(file, indexedFile))
+            if (force || indexedFile == null || HasFileChanged(file, indexedFile))
             {
                 if (indexedFile == null)
                 {
@@ -375,10 +442,14 @@ namespace Librarian.Services
 
         private static bool HasFileChanged(FileInfo file, IndexedFile indexedFile)
         {
-            return file.LastWriteTime != indexedFile.Modified
-                || file.CreationTime != indexedFile.Created
+            // Compare instants with a 1s tolerance: the DB can store coarser precision than the
+            // filesystem, which otherwise made every file look "changed" and re-extract each index.
+            return HasTimestampChanged(file.LastWriteTimeUtc, indexedFile.Modified)
                 || file.Length != indexedFile.Size;
         }
+
+        private static bool HasTimestampChanged(DateTime diskUtc, DateTimeOffset indexed)
+            => Math.Abs((diskUtc - indexed.UtcDateTime).Ticks) > TimeSpan.TicksPerSecond;
 
         #endregion
 

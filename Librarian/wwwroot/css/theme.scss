@@ -150,6 +150,42 @@ body {
     }
 }
 
+.sidebar {
+    @include common-panel;
+    border-right: 1px solid #A1A1A1;
+}
+
+.sidebar-heading {
+    font-weight: bold;
+    color: #6B6B6B;
+    padding: .5em .7em .15em;
+    white-space: nowrap;
+}
+
+.sidebar-item {
+    display: block;
+    padding: .25em .7em;
+    color: $color-link;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: default;
+
+    &:hover {
+        background: $color-panel-highlight;
+    }
+
+    // Bluecurve list selection: solid blue bar with light text.
+    &.active {
+        background: #5B82C2;
+        color: white;
+    }
+
+    &.disabled {
+        color: #9A9A9A;
+        opacity: 1;
+    }
+}
+
 .window {
     @include common-panel;
     outline: 1px solid $color-outer-border-highlight;
@@ -228,4 +264,27 @@ hr {
 
 .invalid {
     background-color: lightcoral;
+}
+
+// Item Viewer (M6)
+.item-cover img {
+    border-color: $color-input-outer-border;
+    background: $color-content;
+}
+
+.item-file.current {
+    background: $color-panel-highlight;
+}
+
+.item-file-name {
+    color: $color-link;
+}
+
+.badge-primary {
+    background: $color-link-active;
+    color: white;
+}
+
+.item-resources > summary {
+    color: #6B6B6B;
 }

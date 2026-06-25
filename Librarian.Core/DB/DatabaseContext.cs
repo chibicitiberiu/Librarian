@@ -11,6 +11,7 @@ namespace Librarian.DB
     public class DatabaseContext : DbContext
     {
         public DbSet<IndexedFile> IndexedFiles { get; set; }
+        public DbSet<Item> Items { get; set; }
         public DbSet<IndexedFileContents> IndexedFileContents { get; set; }
         public DbSet<AttributeDefinition> AttributeDefinitions { get; set; }
         public DbSet<AttributeAlias> AttributeAliases { get; set; }
@@ -44,6 +45,15 @@ namespace Librarian.DB
         {
             modelBuilder.Entity<IndexedFile>()
                 .HasIndex(f => f.Path).IsUnique(true);
+
+            modelBuilder.Entity<IndexedFile>()
+                .HasIndex(f => f.ItemId);
+            modelBuilder.Entity<IndexedFile>()
+                .HasOne(f => f.Item)
+                .WithMany(i => i.Files)
+                .HasForeignKey(f => f.ItemId)
+                // Deleting an Item just unassociates its files; the association pass re-evaluates.
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<AttributeDefinition>()
                 .HasIndex(nameof(AttributeDefinition.Group), nameof(AttributeDefinition.Name))

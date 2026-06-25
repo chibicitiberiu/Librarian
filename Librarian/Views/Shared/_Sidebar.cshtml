@@ -1,0 +1,61 @@
+@using Librarian.Utils
+@using Librarian.Library
+@{
+    // Current location, set by each page via ViewData.
+    var currentPage = ViewData["CurrentPage"];
+    var currentCategory = ViewData["CurrentCategory"] as string;
+}
+<div class="sidebar">
+
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Places</div>
+        <ul class="sidebar-list">
+            <li>
+                <a class="sidebar-item @HtmlUtils.ActiveOnPage("browse", currentPage)"
+                   href="@Url.Action("Index", "Browse", new { path = "" })">
+                    <img src="~/icons/16/places/home.png" /> Home
+                </a>
+            </li>
+            <li>
+                <span class="sidebar-item disabled" title="Bookmarks — coming soon">
+                    <img src="~/icons/16/places/bookmarks.png" /> Bookmarks
+                </span>
+            </li>
+            <li>
+                <a class="sidebar-item @HtmlUtils.ActiveOnPage("search", currentPage)"
+                   href="@Url.Action("Index", "Search")">
+                    <img src="~/icons/16/places/search.png" /> Search
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Library</div>
+        <ul class="sidebar-list">
+            @foreach (var cat in LibraryCategories.All)
+            {
+                var active = (string?)currentPage == "library" && currentCategory == cat.Key ? "active" : "";
+                <li>
+                    @* view explicitly nulled so the link drops the current request's ambient {view}. *@
+                    <a class="sidebar-item @active"
+                       href="@Url.Action("Index", "Library", new { category = cat.Key, view = (string?)null })">
+                        <img src="~/icons/16/places/@cat.Icon" /> @cat.DisplayName
+                    </a>
+                </li>
+            }
+        </ul>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Smart views</div>
+        <ul class="sidebar-list">
+            <li>
+                <span class="sidebar-item disabled" title="Custom views — coming soon">
+                    <img src="~/icons/16/places/all.png" /> ＋ New view…
+                </span>
+            </li>
+        </ul>
+    </div>
+
+</div>

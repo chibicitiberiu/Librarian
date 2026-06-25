@@ -2,6 +2,7 @@
 
 $header-size: 2.75em;
 $footer-size: 2em;
+$sidebar-size: 13em;
 
 body {
     margin: 0;
@@ -21,6 +22,43 @@ body {
 .main {
     margin-top: $header-size;
     margin-bottom: $footer-size;
+}
+
+// Places sidebar — lives *inside* the window, beside the content (Nautilus-style). The window
+// body is a horizontal split: a fixed-width sidebar pane + the flex-growing content. Old-Gecko
+// safe via the -moz-box fallbacks in the flex mixins.
+.window-body {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(stretch);
+    @include flex-grow(1);
+    min-height: 0;
+}
+
+.sidebar {
+    width: $sidebar-size;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    @include box-sizing(border-box);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: .25em 0;
+}
+
+.sidebar-section {
+    margin-bottom: .5em;
+}
+
+.sidebar-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.sidebar-item img {
+    vertical-align: middle;
+    margin-right: .4em;
+    border: 0;
 }
 
 .footer {
@@ -199,4 +237,70 @@ td.fill {
 
 .metadata-group-title {
     margin-bottom: .15em;
+}
+
+// Item Viewer (M6): a cover preview beside the role-grouped "Files in this Item" pane. Old-Gecko
+// safe via the flex mixins; the cover pane is fixed-width, the file list grows.
+.item-header {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(flex-start);
+    margin-bottom: .75em;
+    padding-bottom: .5em;
+}
+
+.item-cover {
+    display: block;
+    margin-right: 1em;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+
+    img {
+        display: block;
+        max-width: 11em;
+        max-height: 11em;
+        border: 1px solid;
+        padding: 2px;
+    }
+}
+
+.item-files {
+    @include flex-grow(1);
+    min-width: 0;
+}
+
+.item-file-list {
+    list-style: none;
+    margin: 0 0 .25em 0;
+    padding: 0;
+}
+
+.item-file {
+    padding: 1px .25em;
+
+    img {
+        vertical-align: middle;
+        margin-right: .4em;
+        border: 0;
+    }
+}
+
+.item-file-open {
+    margin-left: .4em;
+    text-decoration: none;
+}
+
+.badge-primary {
+    margin-left: .5em;
+    padding: 0 .4em;
+    font-size: .75em;
+    vertical-align: middle;
+}
+
+.item-resources {
+    margin-top: .25em;
+
+    summary {
+        cursor: pointer;
+    }
 }

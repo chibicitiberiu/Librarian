@@ -1,0 +1,10 @@
+@model Librarian.ViewModels.ItemFileRow
+<li class="item-file @(Model.IsCurrent ? "current" : "")">
+    <img src="@Model.IconUrl" alt="" />
+    <a class="item-file-name" href="@Url.Action("Index", "Metadata", new { path = Model.Path })">@Model.Name</a>
+    @if (Model.IsPrimary)
+    {
+        <span class="badge-primary" title="The Item's primary content file">primary</span>
+    }
+    <a class="item-file-open" href="@Url.Action("Index", "Browse", new { path = Model.Path })" title="Open file">↗</a>
+</li>

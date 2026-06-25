@@ -7,6 +7,9 @@ namespace Librarian.Utils
 {
     public class NaturalComparer : IComparer<string>
     {
+        /// <summary>Shared, stateless instance.</summary>
+        public static readonly NaturalComparer Instance = new();
+
         public int Compare(string? x, string? y)
         {
             if (x == null && y == null)

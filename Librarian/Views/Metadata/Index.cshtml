@@ -52,7 +52,54 @@
         <button id="btn-delete" title="Delete the selected metadata fields."><img src="~/icons/32/edit-delete.png" />Delete</button>
     </div>
 
+    <div class="window-body">
+
+    <partial name="_Sidebar" />
+
     <div class="window-content">
+
+        @if (Model.CoverPath != null || Model.HasItem)
+        {
+            <div class="item-header">
+                @if (Model.CoverPath != null)
+                {
+                    <a class="item-cover" href="@Url.Action("Index", "Browse", new { path = Model.CoverPath })">
+                        <img src="@Url.Action("Index", "Browse", new { path = Model.CoverPath })" alt="Cover preview" />
+                    </a>
+                }
+
+                @if (Model.HasItem)
+                {
+                    <div class="item-files">
+                        <h2 class="metadata-group-title">Files in this Item</h2>
+
+                        <ul class="item-file-list">
+                            @foreach (var f in Model.Content)
+                            {
+                                <partial name="_ItemFileRow" model="f" />
+                            }
+                            @foreach (var f in Model.Sidecars)
+                            {
+                                <partial name="_ItemFileRow" model="f" />
+                            }
+                        </ul>
+
+                        @if (Model.Resources.Count > 0)
+                        {
+                            <details class="item-resources" open="@(Model.Resources.Count <= 6)">
+                                <summary>Resources (@Model.Resources.Count)</summary>
+                                <ul class="item-file-list">
+                                    @foreach (var f in Model.Resources)
+                                    {
+                                        <partial name="_ItemFileRow" model="f" />
+                                    }
+                                </ul>
+                            </details>
+                        }
+                    </div>
+                }
+            </div>
+        }
 
         @foreach (var group in Model.Metadata.GroupBy(x => x.AttributeDefinition.Group))
         {
@@ -125,6 +172,8 @@
                 </table>
             </div>
         }
+    </div>
+
     </div>
 
     <div class="window-statusbar">

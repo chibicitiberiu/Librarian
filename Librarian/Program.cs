@@ -55,12 +55,15 @@ namespace Librarian
             builder.Services.AddHostedService(provider => provider.GetService<IndexingService>()!);
             builder.Services.AddScoped<MetadataService>();
             builder.Services.AddScoped<RenormalizationService>();
+            builder.Services.AddScoped<ItemAssociationService>();
             builder.Services.AddScoped<SearchVectorService>();
             builder.Services.AddScoped<SearchService>();
+            builder.Services.AddScoped<LibraryService>();
             builder.Services.AddScoped<MetadataFactory>();
             builder.Services.AddScoped<MetadataSerializer>();
 
             builder.Services.AddScoped<IMetadataProvider, FileMetadataProvider>();
+            builder.Services.AddScoped<IMetadataProvider, FilenameMetadataProvider>();
             //builder.Services.AddScoped<IMetadataProvider, MetadataExtractorProvider>();
             builder.Services.AddScoped<IMetadataProvider, MetadataCliProvider>();
             builder.Services.AddScoped<IRawMetadataProvider, TikaProvider>();
@@ -121,6 +124,10 @@ namespace Librarian
             app.MapControllerRoute("Browse_Paste", "browse_actions/paste", new { controller = "Browse", action = "Paste" });
             app.MapControllerRoute("Browse_Rename", "browse_actions/rename", new { controller = "Browse", action = "Rename" });
             app.MapControllerRoute("Browse_Delete", "browse_actions/delete", new { controller = "Browse", action = "Delete" });
+
+            app.MapControllerRoute("Library",
+                                    "library/{category}/{view?}",
+                                    new { controller = "Library", action = "Index" });
 
             app.MapControllerRoute("Search",
                                     "/search",

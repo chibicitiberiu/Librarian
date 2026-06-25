@@ -3,6 +3,7 @@ using System;
 using Librarian.DB;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -12,9 +13,11 @@ using NpgsqlTypes;
 namespace Librarian.DB.Migrations
 {
     [DbContext(typeof(PostgresDatabaseContext))]
-    partial class PostgresDatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260624204350_M3aSidecarAssociation")]
+    partial class M3aSidecarAssociation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -48,7 +51,7 @@ namespace Librarian.DB.Migrations
 
                     b.HasIndex("AttributeDefinitionId");
 
-                    b.ToTable("AttributeAliases", (string)null);
+                    b.ToTable("AttributeAliases");
 
                     b.HasData(
                         new
@@ -822,7 +825,7 @@ namespace Librarian.DB.Migrations
                     b.HasIndex("Group", "Name")
                         .IsUnique();
 
-                    b.ToTable("AttributeDefinitions", (string)null);
+                    b.ToTable("AttributeDefinitions");
 
                     b.HasData(
                         new
@@ -2069,7 +2072,7 @@ namespace Librarian.DB.Migrations
 
                     b.HasIndex("SubResourceId");
 
-                    b.ToTable("BlobAttributes", (string)null);
+                    b.ToTable("BlobAttributes");
                 });
 
             modelBuilder.Entity("Librarian.Model.DateAttribute", b =>
@@ -2113,7 +2116,7 @@ namespace Librarian.DB.Migrations
 
                     b.HasIndex("SubResourceId");
 
-                    b.ToTable("DateAttributes", (string)null);
+                    b.ToTable("DateAttributes");
                 });
 
             modelBuilder.Entity("Librarian.Model.FloatAttribute", b =>
@@ -2157,7 +2160,7 @@ namespace Librarian.DB.Migrations
 
                     b.HasIndex("SubResourceId");
 
-                    b.ToTable("FloatAttributes", (string)null);
+                    b.ToTable("FloatAttributes");
                 });
 
             modelBuilder.Entity("Librarian.Model.IndexedFile", b =>
@@ -2177,9 +2180,6 @@ namespace Librarian.DB.Migrations
                     b.Property<DateTimeOffset>("IndexLastUpdated")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int?>("ItemId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTimeOffset>("Modified")
                         .HasColumnType("timestamp with time zone");
 
@@ -2191,10 +2191,10 @@ namespace Librarian.DB.Migrations
                         .HasMaxLength(4096)
                         .HasColumnType("character varying(4096)");
 
-                    b.Property<int>("Role")
+                    b.Property<int?>("PrimaryFileId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("RoleSource")
+                    b.Property<int>("Role")
                         .HasColumnType("integer");
 
                     b.Property<long?>("Size")
@@ -2202,12 +2202,12 @@ namespace Librarian.DB.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ItemId");
-
                     b.HasIndex("Path")
                         .IsUnique();
 
-                    b.ToTable("IndexedFiles", (string)null);
+                    b.HasIndex("PrimaryFileId");
+
+                    b.ToTable("IndexedFiles");
                 });
 
             modelBuilder.Entity("Librarian.Model.IndexedFileContents", b =>
@@ -2227,7 +2227,7 @@ namespace Librarian.DB.Migrations
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("ContentSearch"), "gin");
 
-                    b.ToTable("IndexedFileContents", (string)null);
+                    b.ToTable("IndexedFileContents");
                 });
 
             modelBuilder.Entity("Librarian.Model.IntegerAttribute", b =>
@@ -2271,23 +2271,7 @@ namespace Librarian.DB.Migrations
 
                     b.HasIndex("SubResourceId");
 
-                    b.ToTable("IntegerAttributes", (string)null);
-                });
-
-            modelBuilder.Entity("Librarian.Model.Item", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("RoleSource")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Items", (string)null);
+                    b.ToTable("IntegerAttributes");
                 });
 
             modelBuilder.Entity("Librarian.Model.RawMetadataAttribute", b =>
@@ -2333,7 +2317,7 @@ namespace Librarian.DB.Migrations
 
                     b.HasIndex("Namespace", "Key");
 
-                    b.ToTable("RawMetadataAttributes", (string)null);
+                    b.ToTable("RawMetadataAttributes");
                 });
 
             modelBuilder.Entity("Librarian.Model.SubResource", b =>
@@ -2361,7 +2345,7 @@ namespace Librarian.DB.Migrations
 
                     b.HasIndex("FileId");
 
-                    b.ToTable("SubResources", (string)null);
+                    b.ToTable("SubResources");
                 });
 
             modelBuilder.Entity("Librarian.Model.TextAttribute", b =>
@@ -2413,7 +2397,7 @@ namespace Librarian.DB.Migrations
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("ValueSearch"), "gin");
 
-                    b.ToTable("TextAttributes", (string)null);
+                    b.ToTable("TextAttributes");
                 });
 
             modelBuilder.Entity("Librarian.Model.AttributeAlias", b =>
@@ -2502,12 +2486,12 @@ namespace Librarian.DB.Migrations
 
             modelBuilder.Entity("Librarian.Model.IndexedFile", b =>
                 {
-                    b.HasOne("Librarian.Model.Item", "Item")
-                        .WithMany("Files")
-                        .HasForeignKey("ItemId")
+                    b.HasOne("Librarian.Model.IndexedFile", "Primary")
+                        .WithMany()
+                        .HasForeignKey("PrimaryFileId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("Item");
+                    b.Navigation("Primary");
                 });
 
             modelBuilder.Entity("Librarian.Model.IndexedFileContents", b =>
@@ -2614,11 +2598,6 @@ namespace Librarian.DB.Migrations
                     b.Navigation("RawMetadata");
 
                     b.Navigation("TextMetadata");
-                });
-
-            modelBuilder.Entity("Librarian.Model.Item", b =>
-                {
-                    b.Navigation("Files");
                 });
 #pragma warning restore 612, 618
         }

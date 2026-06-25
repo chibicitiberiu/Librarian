@@ -16,18 +16,37 @@ namespace Librarian.Controllers.Api
     {
         private readonly RenormalizationService renormalizationService;
         private readonly SearchVectorService searchVectors;
+        private readonly ItemAssociationService itemAssociation;
+        private readonly IndexingService indexingService;
         private readonly DatabaseContext db;
         private readonly MetadataNormalizer normalizer;
 
         public MetadataAdminController(RenormalizationService renormalizationService,
                                        SearchVectorService searchVectors,
+                                       ItemAssociationService itemAssociation,
+                                       IndexingService indexingService,
                                        DatabaseContext db,
                                        MetadataNormalizer normalizer)
         {
             this.renormalizationService = renormalizationService;
             this.searchVectors = searchVectors;
+            this.itemAssociation = itemAssociation;
+            this.indexingService = indexingService;
             this.db = db;
             this.normalizer = normalizer;
+        }
+
+        /// <summary>
+        /// Full re-index. With <c>force=true</c> (default) every file is re-extracted even if
+        /// unchanged, rebuilding the canonical layer from scratch and flushing any stale rows; then
+        /// re-groups Items. Long-running.
+        /// </summary>
+        [HttpPost("reindex")]
+        public async Task<IActionResult> Reindex([FromQuery] bool force = true)
+        {
+            await indexingService.IndexAll(force);
+            var result = await itemAssociation.AssociateAllAsync();
+            return Ok(new { force, items = result.Items, result.Sidecars, result.Companions, result.Promotions });
         }
 
         /// <summary>
@@ -39,6 +58,17 @@ namespace Librarian.Controllers.Api
         {
             int produced = await renormalizationService.RenormalizeAllAsync();
             return Ok(new { reprocessed = produced });
+        }
+
+        /// <summary>
+        /// Groups indexed files into Items (a primary plus its sidecars/companions) and promotes
+        /// catalogue metadata onto each Item's primary. Re-runnable; rebuilds from scratch.
+        /// </summary>
+        [HttpPost("associate")]
+        public async Task<IActionResult> Associate()
+        {
+            var result = await itemAssociation.AssociateAllAsync();
+            return Ok(result);
         }
 
         /// <summary>

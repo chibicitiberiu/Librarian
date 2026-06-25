@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Librarian.Metadata\Librarian.Metadata.csproj" />
+    <ProjectReference Include="..\Librarian\Librarian.csproj" />
   </ItemGroup>
 
 </Project>

@@ -20,6 +20,23 @@ namespace Librarian.Model
 
         #endregion
 
+        #region Item association (plan.md Standing decisions)
+
+        /// <summary>This file's role within its Item (primary content, metadata sidecar, or resource).</summary>
+        public FileRole Role { get; set; } = FileRole.Primary;
+
+        /// <summary>Auto (heuristic) vs Manual (a user correction the association pass must preserve).</summary>
+        public RoleSource RoleSource { get; set; } = RoleSource.Auto;
+
+        /// <summary>The Item this file belongs to (null while unassociated, or for an orphan companion
+        /// like shared album art with no single owner).</summary>
+        [ForeignKey(nameof(Item))]
+        public int? ItemId { get; set; }
+
+        public virtual Item? Item { get; set; }
+
+        #endregion
+
         #region Indexing
 
         public bool NeedsUpdating { get; set; } = true;

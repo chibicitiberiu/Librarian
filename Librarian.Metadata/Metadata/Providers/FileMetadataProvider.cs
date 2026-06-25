@@ -53,13 +53,26 @@ namespace Librarian.Metadata.Providers
 
         private async Task GetFileType(string filePath, MetadataCollection result)
         {
-            if (File.Exists(FileCommand))
-            {
-                var (exitCode, output, _) = await ProcessHelper.RunProcessAsync(FileCommand, "-b", filePath);
-                if (exitCode == 0)
-                    result.Attributes.Add(metadataFactory.Create(FileAttributes.FileType, output.Trim(), ProviderId, editable: false));
-            }
+            if (!File.Exists(FileCommand))
+                return;
+
+            // '-E' makes filesystem errors (unreadable/partial files) exit non-zero and go to
+            // stderr instead of being printed to stdout — otherwise 'file' happily emits
+            // "cannot open `...' (...)" as its answer and we would store that error string as
+            // the file's type. The output-shape check below is defence-in-depth for builds of
+            // 'file' that still slip a diagnostic onto stdout with a zero exit code.
+            var (exitCode, output, _) = await ProcessHelper.RunProcessAsync(FileCommand, "-b", "-E", filePath);
+            string type = output.Trim();
+            if (exitCode != 0 || type.Length == 0 || LooksLikeError(type))
+                return;
+
+            result.Attributes.Add(metadataFactory.Create(FileAttributes.FileType, type, ProviderId, editable: false));
         }
+
+        private static bool LooksLikeError(string fileOutput)
+            => fileOutput.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase)
+            || fileOutput.StartsWith("cannot open", StringComparison.OrdinalIgnoreCase)
+            || fileOutput.StartsWith("cannot stat", StringComparison.OrdinalIgnoreCase);
 
         public Task SaveMetadataAsync(string filePath, MetadataCollection metadata)
         {
