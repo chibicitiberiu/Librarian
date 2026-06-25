@@ -33,6 +33,7 @@ namespace Librarian.Services
         private readonly FileService fileService;
         private readonly DatabaseContext dbContext;
         private readonly SearchVectorService searchVectors;
+        private readonly ProviderExecutor executor;
 
         public MetadataService(ILogger<MetadataService> logger,
                                IEnumerable<IMetadataProvider> providers,
@@ -42,7 +43,8 @@ namespace Librarian.Services
                                MetadataSerializer serializer,
                                FileService fileService,
                                DatabaseContext dbContext,
-                               SearchVectorService searchVectors)
+                               SearchVectorService searchVectors,
+                               ProviderExecutor executor)
         {
             this.logger = logger;
             this.serializer = serializer;
@@ -56,6 +58,7 @@ namespace Librarian.Services
             this.fileService = fileService;
             this.dbContext = dbContext;
             this.searchVectors = searchVectors;
+            this.executor = executor;
         }
 
         #region Updating, collecting metadata
@@ -72,26 +75,59 @@ namespace Librarian.Services
             // attributes are owned by the association pass, so they are preserved.
             RemoveDerivedCanonical(indexedFile.Id);
 
-            // Canonical providers (file attributes, media) and the .meta sidecar.
-            await foreach (var attribute in CollectCanonicalAsync(indexedFile))
-                StoreCanonical(attribute);
+            // Canonical providers (file attributes, media), run under the resilience policy so a
+            // transient provider failure is retried and, if it persists, flags the file.
+            bool incomplete = await StoreCanonicalProvidersAsync(indexedFile);
             await dbContext.SaveChangesAsync();
 
-            // Raw providers (Tika): persist the raw layer and promote it to canonical.
-            await UpdateRawMetadata(indexedFile);
+            // Raw providers (Tika, ExifTool): persist the raw layer and promote it to canonical.
+            incomplete |= await UpdateRawMetadata(indexedFile);
 
             // User edits in the .meta sidecar are authoritative: replace the matching extracted/promoted
             // values so the DB reflects what's on disk (the system of record).
             await ApplySidecarOverrides(indexedFile);
 
+            // Record whether extraction was cut short by a transient failure, so the file can be
+            // targeted for a later re-index (POST /api/metadata/reindex-incomplete).
+            indexedFile.ExtractionIncomplete = incomplete;
+            await dbContext.SaveChangesAsync();
+
             // Refresh the FTS vectors for the content + text attributes just written.
             await searchVectors.UpdateFileVectorsAsync(indexedFile.Id);
         }
 
-        private async Task UpdateRawMetadata(IndexedFile indexedFile)
+        /// <summary>Runs the canonical providers under the resilience policy, stores their attributes,
+        /// and reports whether any provider's extraction failed transiently (the file is incomplete).</summary>
+        private async Task<bool> StoreCanonicalProvidersAsync(IndexedFile file)
+        {
+            string filePath = fileService.Resolve(file.Path);
+            bool incomplete = false;
+
+            foreach (var provider in metadataProviders.Values)
+            {
+                var (collection, failed) = await executor.ExecuteAsync(
+                    provider.ProviderId, provider.DisplayName, () => provider.GetMetadataAsync(filePath));
+                incomplete |= failed;
+                if (collection is null)
+                    continue;
+
+                foreach (var attribute in collection.Attributes)
+                {
+                    attribute.File = file;
+                    if (attribute.SubResource != null)
+                        attribute.SubResource.File = file;
+                    StoreCanonical(attribute);
+                }
+            }
+
+            return incomplete;
+        }
+
+        private async Task<bool> UpdateRawMetadata(IndexedFile indexedFile)
         {
             string filePath = fileService.Resolve(indexedFile.Path);
             string? content = null;
+            bool incomplete = false;
 
             // Replace this file's raw layer.
             dbContext.RawMetadataAttributes.RemoveRange(
@@ -109,15 +145,9 @@ namespace Librarian.Services
                 // Replace the canonical attributes previously promoted from this provider.
                 RemoveCanonicalForProvider(indexedFile.Id, providerId);
 
-                RawMetadataResult? result = null;
-                try
-                {
-                    result = await provider.GetRawMetadataAsync(filePath);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Collecting raw data from provider {providerName} failed", provider.DisplayName);
-                }
+                var (result, failed) = await executor.ExecuteAsync(
+                    provider.ProviderId, provider.DisplayName, () => provider.GetRawMetadataAsync(filePath));
+                incomplete |= failed;
                 if (result is null)
                     continue;
 
@@ -159,6 +189,7 @@ namespace Librarian.Services
 
             StoreContent(indexedFile, content);
             await dbContext.SaveChangesAsync();
+            return incomplete;
         }
 
         /// <summary>Stores (or clears) the file's extracted text content.</summary>

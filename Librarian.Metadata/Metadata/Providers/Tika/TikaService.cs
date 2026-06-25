@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
+using System.Net;
 using System.Net.Http.Headers;
 
 namespace Librarian.Metadata.Providers.Tika
@@ -99,11 +100,36 @@ namespace Librarian.Metadata.Providers.Tika
             request.Content = content;
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            using var response = await httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
+            HttpResponseMessage response;
+            try
+            {
+                response = await httpClient.SendAsync(request);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or TimeoutException or System.Net.Sockets.SocketException)
+            {
+                // Tika is unreachable / restarting / slow (timeout) — a retryable condition.
+                throw new TransientMetadataException($"Tika request failed for {fileInfo.Name}", ex);
+            }
 
-            string json = await response.Content.ReadAsStringAsync();
-            return Parse(json);
+            using (response)
+            {
+                int status = (int)response.StatusCode;
+
+                // 5xx, 408 (request timeout) and 429 (too many requests) are transient server-side
+                // conditions worth retrying; other 4xx (e.g. unsupported media) are permanent — the
+                // file simply has no Tika metadata, which is not an "incomplete extraction".
+                if (status >= 500 || response.StatusCode == HttpStatusCode.RequestTimeout || status == 429)
+                    throw new TransientMetadataException($"Tika returned {status} for {fileInfo.Name}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    logger.LogTrace("Tika returned {status} for {file}; no metadata.", status, filePath);
+                    return null;
+                }
+
+                string json = await response.Content.ReadAsStringAsync();
+                return Parse(json);
+            }
         }
 
         private static IReadOnlyList<TikaResource> Parse(string json)

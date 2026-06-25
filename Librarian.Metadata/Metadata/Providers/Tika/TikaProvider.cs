@@ -39,6 +39,11 @@ namespace Librarian.Metadata.Providers.Tika
             {
                 resources = await tikaService.GetMetadataAsync(filePath);
             }
+            catch (TransientMetadataException)
+            {
+                // Let the provider-execution policy retry, and mark the file incomplete if it persists.
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogTrace(ex, "Could not retrieve Tika metadata for file {file}", filePath);

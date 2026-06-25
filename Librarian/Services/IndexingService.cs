@@ -231,6 +231,9 @@ namespace Librarian.Services
         /// unchanged — a "full reindex" that rebuilds the canonical layer from scratch.</summary>
         public async Task IndexAll(bool force = false)
         {
+            // Give a provider that tripped its circuit breaker on a previous run a clean chance.
+            serviceProvider.GetRequiredService<ProviderExecutor>().Reset();
+
             var jobToken = jobTracker.StartJob(Strings.IndexingAll);
 
             await IndexDirectoryInternal(new DirectoryInfo(fileService.BasePath), recurse: true, force: force, jobToken: jobToken);
@@ -239,6 +242,47 @@ namespace Librarian.Services
                 await PruneMissing(GetScopedServices(scope));
 
             jobToken.Finish();
+        }
+
+        /// <summary>Re-indexes only the files whose last extraction was flagged incomplete (a transient
+        /// provider failure, e.g. Tika was down). Resets the circuit breaker first so a recovered
+        /// provider gets a clean chance. Returns the number of files re-indexed.</summary>
+        public async Task<int> ReindexIncompleteAsync()
+        {
+            serviceProvider.GetRequiredService<ProviderExecutor>().Reset();
+
+            List<string> paths;
+            using (var scope = serviceProvider.CreateScope())
+            {
+                paths = await GetScopedServices(scope).DbContext.IndexedFiles
+                    .Where(f => f.ExtractionIncomplete && f.Exists)
+                    .Select(f => f.Path)
+                    .ToListAsync();
+            }
+
+            if (paths.Count == 0)
+                return 0;
+
+            var jobToken = jobTracker.StartJob("Re-indexing incomplete files");
+            int count = 0;
+            foreach (var relPath in paths)
+            {
+                string full = fileService.Resolve(relPath);
+                if (!File.Exists(full))
+                    continue;
+                try
+                {
+                    await IndexFileInternal(new FileInfo(full), force: true);
+                    count++;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Re-indexing incomplete file {path} failed.", relPath);
+                }
+            }
+            jobToken.Finish();
+            logger.LogInformation("Re-indexed {count} previously-incomplete files.", count);
+            return count;
         }
 
         /// <summary>After a full walk, marks files that are no longer on disk as not-existing (soft,

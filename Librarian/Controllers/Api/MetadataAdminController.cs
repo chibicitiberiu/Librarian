@@ -53,6 +53,18 @@ namespace Librarian.Controllers.Api
         }
 
         /// <summary>
+        /// Re-indexes only the files whose last extraction was flagged incomplete (a transient
+        /// provider failure such as Tika being briefly unavailable). Resets the circuit breaker first.
+        /// </summary>
+        [HttpPost("reindex-incomplete")]
+        public async Task<IActionResult> ReindexIncomplete()
+        {
+            int reindexed = await indexingService.ReindexIncompleteAsync();
+            int remaining = await db.IndexedFiles.CountAsync(f => f.ExtractionIncomplete && f.Exists);
+            return Ok(new { reindexed, remaining });
+        }
+
+        /// <summary>
         /// Rebuilds canonical attributes from the stored raw metadata using the current
         /// rules, without re-reading any files.
         /// </summary>

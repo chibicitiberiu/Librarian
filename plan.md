@@ -222,6 +222,21 @@ Required before exposing this beyond a trusted dev box.
       reindex, and unchanged files/dirs skip re-extraction (tolerance-based change detection). Still
       open: the meta-cli-under-bulk race couldn't be reproduced (the binary is simply absent in this
       env — it now warns once and skips; Tika fully covers).
+- [x] ~~**Provider resilience + incomplete tracking (error strategy).**~~ Done. Replaced the
+      scattered swallow-everywhere behaviour with one central policy: `ProviderExecutor` (singleton)
+      retries transient provider failures (network / timeout / 5xx, surfaced as
+      `TransientMetadataException`) with exponential backoff and trips a per-provider **circuit
+      breaker**, so a down provider (typically Tika) neither stalls the index nor gets hammered file
+      after file. `TikaService` now classifies HTTP failures (5xx/408/429/network → transient; other
+      4xx → simply no metadata) and `TikaProvider` propagates transient errors instead of swallowing
+      them. A file whose extraction is cut short after retries is flagged
+      `IndexedFile.ExtractionIncomplete` (migration); `POST /api/metadata/reindex-incomplete`
+      re-indexes just those files (resetting the breaker first), and a full reindex resets it too.
+      Tunable via `Metadata:{MaxRetries,RetryBaseDelayMs,CircuitFailureThreshold,CircuitResetSeconds}`.
+      Display/preview paths still degrade quietly (no retry storms on page views). 7 unit tests.
+      (Ported the *ideas* from the older `NewLibrarian2` `ResilientMetadataProvider` — retry, backoff,
+      circuit breaker — but centralized instead of a per-provider decorator, which A's swallow-at-
+      source providers would have left inert.)
 
 ### Phase 6 — Browsing & viewer UX
 

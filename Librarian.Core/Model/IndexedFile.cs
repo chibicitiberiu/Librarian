@@ -42,6 +42,11 @@ namespace Librarian.Model
         public bool NeedsUpdating { get; set; } = true;
         public DateTimeOffset IndexLastUpdated { get; set; }
 
+        /// <summary>True when the last extraction was cut short by a transient provider failure (e.g.
+        /// Tika unreachable) after retries were exhausted: the file's metadata may be partial and a
+        /// re-index could complete it. Cleared whenever an extraction finishes without such a failure.</summary>
+        public bool ExtractionIncomplete { get; set; }
+
         #endregion
 
         #region Basic file metadata, used to determine if index needs updating
