@@ -36,6 +36,32 @@ namespace Librarian.Metadata.Normalization
             return true;
         }
 
+        /// <summary>A MIME type with any parameters stripped: "text/plain; charset=ISO-8859-1" and
+        /// "application/vnd.wordperfect; version=6.x" both reduce to the bare type. The charset/version
+        /// is not part of the content type (and there is no attribute for it), so it is dropped.</summary>
+        public static bool MimeType(string raw, out object value)
+        {
+            string s = raw.Trim();
+            int semicolon = s.IndexOf(';');
+            if (semicolon >= 0)
+                s = s[..semicolon].Trim();
+            value = s;
+            return s.Length > 0;
+        }
+
+        /// <summary>A lenient integer: the leading whole number, ignoring any unit suffix
+        /// ("2457 pixels" -> 2457, "16 bits" -> 16). Fail-soft.</summary>
+        public static bool IntegerLoose(string raw, out object value)
+        {
+            if (Units.TryParseQuantity(raw, out double number, out _))
+            {
+                value = (long)Math.Round(number);
+                return true;
+            }
+            value = default(long);
+            return false;
+        }
+
         public static bool Integer(string raw, out object value)
         {
             if (long.TryParse(raw.Trim(), NumberStyles.Integer | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out long result))

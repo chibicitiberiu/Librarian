@@ -1,4 +1,5 @@
 using Librarian.Model;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Librarian.Metadata.Providers.Tika
@@ -13,17 +14,25 @@ namespace Librarian.Metadata.Providers.Tika
     {
         private static readonly Guid providerId = new("b7e2a9c4-1d83-4f6e-9a05-3c8d7e21f4b6");
 
+        // Tika recursively unpacks archives/containers; a single big .zip can return thousands of
+        // embedded entries, each emitting resourceName/Content-Type/... and bloating the raw layer
+        // (they are already filtered out of browsing facets). Cap how many we keep; 0 = unlimited.
+        private const int DefaultMaxEmbeddedResources = 100;
+
         private readonly TikaService tikaService;
         private readonly ILogger logger;
+        private readonly int maxEmbeddedResources;
 
         public Guid ProviderId => providerId;
 
         public string DisplayName => "Apache Tika";
 
-        public TikaProvider(TikaService tikaService, ILogger<TikaProvider> logger)
+        public TikaProvider(TikaService tikaService, ILogger<TikaProvider> logger, IConfiguration? configuration = null)
         {
             this.tikaService = tikaService;
             this.logger = logger;
+            maxEmbeddedResources = int.TryParse(configuration?["TikaMaxEmbeddedResources"], out int max)
+                ? max : DefaultMaxEmbeddedResources;
         }
 
         public async Task<RawMetadataResult> GetRawMetadataAsync(string filePath)
@@ -57,8 +66,16 @@ namespace Librarian.Metadata.Providers.Tika
             CollectItems(result, resources[0], subResource: null);
             result.Content = resources[0].Content;
 
-            // Any further resources are files embedded within it (e.g. archive entries).
-            for (int i = 1; i < resources.Count; i++)
+            // Any further resources are files embedded within it (e.g. archive entries). Cap the count
+            // so a huge archive doesn't flood the raw layer with thousands of per-entry rows.
+            int embeddedLimit = maxEmbeddedResources > 0
+                ? Math.Min(resources.Count, 1 + maxEmbeddedResources)
+                : resources.Count;
+            if (maxEmbeddedResources > 0 && resources.Count - 1 > maxEmbeddedResources)
+                logger.LogDebug("Tika returned {total} embedded resources for {file}; keeping the first {kept}.",
+                    resources.Count - 1, filePath, maxEmbeddedResources);
+
+            for (int i = 1; i < embeddedLimit; i++)
             {
                 var resource = resources[i];
                 var subResource = new SubResource

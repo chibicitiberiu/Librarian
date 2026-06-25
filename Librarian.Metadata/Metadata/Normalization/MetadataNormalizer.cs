@@ -99,7 +99,7 @@ namespace Librarian.Metadata.Normalization
             Text("dc", "rights", General.Copyright);
             Date("dcterms", "created", General.DateCreated);
             Date("dcterms", "modified", General.DateReleased);
-            Text("tika", "content-type", General.ContentType);
+            Text("tika", "content-type", General.ContentType, ValueCoercer.MimeType);
 
             // EXIF (example of a source-specific date transform living next to the mapping).
             // These keys are emitted by both Tika's image parser and the exiftool provider (which
@@ -124,6 +124,16 @@ namespace Librarian.Metadata.Normalization
             Integer("exif", "exifimageheight", Image.Height);
             Integer("png", "imagewidth", Image.Width);
             Integer("png", "imageheight", Image.Height);
+
+            // Tika reports image dimensions under tiff: (clean integers — note TIFF "ImageLength" is the
+            // height) and under "tika:Image Width/Height" as "N pixels" (lenient integer strips the unit).
+            // exiftool's file:/exif: copies are mapped above; quicktime: carries a video's frame size.
+            Integer("tiff", "imagewidth", Image.Width);
+            Integer("tiff", "imagelength", Image.Height);
+            Integer("tika", "image width", Image.Width, ValueCoercer.IntegerLoose);
+            Integer("tika", "image height", Image.Height, ValueCoercer.IntegerLoose);
+            Integer("quicktime", "imagewidth", Image.Width);
+            Integer("quicktime", "imageheight", Image.Height);
         }
 
         // Embedded audio tags surfaced by Tika (xmpDM / tika namespaces). These populate the
@@ -191,6 +201,12 @@ namespace Librarian.Metadata.Normalization
             Integer("xmpdm", "audiosamplerate", Audio.SampleRate, UnitCategory.Frequency, min: 8000, max: 192000);
             Integer("tika", "channels", Audio.Channels);
             Integer("tika", "bits", Audio.BitsPerSample);
+
+            // FLAC technical facts from exiftool's flac: namespace (clean integers); the audio channel
+            // *count* only comes from here / meta-cli (Tika reports xmpDM:audioChannelType = "Stereo").
+            Integer("flac", "samplerate", Audio.SampleRate, UnitCategory.Frequency, min: 8000, max: 192000);
+            Integer("flac", "channels", Audio.Channels);
+            Integer("flac", "bitspersample", Audio.BitsPerSample);
         }
 
         // Media stream facts that frequently arrive with a unit or in a non-numeric form. The
@@ -236,6 +252,11 @@ namespace Librarian.Metadata.Normalization
 
         private void Text(string ns, string key, int definitionId)
             => Add(ns, key, definitionId, ValueCoercer.Text,
+                   (id, v) => new TextAttribute { AttributeDefinitionId = id, Value = (string)v });
+
+        /// <summary>A text field with a custom value transform (e.g. stripping MIME parameters).</summary>
+        private void Text(string ns, string key, int definitionId, ValueCoercer.Coercer coercer)
+            => Add(ns, key, definitionId, coercer,
                    (id, v) => new TextAttribute { AttributeDefinitionId = id, Value = (string)v });
 
         /// <summary>A text field whose raw value may pack several values into one string (e.g. a

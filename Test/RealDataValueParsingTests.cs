@@ -64,5 +64,45 @@ namespace Test
             Assert.Equal(Audio.AlbumPeak, normalizer.Normalize("tika", "replaygain_album_peak", "0.9", ProviderId)!.AttributeDefinitionId);
             Assert.Equal(Audio.ReferenceLoudness, normalizer.Normalize("tika", "replaygain_reference_loudness", "89.0 dB", ProviderId)!.AttributeDefinitionId);
         }
+
+        [Theory]
+        [InlineData("text/plain; charset=ISO-8859-1", "text/plain")]
+        [InlineData("application/vnd.wordperfect; version=6.x", "application/vnd.wordperfect")]
+        [InlineData("application/pdf", "application/pdf")]
+        public void Content_type_strips_charset_and_params(string raw, string expected)
+        {
+            var attr = (TextAttribute)normalizer.Normalize("tika", "content-type", raw, ProviderId)!;
+            Assert.Equal(General.ContentType, attr.AttributeDefinitionId);
+            Assert.Equal(expected, attr.Value);
+        }
+
+        [Theory]
+        [InlineData("2457 pixels", 2457)]
+        [InlineData("16 bits", 16)]
+        [InlineData("800", 800)]
+        public void IntegerLoose_strips_unit_suffix(string raw, long expected)
+        {
+            Assert.True(ValueCoercer.IntegerLoose(raw, out object value));
+            Assert.Equal(expected, (long)value);
+        }
+
+        [Fact]
+        public void Image_dimensions_map_from_tika_and_tiff()
+        {
+            // tiff:ImageLength is the height; "tika:Image Width" carries a " pixels" suffix.
+            Assert.Equal(Image.Height, ((IntegerAttribute)normalizer.Normalize("tiff", "imagelength", "1320", ProviderId)!).AttributeDefinitionId);
+            var w = (IntegerAttribute)normalizer.Normalize("tika", "image width", "2457 pixels", ProviderId)!;
+            Assert.Equal(Image.Width, w.AttributeDefinitionId);
+            Assert.Equal(2457L, w.Value);
+        }
+
+        [Fact]
+        public void Flac_audio_facts_map_channels_samplerate_bits()
+        {
+            Assert.Equal(2L, ((IntegerAttribute)normalizer.Normalize("flac", "channels", "2", ProviderId)!).Value);
+            Assert.Equal(Audio.Channels, normalizer.Normalize("flac", "channels", "2", ProviderId)!.AttributeDefinitionId);
+            Assert.Equal(44100L, ((IntegerAttribute)normalizer.Normalize("flac", "samplerate", "44100", ProviderId)!).Value);
+            Assert.Equal(Audio.BitsPerSample, normalizer.Normalize("flac", "bitspersample", "16", ProviderId)!.AttributeDefinitionId);
+        }
     }
 }

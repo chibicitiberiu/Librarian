@@ -53,7 +53,7 @@ namespace MetadataCollector
             logger = loggerFactory.CreateLogger<Collector>();
 
             var tikaService = new TikaService(config, loggerFactory.CreateLogger<TikaService>());
-            tika = new TikaProvider(tikaService, loggerFactory.CreateLogger<TikaProvider>());
+            tika = new TikaProvider(tikaService, loggerFactory.CreateLogger<TikaProvider>(), config);
             var exifService = new ExifToolService(config, loggerFactory.CreateLogger<ExifToolService>());
             exifTool = new ExifToolProvider(exifService, loggerFactory.CreateLogger<ExifToolProvider>());
             metaCli = new MetadataCliService(config, loggerFactory.CreateLogger<MetadataCliService>());
@@ -152,11 +152,38 @@ namespace MetadataCollector
 
             if (result.Streams != null)
                 foreach (var stream in result.Streams)
+                {
+                    string sub = $"stream {stream.Id}";
+                    // Typed scalar stream props — the provider maps these directly (not via aliases),
+                    // and they are the usual source of bit rate / channels / sample rate that tag-based
+                    // providers (Tika) often don't carry.
+                    count += EmitStreamProp("bit_rate", stream.BitRate, sub, row);
+                    count += EmitStreamProp("codec", stream.Codec, sub, row);
+                    count += EmitStreamProp("sample_rate", stream.SampleRate, sub, row);
+                    count += EmitStreamProp("channels", stream.Channels, sub, row);
+                    count += EmitStreamProp("bits_per_sample", stream.BitsPerSample, sub, row);
+                    count += EmitStreamProp("frame_rate", stream.FrameRate, sub, row);
+                    count += EmitStreamProp("duration", stream.Duration, sub, row);
+                    count += EmitStreamProp("width", stream.Width, sub, row);
+                    count += EmitStreamProp("height", stream.Height, sub, row);
+
                     if (stream.Metadata != null)
                         foreach (var (key, value) in stream.Metadata)
-                            count += EmitMetaCli("metacli.stream", key, value, $"stream {stream.Id}", row);
+                            count += EmitMetaCli("metacli.stream", key, value, sub, row);
+                }
 
             return count;
+        }
+
+        private int EmitStreamProp(string key, object? value, string subResource, FileRow row)
+        {
+            if (value is null)
+                return 0;
+            string s = Clean(value is IFormattable f ? f.ToString(null, CultureInfo.InvariantCulture) : value.ToString());
+            if (s.Length == 0)
+                return 0;
+            WriteRaw("meta-cli", "metacli.stream", key, s, subResource, mapped: true, row);
+            return 1;
         }
 
         private int EmitMetaCli(string ns, string key, object? rawValue, string? subResource, FileRow row)
