@@ -372,6 +372,10 @@ Phase 4 write-back) → view modes / column chooser → smart-view builder.
 - [ ] **Non-indexed (live-filesystem) search** *(Ideas.md)*. Full-text + structured search over the
       *index* is done; add an option to also search the live filesystem for not-yet-indexed paths
       (name globs / recent files), so freshly-added files are findable before the next index pass.
+- [ ] **Caching layer** *(deferred from the NewLibrarian2 merge)*. The older line has a managed
+      `IMemoryCache` wrapper, but A has no hot path that needs it today (FTS + DB indexes are fast),
+      and its metadata-invalidate was a no-op on `IMemoryCache`. Revisit only if profiling shows a
+      bottleneck — e.g. cache the FTS result set with a short TTL / invalidate on reindex.
 
 ---
 
