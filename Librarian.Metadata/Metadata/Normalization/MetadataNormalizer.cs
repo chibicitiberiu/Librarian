@@ -1,3 +1,4 @@
+using System.Globalization;
 using Librarian.Model;
 using Librarian.Model.MetadataAttributes;
 using Microsoft.Extensions.Logging;
@@ -16,7 +17,7 @@ namespace Librarian.Metadata.Normalization
     {
         private delegate AttributeBase AttributeBuilder(int definitionId, object value);
 
-        private record Rule(int DefinitionId, ValueCoercer.Coercer Coercer, AttributeBuilder Build, bool Multi = false, Func<string, bool>? Filter = null);
+        private record Rule(int DefinitionId, ValueCoercer.Coercer Coercer, AttributeBuilder Build, bool Multi = false, Func<string, bool>? Filter = null, double? Min = null, double? Max = null);
 
         // Characters that separate the values of a multi-valued tag (e.g. "Disco; Pop; Synthwave").
         private static readonly char[] MultiValueSeparators = { ';' };
@@ -53,6 +54,14 @@ namespace Librarian.Metadata.Normalization
                 if (!rule.Coercer(raw, out object coerced))
                 {
                     logger?.LogTrace("Could not coerce value '{value}' for {namespace}:{key}", raw, @namespace, key);
+                    continue;
+                }
+
+                // Range validation: reject values outside an attribute's plausible bounds (e.g. a
+                // mis-parsed sample rate). The original string is still kept in the raw layer.
+                if (IsOutOfRange(coerced, rule.Min, rule.Max))
+                {
+                    logger?.LogTrace("Value '{value}' for {namespace}:{key} is outside [{min}, {max}]", raw, @namespace, key, rule.Min, rule.Max);
                     continue;
                 }
 
@@ -99,6 +108,7 @@ namespace Librarian.Metadata.Normalization
 
             RegisterImageRules();
             RegisterAudioRules();
+            RegisterMediaRules();
             RegisterDocumentRules();
             RegisterSoftwareRules();
         }
@@ -167,9 +177,30 @@ namespace Librarian.Metadata.Normalization
             Text("tika", "acoustid_id", Audio.AcoustIDID);
 
             // Technical stream facts (one raw source each, to avoid duplicate canonical values).
-            Integer("tika", "samplerate", Audio.SampleRate);
+            // Sample rate is unit-aware (handles "44.1 kHz") and range-checked to a plausible band.
+            Integer("tika", "samplerate", Audio.SampleRate, UnitCategory.Frequency, min: 8000, max: 192000);
+            Integer("xmpdm", "audiosamplerate", Audio.SampleRate, UnitCategory.Frequency, min: 8000, max: 192000);
             Integer("tika", "channels", Audio.Channels);
             Integer("tika", "bits", Audio.BitsPerSample);
+        }
+
+        // Media stream facts that frequently arrive with a unit or in a non-numeric form. The
+        // unit-aware coercers normalize "320 kbps" / "44.1 kHz" / "2:30.5" to the canonical base
+        // (bps / Hz / seconds) so they aren't dropped; range checks reject implausible values. Keys
+        // cover both Tika and the exiftool provider (quicktime / composite groups).
+        private void RegisterMediaRules()
+        {
+            Integer("tika", "bitrate", Media.BitRate, UnitCategory.DataRate);
+            Integer("composite", "avgbitrate", Media.BitRate, UnitCategory.DataRate);
+            Integer("quicktime", "audiobitrate", Media.BitRate, UnitCategory.DataRate);
+
+            Duration("xmpdm", "duration", Media.Duration);
+            Duration("tika", "duration", Media.Duration);
+            Duration("quicktime", "duration", Media.Duration);
+            Duration("composite", "duration", Media.Duration);
+
+            Float("xmpdm", "videoframerate", Video.FrameRate, UnitCategory.FrameRate, min: 1, max: 240);
+            Float("quicktime", "videoframerate", Video.FrameRate, UnitCategory.FrameRate, min: 1, max: 240);
         }
 
         // Document metadata (Dublin Core via Tika). dc:title/subject/description/language/rights
@@ -219,20 +250,45 @@ namespace Librarian.Metadata.Normalization
             return true;
         }
 
-        private void Integer(string ns, string key, int definitionId, ValueCoercer.Coercer? coercer = null)
+        private void Integer(string ns, string key, int definitionId, ValueCoercer.Coercer? coercer = null, double? min = null, double? max = null)
             => Add(ns, key, definitionId, coercer ?? ValueCoercer.Integer,
-                   (id, v) => new IntegerAttribute { AttributeDefinitionId = id, Value = (long)v });
+                   (id, v) => new IntegerAttribute { AttributeDefinitionId = id, Value = (long)v }, min: min, max: max);
 
-        private void Float(string ns, string key, int definitionId, ValueCoercer.Coercer? coercer = null)
+        /// <summary>An integer field whose raw value may carry a unit (e.g. "320 kbps"); the value is
+        /// converted to <paramref name="unit"/>'s canonical base before storage.</summary>
+        private void Integer(string ns, string key, int definitionId, UnitCategory unit, double? min = null, double? max = null)
+            => Integer(ns, key, definitionId, ValueCoercer.IntegerIn(unit), min, max);
+
+        private void Float(string ns, string key, int definitionId, ValueCoercer.Coercer? coercer = null, double? min = null, double? max = null)
             => Add(ns, key, definitionId, coercer ?? ValueCoercer.Float,
-                   (id, v) => new FloatAttribute { AttributeDefinitionId = id, Value = (double)v });
+                   (id, v) => new FloatAttribute { AttributeDefinitionId = id, Value = (double)v }, min: min, max: max);
+
+        /// <summary>A float field whose raw value may carry a unit (see the integer overload).</summary>
+        private void Float(string ns, string key, int definitionId, UnitCategory unit, double? min = null, double? max = null)
+            => Float(ns, key, definitionId, ValueCoercer.FloatIn(unit), min, max);
 
         private void Date(string ns, string key, int definitionId, ValueCoercer.Coercer? coercer = null)
             => Add(ns, key, definitionId, coercer ?? ValueCoercer.IsoDate,
                    (id, v) => new DateAttribute { AttributeDefinitionId = id, Value = (DateTimeOffset)v });
 
-        private void Add(string ns, string key, int definitionId, ValueCoercer.Coercer coercer, AttributeBuilder build, bool multi = false, Func<string, bool>? filter = null)
-            => rules[(Normalize(ns), Normalize(key))] = new Rule(definitionId, coercer, build, multi, filter);
+        /// <summary>A duration (TimeSpan) field stored as total seconds (a <see cref="FloatAttribute"/>,
+        /// matching how the factory persists TimeSpan); accepts seconds, HH:MM:SS, M:SS.ms, etc.</summary>
+        private void Duration(string ns, string key, int definitionId, double? min = null, double? max = null)
+            => Add(ns, key, definitionId, ValueCoercer.Duration,
+                   (id, v) => new FloatAttribute { AttributeDefinitionId = id, Value = (double)v }, min: min, max: max);
+
+        private void Add(string ns, string key, int definitionId, ValueCoercer.Coercer coercer, AttributeBuilder build, bool multi = false, Func<string, bool>? filter = null, double? min = null, double? max = null)
+            => rules[(Normalize(ns), Normalize(key))] = new Rule(definitionId, coercer, build, multi, filter, min, max);
+
+        private static bool IsOutOfRange(object value, double? min, double? max)
+        {
+            if (min is null && max is null)
+                return false;
+            double number;
+            try { number = Convert.ToDouble(value, CultureInfo.InvariantCulture); }
+            catch { return false; }
+            return (min is not null && number < min) || (max is not null && number > max);
+        }
 
         #endregion
 

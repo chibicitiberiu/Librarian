@@ -16,7 +16,7 @@ Audio,Initial key,Text,,,
 Audio,Lyrics,BigText,,,
 Audio,Original album,Text,,,
 Audio,Reference loudness,Float,,,
-Audio,Sample rate,Integer,,,TRUE
+Audio,Sample rate,Integer,,Hz,TRUE
 Audio,Total tracks,Integer,,,TRUE
 Audio,Track ,Integer,,,
 Audio,Track artist,Text,,,
@@ -30,7 +30,7 @@ File attributes,File type,Text,File type as detected by the 'file' command.,,TRU
 File attributes,Full path,Text,The full file system path to the file.,,TRUE
 File attributes,Item count,Integer,Number of items (files or folders) in the directory.,,TRUE
 File attributes,Mime type,Text,The detected mime type of the file.,,TRUE
-File attributes,Size,Integer,The size of the file in bytes.,,TRUE
+File attributes,Size,Integer,The size of the file in bytes.,bytes,TRUE
 General,Amazon Standard Identification Number (ASIN),Text,Product identifier used by the Amazon store,,
 General,Bar code,Text,,,
 General,Catalog number,Text,,,
@@ -82,7 +82,7 @@ Image,Height,Integer,Image height in pixels.,,TRUE
 Image,Pixels,Integer,Total number of pixels in this image.,,TRUE
 Image,Width,Integer,Image width in pixels.,,TRUE
 Media,Actor,Text,,,
-Media,Bit rate,Integer,,,TRUE
+Media,Bit rate,Integer,,bps,TRUE
 Media,Codec,Text,,,TRUE
 Media,Date recorded,Date,,,
 Media,Disc,Integer,,,
@@ -117,6 +117,6 @@ Software,Minimum RAM,Integer,,,
 Software,Platform,Text,,,
 Software,Serial key,Text,,,
 Software,User interface,Text,,,
-Video,Frame rate,Float,,,TRUE
+Video,Frame rate,Float,,fps,TRUE
 Video,Frames,Integer,,,TRUE
 File attributes,Checksum,Text,SHA-256 content hash (hex).,,TRUE

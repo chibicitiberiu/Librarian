@@ -153,6 +153,18 @@ Make the collected metadata actually *usable*, not just stored.
       and relocated `bpm` to its real home (Beats per minute). `FixVocabularyUnits` migration ships the
       seed update; `VocabularyTests` validates the parsed dataset (sequential ids, name/group present,
       unique group+name, **units only on numeric types**). (Replaygain fields are still unmapped.)
+- [x] ~~**Unit normalization (value-level).**~~ Done. Took the good ideas from the older
+      `NewLibrarian2` normalization layer and **redesigned them to fit A's pipeline** (rather than a
+      direct port of its parallel `DataNormalizer`/`NormalizingMetadataFactory`, which duplicated A's
+      vocabulary + rule system + raw-layer audit). New pure `Units` catalog/converter
+      (DataRate/DataSize/Frequency/FrameRate → canonical bps/byte/Hz/fps), a flexible `Duration`
+      coercer (seconds, `HH:MM:SS`, `M:SS.ms`), and unit-aware `IntegerIn`/`FloatIn` coercers, wired
+      into `MetadataNormalizer` with optional per-rule **range validation**. Unit-suffixed values A
+      previously **dropped** ("320 kbps", "44.1 kHz", "2:30.5") now coerce to canonical units, and
+      implausible values (e.g. sample rate > 192 kHz) are rejected. Sample rate / Bit rate / Frame
+      rate / Size now carry canonical display units (`NormalizeNumericUnits` migration). The raw layer
+      stays the audit trail (no audit columns). 26 unit tests. (Additive — only affects values that
+      were being dropped; plain numbers are unchanged.)
 - [x] ~~**AttributeDefinition id-space.**~~ Done. Seed defs (CSV/`HasData`, ids 1–120) and
       runtime-curated "Other"-group defs shared one identity space, so a CSV-appended attribute would
       collide on the PK. `ReserveCurationIdSpace` migration vacates any curated rows squatting in the
