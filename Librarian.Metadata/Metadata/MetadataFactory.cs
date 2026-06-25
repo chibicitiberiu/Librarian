@@ -1,4 +1,5 @@
 ﻿using Librarian.DB;
+using Librarian.Metadata.Normalization;
 using Librarian.Model;
 using Librarian.Util;
 using Microsoft.Extensions.Logging;
@@ -50,14 +51,14 @@ namespace Librarian.Metadata
 
                 AttributeType.Integer
                     => new IntegerAttribute(definition,
-                                            value: Convert.ToInt64(value),
+                                            value: ConvertToInt64(value),
                                             providerId: providerId,
                                             providerAttributeId: providerAttributeId,
                                             editable: editable),
 
                 AttributeType.Float
                     => new FloatAttribute(definition,
-                                          value: Convert.ToDouble(value),
+                                          value: ConvertToDouble(value),
                                           providerId: providerId,
                                           providerAttributeId: providerAttributeId,
                                           editable: editable),
@@ -265,7 +266,33 @@ namespace Librarian.Metadata
         private static double ConvertToTimeSpan(object value)
         {
             if (value is TimeSpan timeSpan) return timeSpan.TotalSeconds;
-            return Convert.ToDouble(value);
+            // Durations arrive in many forms across containers: a number of seconds, or a
+            // "HH:MM:SS(.fff)" string (e.g. a Matroska DURATION tag). ValueCoercer.Duration handles both.
+            if (value is string s && ValueCoercer.Duration(s, out object seconds))
+                return (double)seconds;
+            return Convert.ToDouble(value, CultureInfo.InvariantCulture);
+        }
+
+        // Numeric metadata sometimes carries a unit suffix ("0.00 dB", "320 kbps") or uses an "N/M"
+        // form (track/disc) — take the leading number, invariant-culture, so a value like a ReplayGain
+        // "dB" reading no longer throws and aborts a whole file's extraction. Falls back to a strict
+        // invariant parse so a genuinely non-numeric value still fails rather than silently becoming 0.
+        private static long ConvertToInt64(object value)
+        {
+            if (value is string s)
+                return Units.TryParseQuantity(s, out double number, out _)
+                    ? (long)Math.Round(number)
+                    : long.Parse(s, NumberStyles.Integer | NumberStyles.AllowThousands, CultureInfo.InvariantCulture);
+            return Convert.ToInt64(value, CultureInfo.InvariantCulture);
+        }
+
+        private static double ConvertToDouble(object value)
+        {
+            if (value is string s)
+                return Units.TryParseQuantity(s, out double number, out _)
+                    ? number
+                    : double.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
+            return Convert.ToDouble(value, CultureInfo.InvariantCulture);
         }
 
         private static byte[] ConvertToByteArray(object value)

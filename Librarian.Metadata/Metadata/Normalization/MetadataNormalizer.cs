@@ -176,6 +176,15 @@ namespace Librarian.Metadata.Normalization
             Text("tika", "musicbrainz_releasetrackid", Media.MusicBrainzReleaseTrackID);
             Text("tika", "acoustid_id", Audio.AcoustIDID);
 
+            // ReplayGain (Tika emits these for FLAC/MP3). Values commonly carry a " dB" suffix
+            // ("0.00 dB", "-5.81 dB") that a plain float parse would reject — the lenient Number
+            // coercer keeps the leading value (dB is already the canonical unit). Peaks are bare floats.
+            Float("tika", "replaygain_track_gain", Audio.TrackGain, ValueCoercer.Number);
+            Float("tika", "replaygain_track_peak", Audio.TrackPeak, ValueCoercer.Number);
+            Float("tika", "replaygain_album_gain", Audio.AlbumGain, ValueCoercer.Number);
+            Float("tika", "replaygain_album_peak", Audio.AlbumPeak, ValueCoercer.Number);
+            Float("tika", "replaygain_reference_loudness", Audio.ReferenceLoudness, ValueCoercer.Number);
+
             // Technical stream facts (one raw source each, to avoid duplicate canonical values).
             // Sample rate is unit-aware (handles "44.1 kHz") and range-checked to a plausible band.
             Integer("tika", "samplerate", Audio.SampleRate, UnitCategory.Frequency, min: 8000, max: 192000);

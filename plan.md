@@ -152,7 +152,8 @@ Make the collected metadata actually *usable*, not just stored.
       `dB`/`bpm`/`bps`; the Artist = "dB" one surfaced as a meta-cli `'-4.23 dB'` `FormatException`),
       and relocated `bpm` to its real home (Beats per minute). `FixVocabularyUnits` migration ships the
       seed update; `VocabularyTests` validates the parsed dataset (sequential ids, name/group present,
-      unique group+name, **units only on numeric types**). (Replaygain fields are still unmapped.)
+      unique group+name, **units only on numeric types**). (Replaygain fields are now mapped — see
+      "Real-library value-parsing hardening" below.)
 - [x] ~~**Unit normalization (value-level).**~~ Done. Took the good ideas from the older
       `NewLibrarian2` normalization layer and **redesigned them to fit A's pipeline** (rather than a
       direct port of its parallel `DataNormalizer`/`NormalizingMetadataFactory`, which duplicated A's
@@ -165,6 +166,23 @@ Make the collected metadata actually *usable*, not just stored.
       rate / Size now carry canonical display units (`NormalizeNumericUnits` migration). The raw layer
       stays the audit trail (no audit columns). 26 unit tests. (Additive — only affects values that
       were being dropped; plain numbers are unchanged.)
+- [x] ~~**Real-library value-parsing hardening.**~~ Done. Mined the `NewLibrarian2` TestData dump (a
+      ~33k-file avformat metadata export) and fixed the value-parsing bugs it exposed. ReplayGain
+      readings arrive as `"0.00 dB"` / `"-5.81 dB"` and Matroska stream durations as
+      `"01:48:05.563000000"` — both crashed `MetadataFactory`'s `Convert.ToDouble`/`Convert.ToInt64`/
+      timespan conversion and aborted a whole file's meta-cli extraction (the known `'-4.23 dB'`
+      `FormatException`, now confirmed common). Conversion is now centralized, lenient and
+      invariant-culture: `ConvertToInt64`/`ConvertToDouble` (via `Units.TryParseQuantity`) tolerate a
+      unit suffix and the `N/M` track/disc form; `ConvertToTimeSpan` (via `ValueCoercer.Duration`)
+      tolerates `HH:MM:SS(.fff)`. **`TLEN`** (ID3 length in **milliseconds**, redundant with the real
+      stream duration) was mapping to Duration as if seconds → set to Ignore (`IgnoreTlenDurationAlias`
+      migration). ReplayGain is now also promoted on the **Tika** path (lenient `Number` coercer →
+      Audio Track/Album gain+peak + reference loudness), closing the long-standing "replaygain
+      unmapped" gap. The meta-cli alias table was already comprehensive (built from this same data), so
+      the win here was **parsing, not mapping**. 10 real-data-derived tests.
+      *Noted follow-up:* `MetadataFactory`'s date parsing still uses current-culture `DateTimeOffset.Parse`
+      (real data has both `"1999-10-25"` and `"05/01/2018 17:50:54"`), a candidate for the same
+      invariant/multi-format hardening.
 - [x] ~~**AttributeDefinition id-space.**~~ Done. Seed defs (CSV/`HasData`, ids 1–120) and
       runtime-curated "Other"-group defs shared one identity space, so a CSV-appended attribute would
       collide on the PK. `ReserveCurationIdSpace` migration vacates any curated rows squatting in the

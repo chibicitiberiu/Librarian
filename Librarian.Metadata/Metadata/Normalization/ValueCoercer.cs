@@ -154,6 +154,22 @@ namespace Librarian.Metadata.Normalization
                 return false;
             };
 
+        /// <summary>
+        /// A lenient float: the leading numeric quantity, ignoring any trailing unit ("0.00 dB" -> 0.0,
+        /// "-5.81 dB" -> -5.81, "0.964417" -> 0.964417). For fields like ReplayGain whose unit (dB) is
+        /// already canonical, so only the number is kept. Fail-soft.
+        /// </summary>
+        public static bool Number(string raw, out object value)
+        {
+            if (Units.TryParseQuantity(raw, out double number, out _))
+            {
+                value = number;
+                return true;
+            }
+            value = default(double);
+            return false;
+        }
+
         /// <summary>ISO-8601 / common date formats (e.g. Dublin Core, Tika).</summary>
         public static bool IsoDate(string raw, out object value)
             => TryDate(raw, PlainDateFormats, out value);

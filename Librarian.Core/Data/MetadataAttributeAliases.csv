@@ -83,7 +83,7 @@ DATE_RECORDED,Media,Date recorded,
 disc,Media,Disc,
 DURATION,Media,Duration,
 DURATION-eng,Media,Duration,
-TLEN,Media,Duration,
+TLEN,,,Ignore
 EpisodeID,Media,Episode ID,
 EpisodeNumber,Media,Episode number,
 episode_sort,Media,Episode number,
