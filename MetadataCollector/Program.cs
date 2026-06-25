@@ -1,161 +1,119 @@
-﻿using CsvHelper;
-using Librarian.Metadata.Providers.MetadataCli;
-using Librarian.Util;
-using Microsoft.Extensions.Configuration;
-using MimeMapping;
-using Newtonsoft.Json.Linq;
-using Nito.AsyncEx;
-using Nito.AsyncEx.Synchronous;
-using System.Diagnostics.SymbolStore;
 using System.Globalization;
+using CsvHelper;
+using Librarian.Data;
+using Librarian.Metadata.Normalization;
+using Librarian.Metadata.Providers;
+using Librarian.Metadata.Providers.ExifTool;
+using Librarian.Metadata.Providers.MetadataCli;
+using Librarian.Metadata.Providers.Tika;
+using Librarian.Model;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
-internal static class Program
+namespace MetadataCollector
 {
-    private static readonly Dictionary<string, string?> Configuration = new()
+    /// <summary>
+    /// Standalone tool that runs the real metadata collectors (Tika + ExifTool raw providers, meta-cli)
+    /// over a set of files and dumps what they extract — including, per (namespace, key), whether the
+    /// pipeline currently has a rule/alias to promote it. Database-free: the raw providers and the
+    /// normalizer are pure, and the vocabulary/aliases are read from the embedded CSVs. The point is to
+    /// see "what does our extraction look like" across a large, real library and to surface the
+    /// unmapped keys worth adding rules for.
+    /// </summary>
+    internal static class Program
     {
-        ["MetadataCliPath"] = "/home/tibi/.vs/meta-cli/out/build/linux-debug/meta-cli"
-    };
+        // The hidden user-edit sidecar should never be treated as a content file.
+        private const string Sidecar = ".librarian.meta";
 
-    private static readonly string[] RootDirectories = {
-        @"Y:\Downloads",
-        @"D:\Copii",
-        @"D:\Downloads",
-        @"D:\Retro Game Collection"
-    };
-
-    private static CsvWriter FileInfoWriter = null!;
-    private static CsvWriter MetadataWriter = null!;
-    private static MetadataCliService CliService = null!;
-
-    private static string ToWslPath(string path)
-    {
-        if (path.Contains(":\\"))
+        private static async Task<int> Main(string[] args)
         {
-            return string.Format("/mnt/{0}{1}",
-                char.ToLowerInvariant(path[0]),
-                path[2..].Replace("\\", "/"));
-        }
-        return path.Replace("\\", "/");
-    }
-
-    private static bool IsRunningInWsl()
-    {
-        if (Environment.OSVersion.Platform == PlatformID.Unix)
-        {
-            string version = File.ReadAllText("/proc/version");
-            return version.Contains("microsoft", StringComparison.InvariantCultureIgnoreCase);
-        }
-        return false;
-    }
-
-    private static async Task Main(string[] args)
-    {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(Configuration)
-            .Build();
-
-        CliService = new MetadataCliService(config);
-
-        // Open output writers
-        await using var fileInfoOut = new StreamWriter("/mnt/c/Temp/file-info.csv");
-        await using var metadataOut = new StreamWriter("/mnt/c/Temp/all-metadata.csv");
-        FileInfoWriter = new CsvWriter(fileInfoOut, CultureInfo.InvariantCulture);
-        FileInfoWriter.WriteHeader(typeof(FileInfo));
-        FileInfoWriter.NextRecord();
-        MetadataWriter = new CsvWriter(metadataOut, CultureInfo.InvariantCulture);
-        MetadataWriter.WriteHeader(typeof(FileMetadata));
-        MetadataWriter.NextRecord();
-
-        // Process directories
-        IEnumerable<string> rootDirs = RootDirectories;
-        if (IsRunningInWsl())
-            rootDirs = rootDirs.Select(ToWslPath);
-        rootDirs.Select(x => new DirectoryInfo(x)).ForEach(ProcessDirectory);
-    }
-
-    private static bool IsFileRelevant(string fileName, string mimeType)
-    {
-        fileName = fileName.ToLowerInvariant();
-        mimeType = mimeType.ToLowerInvariant();
-
-        bool interesting = mimeType.StartsWith("audio");
-        interesting |= mimeType.StartsWith("video");
-        return interesting;
-    }
-
-    private static void ProcessDirectory(DirectoryInfo directory)
-    {
-        directory.EnumerateDirectories().ForEach(ProcessDirectory);
-        Console.WriteLine($"Processing {directory}");
-
-        foreach (var file in directory.EnumerateFiles())
-        {
-            string mimeType = MimeUtility.GetMimeMapping(file.FullName);
-            bool relevant = IsFileRelevant(file.Name, mimeType);
-            bool couldCollect = true;
-
-            // record metadata
-            JObject? metadata = null;
-            try
+            Options? options = Options.Parse(args);
+            if (options is null)
             {
-                //metadata = CliService.GetMetadataAsync(file.FullName).WaitAndUnwrapException();
-            }
-            catch (Exception)
-            {
-                couldCollect = false;
+                Options.PrintUsage();
+                return 1;
             }
 
-            // record file info
-            FileInfoWriter.WriteRecord(new FileInfo(
-                file.FullName,
-                file.Name,
-                file.Extension,
-                mimeType,
-                relevant,
-                couldCollect
-            ));
-            FileInfoWriter.NextRecord();
-
-            foreach (var (key, value) in WalkMetadata(metadata))
-            {
-                MetadataWriter.WriteRecord(new FileMetadata(
-                    file.FullName,
-                    file.Extension,
-                    mimeType,
-                    key,
-                    value
-                ));
-                MetadataWriter.NextRecord();
-            }
-        }
-    }
-
-    static IEnumerable<(string, object?)> WalkMetadata(JToken? node)
-    {
-        if (node == null)
-            yield break;
-
-        switch (node.Type)
-        {
-            case JTokenType.Object:
-                foreach (JProperty child in node.Children<JProperty>())
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    foreach (var result in WalkMetadata(child.Value))
-                        yield return result;
-                }
-                break;
+                    ["TikaUrl"] = options.TikaUrl,
+                    ["MetadataCliPath"] = options.MetadataCliPath,
+                    ["ExifToolPath"] = options.ExifToolPath,
+                })
+                .Build();
 
-            case JTokenType.Array:
-                foreach (JToken child in node.Children())
+            using var loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.AddSimpleConsole(o => { o.SingleLine = true; o.TimestampFormat = "HH:mm:ss "; });
+                builder.SetMinimumLevel(options.Verbose ? LogLevel.Debug : LogLevel.Warning);
+            });
+            var logger = loggerFactory.CreateLogger("collector");
+
+            var files = EnumerateFiles(options, logger).ToList();
+            if (files.Count == 0)
+            {
+                logger.LogError("No files matched the given paths/filters.");
+                return 1;
+            }
+
+            Console.WriteLine($"Collecting metadata from {files.Count} file(s) -> {options.Output}");
+            Console.WriteLine($"  Tika={options.TikaUrl}  meta-cli={options.MetadataCliPath}  exiftool={options.ExifToolPath}");
+
+            using var collector = new Collector(configuration, loggerFactory, options.Output);
+
+            int processed = 0;
+            foreach (var file in files)
+            {
+                processed++;
+                if (processed % 50 == 0 || options.Verbose)
+                    Console.WriteLine($"  [{processed}/{files.Count}] {file}");
+                await collector.ProcessFileAsync(file);
+            }
+
+            await collector.FinishAsync();
+            return 0;
+        }
+
+        private static IEnumerable<string> EnumerateFiles(Options options, ILogger logger)
+        {
+            var filter = options.Filter.Select(f => f.StartsWith('.') ? f : "." + f).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            int yielded = 0;
+
+            foreach (var path in options.Paths)
+            {
+                IEnumerable<string> candidates;
+                if (File.Exists(path))
+                    candidates = new[] { path };
+                else if (Directory.Exists(path))
+                    candidates = SafeEnumerate(path, options.Recursive, logger);
+                else
                 {
-                    foreach (var result in WalkMetadata(child))
-                        yield return result;
+                    logger.LogWarning("Path not found: {path}", path);
+                    continue;
                 }
-                break;
 
-            default:
-                yield return (node.Path, node.Value<object>());
-                break;
+                foreach (var file in candidates)
+                {
+                    if (filter.Count > 0 && !filter.Contains(Path.GetExtension(file)))
+                        continue;
+                    if (Path.GetFileName(file).Equals(Sidecar, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    yield return file;
+                    if (options.MaxFiles > 0 && ++yielded >= options.MaxFiles)
+                        yield break;
+                }
+            }
+        }
+
+        private static IEnumerable<string> SafeEnumerate(string root, bool recursive, ILogger logger)
+        {
+            var opts = new EnumerationOptions { RecurseSubdirectories = recursive, IgnoreInaccessible = true };
+            IEnumerable<string> files;
+            try { files = Directory.EnumerateFiles(root, "*", opts); }
+            catch (Exception ex) { logger.LogWarning(ex, "Could not enumerate {root}", root); yield break; }
+            foreach (var f in files)
+                yield return f;
         }
     }
 }

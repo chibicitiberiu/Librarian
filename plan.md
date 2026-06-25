@@ -410,4 +410,21 @@ make up | down           # full self-hosted stack (docker-compose)
 ```
 
 Configuration is env-var driven (also `Librarian/appsettings.json`): `ConnectionStrings__DB`,
-`BaseDirectory`, `TikaUrl`, `MetadataCliPath`.
+`BaseDirectory`, `TikaUrl`, `MetadataCliPath`, `ExifToolPath`.
+
+### Diagnostics — `MetadataCollector`
+
+A standalone, **database-free** tool that runs the real collectors (Tika + ExifTool raw providers +
+meta-cli) over a file set and dumps what they extract, flagging which keys the pipeline can currently
+map. Use it to see "what does our extraction look like" over a large real library and to generate the
+**unmapped-keys worklist** for improving rules/aliases. (Rewritten from the old meta-cli-only stub —
+it reads the vocabulary/aliases from the embedded CSVs, so no DB is needed.)
+
+```sh
+dotnet run --project MetadataCollector -- -p <path...> -r \
+  --metadata-cli-path meta-cli/build/meta-cli [--filter .mp3 .flac .mkv] [--max-files N] [-o out-dir]
+```
+
+Outputs CSVs: `raw-metadata.csv` (every provider/namespace/key/value + Mapped), `canonical-metadata.csv`
+(what would be stored after promotion), `unmapped-keys.csv` (ranked by #files — the rules worklist),
+`file-summary.csv` (per-file counts/status).
