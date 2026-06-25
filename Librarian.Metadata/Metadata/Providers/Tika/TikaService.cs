@@ -29,6 +29,10 @@ namespace Librarian.Metadata.Providers.Tika
 
         public string? ContentType => Get("Content-Type");
 
+        /// <summary>Uncompressed byte size of an embedded entry, when Tika reports it.</summary>
+        public long? Size =>
+            long.TryParse(Get("Content-Length") ?? Get("resourceLength"), out var n) ? n : null;
+
         private string? Get(string key) => Metadata.TryGetValue(key, out var values) ? values.FirstOrDefault() : null;
     }
 

@@ -1,5 +1,6 @@
 using Librarian.DB;
 using Librarian.Metadata;
+using Librarian.Metadata.Archives;
 using Librarian.Model;
 using Librarian.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -60,21 +61,33 @@ namespace Librarian.Services
 
         private const int DefaultPrefixBytes = 64 * 1024;
 
+        /// <summary>Default <c>Checksum:MinSize</c> (collection_plan.md §7.5, Q3): files under 1 MiB are
+        /// not hashed — it keeps dedup off the long tail of tiny files and, crucially, avoids extracting
+        /// small archive entries just to hash them. The gate applies to loose files too, for consistency.</summary>
+        private const long DefaultMinSize = 1024L * 1024;
+
         private readonly DatabaseContext db;
         private readonly MetadataFactory factory;
         private readonly FileService fileService;
+        private readonly ArchiveByteReader archiveBytes;
         private readonly IConfiguration config;
         private readonly ILogger<ChecksumService> logger;
+
+        /// <summary>Archive (file id → relative path) lookup for the current run, so an entry can be read
+        /// from its containing archive. Populated at the start of <see cref="RunAsync"/>.</summary>
+        private Dictionary<int, string> archivePaths = new();
 
         public ChecksumService(DatabaseContext db,
                                MetadataFactory factory,
                                FileService fileService,
+                               ArchiveByteReader archiveBytes,
                                IConfiguration config,
                                ILogger<ChecksumService> logger)
         {
             this.db = db;
             this.factory = factory;
             this.fileService = fileService;
+            this.archiveBytes = archiveBytes;
             this.config = config;
             this.logger = logger;
         }
@@ -85,6 +98,9 @@ namespace Librarian.Services
 
         private int PrefixBytes =>
             int.TryParse(config["Checksum:PrefixBytes"], out var n) && n > 0 ? n : DefaultPrefixBytes;
+
+        private long MinSize =>
+            long.TryParse(config["Checksum:MinSize"], out var n) && n >= 0 ? n : DefaultMinSize;
 
         /// <summary>
         /// Runs the hashing pass. <paramref name="overrideMode"/> forces a mode regardless of config
@@ -97,9 +113,22 @@ namespace Librarian.Services
             if (mode == ChecksumMode.Off)
                 return result;
 
-            // Files only (directories have no Size), and only ones currently on disk.
-            var files = await db.IndexedFiles.Where(f => f.Exists && f.Size != null).ToListAsync();
+            // Files (directories have no Size) currently present, at or above the size gate. Archive
+            // entries are included: they are read through the archive byte-reader, so dedup spans the
+            // archive boundary (collection_plan.md §7.5). Sub-threshold files are skipped entirely.
+            long minSize = MinSize;
+            var files = await db.IndexedFiles
+                .Where(f => f.Exists && f.Size != null && f.Size >= minSize)
+                .ToListAsync();
             result.Scanned = files.Count;
+
+            // Real paths of the archives whose entries we're about to hash (entry → its archive).
+            var parentIds = files.Where(f => f.ParentFileId is int)
+                                 .Select(f => f.ParentFileId!.Value).Distinct().ToList();
+            archivePaths = parentIds.Count == 0
+                ? new Dictionary<int, string>()
+                : await db.IndexedFiles.Where(f => parentIds.Contains(f.Id))
+                    .ToDictionaryAsync(f => f.Id, f => f.Path);
 
             if (mode == ChecksumMode.Integrity)
                 await RunIntegrityAsync(files, result);
@@ -202,11 +231,34 @@ namespace Librarian.Services
             return ids.ToHashSet();
         }
 
+        /// <summary>Opens a read stream over a file's bytes — directly for a filesystem file, or through the
+        /// archive byte-reader for a virtual archive entry. Null if the entry's archive family is
+        /// unsupported (e.g. a tar/7z entry, or a nested-archive entry whose parent is itself virtual).</summary>
+        private Stream? OpenRead(IndexedFile file)
+        {
+            if (file.Source == FileSource.Filesystem)
+                return File.OpenRead(fileService.Resolve(file.Path));
+
+            if (file.ParentFileId is int pid
+                && file.InternalPath is string internalPath
+                && archivePaths.TryGetValue(pid, out var archiveRel))
+            {
+                string archiveReal = fileService.Resolve(archiveRel);
+                if (archiveBytes.Supports(archiveReal))
+                    return archiveBytes.OpenEntry(archiveReal, internalPath);
+            }
+            return null;
+        }
+
         /// <summary>Computes and stores a file's full hash as its Checksum attribute (replacing any prior
         /// one). Returns false if the file could not be read.</summary>
         private async Task<bool> StoreFullHashAsync(IndexedFile file)
         {
-            byte[]? hash = await TryHashAsync(() => HashFileAsync(fileService.Resolve(file.Path)), file.Path);
+            byte[]? hash = await TryHashAsync(async () =>
+            {
+                await using var stream = OpenRead(file) ?? throw new FileNotFoundException(file.Path);
+                return await HashStreamAsync(stream);
+            }, file.Path);
             if (hash == null)
                 return false;
 
@@ -221,7 +273,11 @@ namespace Librarian.Services
         }
 
         private async Task<byte[]?> ComputePrefixHashAsync(IndexedFile file) =>
-            await TryHashAsync(() => HashPrefixAsync(fileService.Resolve(file.Path), PrefixBytes), file.Path);
+            await TryHashAsync(async () =>
+            {
+                await using var stream = OpenRead(file) ?? throw new FileNotFoundException(file.Path);
+                return await HashPrefixStreamAsync(stream, PrefixBytes);
+            }, file.Path);
 
         private async Task<byte[]?> TryHashAsync(Func<Task<byte[]>> hash, string path)
         {
@@ -240,15 +296,19 @@ namespace Librarian.Services
         public static async Task<byte[]> HashFileAsync(string path)
         {
             await using var stream = File.OpenRead(path);
+            return await HashStreamAsync(stream);
+        }
+
+        /// <summary>SHA-256 of a whole stream.</summary>
+        public static async Task<byte[]> HashStreamAsync(Stream stream)
+        {
             using var sha = SHA256.Create();
             return await sha.ComputeHashAsync(stream);
         }
 
-        /// <summary>SHA-256 of a file's first <paramref name="prefixBytes"/> bytes (or the whole file if
-        /// it is shorter).</summary>
-        public static async Task<byte[]> HashPrefixAsync(string path, int prefixBytes)
+        /// <summary>SHA-256 of a stream's first <paramref name="prefixBytes"/> bytes.</summary>
+        public static async Task<byte[]> HashPrefixStreamAsync(Stream stream, int prefixBytes)
         {
-            await using var stream = File.OpenRead(path);
             byte[] buffer = new byte[prefixBytes];
             int read = 0;
             int n;
@@ -256,6 +316,14 @@ namespace Librarian.Services
                 read += n;
 
             return SHA256.HashData(buffer.AsSpan(0, read));
+        }
+
+        /// <summary>SHA-256 of a file's first <paramref name="prefixBytes"/> bytes (or the whole file if
+        /// it is shorter).</summary>
+        public static async Task<byte[]> HashPrefixAsync(string path, int prefixBytes)
+        {
+            await using var stream = File.OpenRead(path);
+            return await HashPrefixStreamAsync(stream, prefixBytes);
         }
     }
 }

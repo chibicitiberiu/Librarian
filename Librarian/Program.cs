@@ -2,6 +2,7 @@ using Librarian.DB;
 using Librarian.Indexing;
 using Librarian.Jobs;
 using Librarian.Metadata;
+using Librarian.Metadata.Archives;
 using Librarian.Metadata.Providers;
 using Librarian.Metadata.Providers.MetadataCli;
 using Librarian.Metadata.Normalization;
@@ -83,6 +84,12 @@ namespace Librarian
             builder.Services.AddSingleton<MetadataCliService>();
             builder.Services.AddSingleton<TikaService>();
             builder.Services.AddSingleton<ExifToolService>();
+
+            // Archive entry byte access (collection_plan.md §7.3): read/materialize entries out of archives
+            // for dedup hashing and path-based provider re-extraction. ZIP is built-in; other families
+            // register their own source.
+            builder.Services.AddSingleton<IArchiveByteSource, ZipArchiveByteSource>();
+            builder.Services.AddSingleton<ArchiveByteReader>();
 
             var app = builder.Build();
 

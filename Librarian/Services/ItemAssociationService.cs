@@ -63,7 +63,14 @@ namespace Librarian.Services
             // Directory entries are containers, not catalogue items — leave them out of Items entirely.
             // A path that is some other file's parent is a directory.
             var dirPaths = files.Select(f => ParentDir(f.Path)).Where(d => d.Length > 0).ToHashSet();
-            var realFiles = files.Where(f => !dirPaths.Contains(f.Path)).ToList();
+
+            // An archive whose entries are virtual files is itself a container, not a catalogue item
+            // (collection_plan.md §6): exclude it like a directory. Its entries participate as the files
+            // within it, grouped by their internal folder (their "archive.zip!/dir" parent path).
+            var containerIds = files.Where(f => f.ParentFileId is int)
+                                    .Select(f => f.ParentFileId!.Value).ToHashSet();
+
+            var realFiles = files.Where(f => !dirPaths.Contains(f.Path) && !containerIds.Contains(f.Id)).ToList();
             var byFolder = realFiles.GroupBy(f => ParentDir(f.Path)).ToList();
 
             // An app/game install folder = an executable + resource files (DLLs/data) together. A
@@ -120,8 +127,13 @@ namespace Librarian.Services
             foreach (int id in touched)
                 await searchVectors.UpdateFileVectorsAsync(id);
 
-            logger.LogInformation("Item association: {Items} items, {Sidecars} sidecars, {Companions} companions, {Promotions} promoted.",
-                items, sidecars, companions, promoted);
+            // Structural layer: fold the directory tree into recursive Collections (Show ⊃ Season ⊃
+            // Episode, …) on top of the Items just built (collection_plan.md §6). Additive — it never
+            // changes Item membership, only parents Items/Collections and re-owns collection-level art/nfo.
+            int collections = await BuildStructuralCollectionsAsync();
+
+            logger.LogInformation("Item association: {Items} items, {Sidecars} sidecars, {Companions} companions, {Promotions} promoted, {Collections} collections.",
+                items, sidecars, companions, promoted, collections);
             return new AssociationResult(items, sidecars, companions, promoted);
         }
 
@@ -408,7 +420,252 @@ namespace Librarian.Services
                     .SetProperty(f => f.ItemId, (int?)null));
 
             await db.Items.Where(i => i.RoleSource == RoleSource.Auto).ExecuteDeleteAsync();
+
+            // Tear down the heuristic's structural Collections too (collection_plan.md §6.4). Manual
+            // collections survive and re-bind by SourcePath on the rebuild. Null every reference to an
+            // Auto collection first (the self-ref FK is Restrict), then delete them.
+            var autoColIds = await db.Collections
+                .Where(c => c.RoleSource == RoleSource.Auto)
+                .Select(c => c.Id).ToListAsync();
+            if (autoColIds.Count > 0)
+            {
+                await db.Collections.Where(c => c.ParentCollectionId != null && autoColIds.Contains(c.ParentCollectionId!.Value))
+                    .ExecuteUpdateAsync(s => s.SetProperty(c => c.ParentCollectionId, (int?)null));
+                await db.Items.Where(i => i.ParentCollectionId != null && autoColIds.Contains(i.ParentCollectionId!.Value))
+                    .ExecuteUpdateAsync(s => s.SetProperty(i => i.ParentCollectionId, (int?)null));
+                await db.IndexedFiles.Where(f => f.CollectionId != null && autoColIds.Contains(f.CollectionId!.Value))
+                    .ExecuteUpdateAsync(s => s.SetProperty(f => f.CollectionId, (int?)null));
+                await db.Collections.Where(c => autoColIds.Contains(c.Id)).ExecuteDeleteAsync();
+            }
+            // Collection-scoped promoted attributes were already removed by the ProviderId == promo
+            // deletes above (those are keyed only by provider, so they catch file- and collection-owned).
         }
+
+        #region Structural collections (collection_plan.md §6)
+
+        /// <summary>A folder/archive-subdir name like "Season 1", "Disc 2", "Vol. 3", "Specials" — the
+        /// naming signal that a content folder is one structural level of a larger work.</summary>
+        // No \b after the keyword: a level can be written with no separator ("S01") or with an underscore
+        // ("Part_4"), neither of which is a word boundary. The trailing $ keeps it from matching prefixes.
+        private static readonly System.Text.RegularExpressions.Regex StructuralName = new(
+            @"^(season|series|saison|book|vol|volume|disc|disk|cd|part|pt|s)[\s._-]*\d+$|^(specials?|extras?|bonus)$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static bool IsStructuralName(string name) => StructuralName.IsMatch(name.Trim());
+
+        private static bool IsSeasonName(string name)
+        {
+            string n = name.Trim();
+            return System.Text.RegularExpressions.Regex.IsMatch(n, @"^(season|series|saison|s)[\s._-]*\d+$",
+                       System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                   || n.Equals("specials", StringComparison.OrdinalIgnoreCase)
+                   || n.Equals("special", StringComparison.OrdinalIgnoreCase)
+                   || n.Equals("extras", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private readonly record struct ResolvedNode(Collection? Collection, IReadOnlyList<int> ItemIds);
+
+        /// <summary>
+        /// Folds the real-folder tree into recursive Collections on top of the Items already built. A
+        /// folder of folders (each holding content) becomes a Collection; season/disc/volume-named child
+        /// folders become sub-Collections (a Show ⊃ Season ⊃ Episode hierarchy); collection-level art/nfo
+        /// (poster, tvshow.nfo) is re-owned by the Collection and its nfo promoted. Archive subtrees are
+        /// left to their flat Item grouping for now (their "!/"-paths are excluded here).
+        /// </summary>
+        private async Task<int> BuildStructuralCollectionsAsync()
+        {
+            // Tracked entities — we mutate navigation properties and let EF assign the FKs on save.
+            var files = await db.IndexedFiles
+                .Where(f => f.Exists && f.RoleSource == RoleSource.Auto && f.Source == FileSource.Filesystem)
+                .ToListAsync();
+            var autoItems = await db.Items.Where(i => i.RoleSource == RoleSource.Auto).ToListAsync();
+            var itemById = autoItems.ToDictionary(i => i.Id);
+
+            // folder → files directly in it; folder → item ids whose primary lives directly in it.
+            var filesByFolder = new Dictionary<string, List<IndexedFile>>();
+            var itemsByFolder = new Dictionary<string, List<int>>();
+            foreach (var f in files)
+            {
+                string folder = ParentDir(f.Path);
+                if (folder.Length == 0)
+                    continue;
+                (filesByFolder.TryGetValue(folder, out var fl) ? fl : filesByFolder[folder] = new()).Add(f);
+                if (f.Role == FileRole.Primary && f.ItemId is int itemId && itemById.ContainsKey(itemId))
+                    (itemsByFolder.TryGetValue(folder, out var il) ? il : itemsByFolder[folder] = new()).Add(itemId);
+            }
+
+            // The full folder set (including ancestor folders with no direct files), and each folder's
+            // immediate children.
+            var allFolders = new HashSet<string>();
+            foreach (var folder in filesByFolder.Keys)
+                for (string d = folder; d.Length > 0; d = ParentDir(d))
+                    allFolders.Add(d);
+
+            var childFolders = new Dictionary<string, List<string>>();
+            foreach (var folder in allFolders)
+            {
+                string parent = ParentDir(folder);
+                if (parent.Length > 0)
+                    (childFolders.TryGetValue(parent, out var cl) ? cl : childFolders[parent] = new()).Add(folder);
+            }
+
+            // Manual collections re-bind by their source path; never recreate or repurpose them.
+            var manualByPath = (await db.Collections
+                    .Where(c => c.RoleSource == RoleSource.Manual && c.SourcePath != null)
+                    .ToListAsync())
+                .ToDictionary(c => c.SourcePath!, c => c);
+
+            var created = new List<Collection>();
+            var nfoPromotions = new List<(int FileId, Collection Collection)>();
+            var memo = new Dictionary<string, ResolvedNode>();
+
+            Collection GetOrCreate(string folder, CollectionKind kind)
+            {
+                if (manualByPath.TryGetValue(folder, out var pinned))
+                    return pinned;
+                var c = new Collection { SourcePath = folder, Kind = kind, RoleSource = RoleSource.Auto };
+                db.Collections.Add(c);
+                created.Add(c);
+                return c;
+            }
+
+            void AttachArtNfo(string folder, Collection col)
+            {
+                if (!filesByFolder.TryGetValue(folder, out var folderFiles))
+                    return;
+                foreach (var file in folderFiles)
+                {
+                    var kind = Sidecars.Classify(NameOf(file.Path));
+                    if (kind == SidecarKind.CompanionArt)
+                    {
+                        file.Item = null; file.ItemId = null;
+                        file.Collection = col;
+                        file.Role = FileRole.Companion;
+                    }
+                    else if (kind == SidecarKind.Nfo)
+                    {
+                        file.Item = null; file.ItemId = null;
+                        file.Collection = col;
+                        file.Role = FileRole.Sidecar;
+                        nfoPromotions.Add((file.Id, col));
+                    }
+                }
+            }
+
+            ResolvedNode Resolve(string folder)
+            {
+                if (memo.TryGetValue(folder, out var cached))
+                    return cached;
+                // Guard the memo against the (impossible for a tree, but cheap) re-entrancy case.
+                memo[folder] = new ResolvedNode(null, System.Array.Empty<int>());
+
+                var kids = childFolders.TryGetValue(folder, out var k) ? k : new List<string>();
+                var childRes = kids.ToDictionary(c => c, Resolve);
+                var looseItems = itemsByFolder.TryGetValue(folder, out var li) ? li : new List<int>();
+
+                int nonEmptyChildren = childRes.Count(kv => kv.Value.Collection != null || kv.Value.ItemIds.Count > 0);
+                bool anyStructuralKid = kids.Any(c => IsStructuralName(NameOf(c)));
+                bool anyChildCollection = childRes.Values.Any(v => v.Collection != null);
+                bool isCollection = anyStructuralKid
+                                    || nonEmptyChildren >= 2
+                                    || (anyChildCollection && looseItems.Count > 0);
+
+                ResolvedNode node;
+                if (!isCollection)
+                {
+                    node = new ResolvedNode(null, looseItems);
+                }
+                else
+                {
+                    var col = GetOrCreate(folder, InferKind(folder, kids));
+
+                    foreach (var (childPath, cres) in childRes)
+                    {
+                        if (cres.Collection != null)
+                        {
+                            cres.Collection.Parent = col;
+                        }
+                        else if (cres.ItemIds.Count > 0)
+                        {
+                            if (IsStructuralName(NameOf(childPath)))
+                            {
+                                var childKind = IsSeasonName(NameOf(childPath)) ? CollectionKind.Season : CollectionKind.Generic;
+                                var childCol = GetOrCreate(childPath, childKind);
+                                childCol.Parent = col;
+                                foreach (int id in cres.ItemIds)
+                                    itemById[id].ParentCollection = childCol;
+                                AttachArtNfo(childPath, childCol);
+                            }
+                            else
+                            {
+                                foreach (int id in cres.ItemIds)
+                                    itemById[id].ParentCollection = col;
+                            }
+                        }
+                    }
+
+                    foreach (int id in looseItems)
+                        itemById[id].ParentCollection = col;
+
+                    AttachArtNfo(folder, col);
+                    node = new ResolvedNode(col, System.Array.Empty<int>());
+                }
+
+                memo[folder] = node;
+                return node;
+            }
+
+            foreach (var folder in allFolders.Where(f => ParentDir(f).Length == 0))
+                Resolve(folder);
+
+            await db.SaveChangesAsync();
+
+            // Promote each collection's nfo text onto the collection (its catalogue comment), now that
+            // the collections have ids.
+            foreach (var (fileId, col) in nfoPromotions)
+                await PromoteContentToCollectionAsync(fileId, col.Id, Attr.General.Comment);
+            await db.SaveChangesAsync();
+
+            return created.Count;
+        }
+
+        /// <summary>Chooses a collection's kind from its children's naming (collection_plan.md §6.3): a
+        /// folder of season/series folders is a Show; otherwise Generic.</summary>
+        private static CollectionKind InferKind(string folder, IReadOnlyList<string> childFolders)
+        {
+            if (childFolders.Any(c => IsSeasonName(NameOf(c))))
+                return CollectionKind.Show;
+            return CollectionKind.Generic;
+        }
+
+        /// <summary>Promotes a sidecar file's extracted text content onto a collection as a text attribute
+        /// (mirrors the Item-level <see cref="PromoteContentAsync"/>), stamped with the promotion provider.</summary>
+        private async Task<int> PromoteContentToCollectionAsync(int sidecarFileId, int collectionId, int definitionId)
+        {
+            string? content = await db.IndexedFileContents
+                .Where(c => c.FileId == sidecarFileId).Select(c => c.Content).FirstOrDefaultAsync();
+            if (string.IsNullOrWhiteSpace(content))
+                return 0;
+
+            bool exists = await db.TextAttributes
+                .AnyAsync(a => a.CollectionId == collectionId && a.AttributeDefinitionId == definitionId);
+            if (exists)
+                return 0;
+
+            db.TextAttributes.Add(new TextAttribute
+            {
+                CollectionId = collectionId,
+                AttributeDefinitionId = definitionId,
+                Value = content.Trim(),
+                ProviderId = PromotionProvider.ToString(),
+                ProviderAttributeId = $"col-nfo:{sidecarFileId}",
+                Editable = false,
+            });
+            await db.SaveChangesAsync();
+            return 1;
+        }
+
+        #endregion
 
         private static string ParentDir(string path)
         {

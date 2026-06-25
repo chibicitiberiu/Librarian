@@ -1,7 +1,10 @@
 using Librarian.DB;
+using Librarian.Library;
 using Librarian.Metadata;
+using Librarian.Metadata.Archives;
 using Librarian.Metadata.Normalization;
 using Librarian.Metadata.Providers;
+using Librarian.Metadata.Providers.Tika;
 using Librarian.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -34,6 +37,16 @@ namespace Librarian.Services
         private readonly DatabaseContext dbContext;
         private readonly SearchVectorService searchVectors;
         private readonly ProviderExecutor executor;
+        private readonly ArchiveByteReader archiveBytes;
+
+        /// <summary>Safety ceiling on archive entries materialized as virtual files (collection_plan.md
+        /// §7.4): above this, the archive is left opaque (no expansion) and the skip is logged.</summary>
+        private const int DefaultMaxExpandedEntries = 50_000;
+        private readonly int maxExpandedEntries;
+
+        /// <summary>Whether to temp-materialize archive entries and re-run path-based providers (ExifTool,
+        /// meta-cli) on them (collection_plan.md §7.3). On by default; gate is per-entry by media type.</summary>
+        private readonly bool reExtractEntries;
 
         public MetadataService(ILogger<MetadataService> logger,
                                IEnumerable<IMetadataProvider> providers,
@@ -44,7 +57,9 @@ namespace Librarian.Services
                                FileService fileService,
                                DatabaseContext dbContext,
                                SearchVectorService searchVectors,
-                               ProviderExecutor executor)
+                               ProviderExecutor executor,
+                               ArchiveByteReader archiveBytes,
+                               Microsoft.Extensions.Configuration.IConfiguration config)
         {
             this.logger = logger;
             this.serializer = serializer;
@@ -59,6 +74,10 @@ namespace Librarian.Services
             this.dbContext = dbContext;
             this.searchVectors = searchVectors;
             this.executor = executor;
+            this.archiveBytes = archiveBytes;
+            maxExpandedEntries = int.TryParse(config["Archive:MaxExpandedEntries"], out int max) && max > 0
+                ? max : DefaultMaxExpandedEntries;
+            reExtractEntries = !bool.TryParse(config["Archive:ReExtractEntries"], out bool re) || re;
         }
 
         #region Updating, collecting metadata
@@ -138,6 +157,11 @@ namespace Librarian.Services
             // one row per (field, value) on each sub-resource, not one per source key.
             var promotedKeys = new HashSet<(int Def, SubResource? Sub, string Value)>();
 
+            // Files embedded in this one (archive entries), to be exploded into virtual files after the
+            // provider loop (collection_plan.md §7). Carries the producing provider so the entry's raw
+            // rows and promotions are stamped consistently.
+            var embedded = new List<(Guid ProviderId, EmbeddedResource Resource)>();
+
             foreach (var provider in rawProviders)
             {
                 string providerId = provider.ProviderId.ToString();
@@ -153,6 +177,9 @@ namespace Librarian.Services
 
                 if (string.IsNullOrWhiteSpace(content) && !string.IsNullOrWhiteSpace(result.Content))
                     content = StripNulls(result.Content);
+
+                foreach (var resource in result.Embedded)
+                    embedded.Add((provider.ProviderId, resource));
 
                 foreach (var item in result.Items)
                 {
@@ -189,6 +216,10 @@ namespace Librarian.Services
 
             StoreContent(indexedFile, content);
             await dbContext.SaveChangesAsync();
+
+            // Explode archive entries into their own virtual files (collection_plan.md §7).
+            await ExpandArchiveAsync(indexedFile, embedded);
+
             return incomplete;
         }
 
@@ -212,6 +243,266 @@ namespace Librarian.Services
 
             contents.Content = content;
         }
+
+        #region Archive expansion (virtual files for archive entries — collection_plan.md §7)
+
+        /// <summary>
+        /// Explodes an archive's entries into their own virtual <see cref="IndexedFile"/> rows (one per
+        /// entry, keyed by <see cref="IndexedFile.ParentFileId"/> + <see cref="IndexedFile.InternalPath"/>),
+        /// routing each entry's metadata/content to its own row rather than gluing it onto the archive.
+        /// Idempotent: present entries are upserted, vanished entries (the archive changed) are dropped.
+        /// Non-archives and over-ceiling archives are left opaque.
+        /// </summary>
+        private async Task ExpandArchiveAsync(IndexedFile archive, List<(Guid ProviderId, EmbeddedResource Resource)> embedded)
+        {
+            // Only real on-disk archives expand (nested archives are bounded in a later milestone).
+            bool isArchive = archive.Source == FileSource.Filesystem && ArchiveTypes.IsArchive(archive.Path);
+
+            var existingChildren = await dbContext.IndexedFiles
+                .Where(f => f.ParentFileId == archive.Id)
+                .ToListAsync();
+
+            if (!isArchive || embedded.Count == 0 || embedded.Count > maxExpandedEntries)
+            {
+                if (isArchive && embedded.Count > maxExpandedEntries)
+                    logger.LogWarning(
+                        "Archive {path} has {count} entries, over the {max} ceiling; left opaque (entries not expanded).",
+                        archive.Path, embedded.Count, maxExpandedEntries);
+
+                if (existingChildren.Count > 0)
+                {
+                    dbContext.IndexedFiles.RemoveRange(existingChildren);
+                    await dbContext.SaveChangesAsync();
+                }
+                return;
+            }
+
+            // One entry per internal path; merge if a provider repeats a path.
+            var byPath = new Dictionary<string, (Guid ProviderId, EmbeddedResource Resource)>(StringComparer.Ordinal);
+            foreach (var entry in embedded)
+            {
+                string key = NormalizeInternalPath(entry.Resource.InternalPath);
+                if (key.Length == 0)
+                    continue;
+                if (byPath.TryGetValue(key, out var existing))
+                    existing.Resource.Items.AddRange(entry.Resource.Items);
+                else
+                    byPath[key] = entry;
+            }
+
+            var childrenByPath = existingChildren
+                .Where(c => c.InternalPath != null)
+                .ToDictionary(c => c.InternalPath!, c => c, StringComparer.Ordinal);
+
+            // Path-based providers (ExifTool, meta-cli) can only run on archives we have a byte-reader for.
+            string archiveRealPath = fileService.Resolve(archive.Path);
+            bool canReExtract = reExtractEntries && archiveBytes.Supports(archiveRealPath);
+
+            var present = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var (internalPath, entry) in byPath)
+            {
+                string displayPath = archive.Path + "!/" + internalPath;
+                if (displayPath.Length > 4096)
+                {
+                    logger.LogWarning("Skipping archive entry with over-long path: {path}", displayPath);
+                    continue;
+                }
+                present.Add(internalPath);
+
+                if (!childrenByPath.TryGetValue(internalPath, out var child))
+                {
+                    child = new IndexedFile
+                    {
+                        Source = FileSource.ArchiveEntry,
+                        ParentFileId = archive.Id,
+                        InternalPath = internalPath,
+                    };
+                    dbContext.IndexedFiles.Add(child);
+                }
+
+                child.Path = displayPath;
+                child.Exists = true;
+                child.Size = entry.Resource.Size;
+                child.Created = archive.Created;
+                child.Modified = archive.Modified;
+                child.NeedsUpdating = false;
+                child.IndexLastUpdated = DateTimeOffset.UtcNow;
+                // A changed archive re-extracts its entries; stale hashes are cleared (C2 recomputes).
+                child.PrefixHash = null;
+                await dbContext.SaveChangesAsync();   // assign child.Id before attaching its metadata
+
+                await StoreEntryMetadataAsync(child, entry.ProviderId, entry.Resource);
+
+                // Temp-materialize media entries so path-based providers can add deeper tags (§7.3).
+                if (canReExtract && ShouldReExtract(internalPath))
+                    await ReExtractEntryAsync(child, archiveRealPath, internalPath);
+            }
+
+            // Entries that vanished from the archive → drop their virtual files (cascades to their metadata).
+            var stale = existingChildren
+                .Where(c => c.InternalPath != null && !present.Contains(c.InternalPath))
+                .ToList();
+            if (stale.Count > 0)
+                dbContext.IndexedFiles.RemoveRange(stale);
+
+            await dbContext.SaveChangesAsync();
+        }
+
+        /// <summary>Stores one archive entry's raw + promoted metadata and content on its virtual file row.</summary>
+        private async Task StoreEntryMetadataAsync(IndexedFile child, Guid providerId, EmbeddedResource resource)
+        {
+            string providerIdStr = providerId.ToString();
+
+            // Idempotent rebuild of this entry's metadata.
+            dbContext.RawMetadataAttributes.RemoveRange(
+                dbContext.RawMetadataAttributes.Where(r => r.FileId == child.Id));
+            RemoveDerivedCanonical(child.Id);
+
+            var promotedKeys = new HashSet<(int Def, SubResource? Sub, string Value)>();
+            foreach (var item in resource.Items)
+            {
+                string value = StripNulls(item.Value);
+                dbContext.RawMetadataAttributes.Add(new RawMetadataAttribute
+                {
+                    File = child,
+                    Namespace = item.Namespace,
+                    Key = item.Key,
+                    Value = value,
+                    ProviderId = providerIdStr,
+                });
+
+                foreach (var canonical in normalizer.NormalizeAll(item.Namespace, item.Key, value, providerId, null))
+                {
+                    if (!promotedKeys.Add((canonical.AttributeDefinitionId, null, CanonicalValueKey(canonical))))
+                        continue;
+                    canonical.File = child;
+                    StoreNormalized(canonical);
+                }
+            }
+
+            StoreContent(child, string.IsNullOrWhiteSpace(resource.Content) ? null : StripNulls(resource.Content));
+            await dbContext.SaveChangesAsync();
+            await searchVectors.UpdateFileVectorsAsync(child.Id);
+        }
+
+        /// <summary>Normalizes a Tika embedded path to a stable locator (forward slashes, no leading slash).</summary>
+        private static string NormalizeInternalPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return string.Empty;
+            return path.Replace('\\', '/').TrimStart('/');
+        }
+
+        private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".mkv", ".mp4", ".avi", ".mov", ".webm", ".wmv", ".flv", ".m4v",
+            ".mpg", ".mpeg", ".ts", ".m2ts", ".ogv", ".3gp",
+        };
+
+        /// <summary>Whether an archive entry is a media/image file worth re-running ExifTool/meta-cli on
+        /// (Tika already covered documents/text). Type-gated so we don't spawn a subprocess per text entry.</summary>
+        private static bool ShouldReExtract(string internalPath)
+        {
+            string name = Path.GetFileName(internalPath);
+            return Sidecars.IsAudio(name) || Sidecars.IsImage(name)
+                || VideoExtensions.Contains(Path.GetExtension(name));
+        }
+
+        /// <summary>
+        /// Materializes one archive entry to a temp file and re-runs the path-based providers (ExifTool,
+        /// meta-cli) on it, attaching their metadata to the entry's virtual file (collection_plan.md §7.3).
+        /// Tika and the filesystem-facts provider are skipped: Tika already ran on the whole archive, and
+        /// filesystem facts (mtime/size) belong to the entry, not the temp copy. Best-effort: a failure to
+        /// read or extract an entry leaves it with the Tika-derived metadata it already has.
+        /// </summary>
+        private async Task ReExtractEntryAsync(IndexedFile child, string archiveRealPath, string internalPath)
+        {
+            string tempDir = Path.Combine(Path.GetTempPath(), "librarian-arc", Guid.NewGuid().ToString("N"));
+            // Keep the entry's real filename so FilenameMetadataProvider (and content detectors) see it.
+            string tempPath = Path.Combine(tempDir, Path.GetFileName(internalPath));
+            try
+            {
+                Directory.CreateDirectory(tempDir);
+                await using (var entryStream = archiveBytes.OpenEntry(archiveRealPath, internalPath))
+                {
+                    if (entryStream is null)
+                        return;
+                    await using var fs = File.Create(tempPath);
+                    await entryStream.CopyToAsync(fs);
+                }
+
+                // Canonical providers except the filesystem-facts one.
+                foreach (var provider in metadataProviders.Values.Where(p => p is not FileMetadataProvider))
+                {
+                    MetadataCollection? collection = null;
+                    try { collection = await provider.GetMetadataAsync(tempPath); }
+                    catch (Exception ex) { logger.LogTrace(ex, "Entry re-extract (canonical {p}) failed for {path}", provider.DisplayName, child.Path); }
+                    if (collection is null)
+                        continue;
+                    foreach (var attribute in collection.Attributes)
+                    {
+                        attribute.File = child;
+                        if (attribute.SubResource != null)
+                            attribute.SubResource.File = child;
+                        StoreCanonical(attribute);
+                    }
+                }
+
+                // Raw providers except Tika (already ran on the whole archive).
+                foreach (var provider in rawProviders.Where(p => p is not TikaProvider))
+                {
+                    RawMetadataResult? result = null;
+                    try { result = await provider.GetRawMetadataAsync(tempPath); }
+                    catch (Exception ex) { logger.LogTrace(ex, "Entry re-extract (raw {p}) failed for {path}", provider.DisplayName, child.Path); }
+                    if (result is null)
+                        continue;
+
+                    string providerIdStr = provider.ProviderId.ToString();
+                    var promotedKeys = new HashSet<(int Def, SubResource? Sub, string Value)>();
+                    foreach (var item in result.Items)
+                    {
+                        SubResource? sub = item.SubResource;
+                        if (sub is not null)
+                        {
+                            sub.File = child;
+                            sub = AddOrUpdate(sub, dbContext.SubResources);
+                        }
+                        string value = StripNulls(item.Value);
+                        dbContext.RawMetadataAttributes.Add(new RawMetadataAttribute
+                        {
+                            File = child,
+                            SubResource = sub,
+                            Namespace = item.Namespace,
+                            Key = item.Key,
+                            Value = value,
+                            ProviderId = providerIdStr,
+                        });
+
+                        foreach (var canonical in normalizer.NormalizeAll(item.Namespace, item.Key, value, provider.ProviderId, sub))
+                        {
+                            if (!promotedKeys.Add((canonical.AttributeDefinitionId, sub, CanonicalValueKey(canonical))))
+                                continue;
+                            canonical.File = child;
+                            StoreNormalized(canonical);
+                        }
+                    }
+                }
+
+                await dbContext.SaveChangesAsync();
+                await searchVectors.UpdateFileVectorsAsync(child.Id);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to re-extract archive entry {path}", child.Path);
+            }
+            finally
+            {
+                try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true); }
+                catch (Exception ex) { logger.LogTrace(ex, "Could not delete temp dir {dir}", tempDir); }
+            }
+        }
+
+        #endregion
 
         /// <summary>Removes a file's extracted canonical attributes (every provider) ahead of an
         /// idempotent rebuild, but keeps association-promoted ones — those are regenerated by the

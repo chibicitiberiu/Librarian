@@ -7,21 +7,17 @@ namespace Librarian.Metadata.Providers.Tika
     /// <summary>
     /// Raw metadata provider backed by an Apache Tika server. Emits each Tika key as a raw
     /// record, deriving the namespace from the key's schema prefix (e.g. "dc:title" becomes
-    /// namespace "dc", key "title"). Embedded resources (e.g. archive entries) become
-    /// sub-resources. Normalization to canonical attributes is done by the MetadataNormalizer.
+    /// namespace "dc", key "title"). Files embedded within the document (archive entries, ...) are
+    /// reported as <see cref="EmbeddedResource"/>s, which the catalog explodes into their own virtual
+    /// files when the container is an archive (collection_plan.md §7). Normalization to canonical
+    /// attributes is done by the MetadataNormalizer.
     /// </summary>
     public class TikaProvider : IRawMetadataProvider
     {
         private static readonly Guid providerId = new("b7e2a9c4-1d83-4f6e-9a05-3c8d7e21f4b6");
 
-        // Tika recursively unpacks archives/containers; a single big .zip can return thousands of
-        // embedded entries, each emitting resourceName/Content-Type/... and bloating the raw layer
-        // (they are already filtered out of browsing facets). Cap how many we keep; 0 = unlimited.
-        private const int DefaultMaxEmbeddedResources = 100;
-
         private readonly TikaService tikaService;
         private readonly ILogger logger;
-        private readonly int maxEmbeddedResources;
 
         public Guid ProviderId => providerId;
 
@@ -31,8 +27,6 @@ namespace Librarian.Metadata.Providers.Tika
         {
             this.tikaService = tikaService;
             this.logger = logger;
-            maxEmbeddedResources = int.TryParse(configuration?["TikaMaxEmbeddedResources"], out int max)
-                ? max : DefaultMaxEmbeddedResources;
         }
 
         public async Task<RawMetadataResult> GetRawMetadataAsync(string filePath)
@@ -66,25 +60,20 @@ namespace Librarian.Metadata.Providers.Tika
             CollectItems(result, resources[0], subResource: null);
             result.Content = resources[0].Content;
 
-            // Any further resources are files embedded within it (e.g. archive entries). Cap the count
-            // so a huge archive doesn't flood the raw layer with thousands of per-entry rows.
-            int embeddedLimit = maxEmbeddedResources > 0
-                ? Math.Min(resources.Count, 1 + maxEmbeddedResources)
-                : resources.Count;
-            if (maxEmbeddedResources > 0 && resources.Count - 1 > maxEmbeddedResources)
-                logger.LogDebug("Tika returned {total} embedded resources for {file}; keeping the first {kept}.",
-                    resources.Count - 1, filePath, maxEmbeddedResources);
-
-            for (int i = 1; i < embeddedLimit; i++)
+            // Any further resources are files embedded within it (e.g. archive entries). Report each as a
+            // first-class embedded resource; the catalog materializes archive entries as their own virtual
+            // files (no per-entry cap — that cap only existed to stop entry metadata flooding the archive's
+            // raw layer, which no longer happens). collection_plan.md §7.
+            for (int i = 1; i < resources.Count; i++)
             {
                 var resource = resources[i];
-                var subResource = new SubResource
+                var embedded = new EmbeddedResource(resource.EmbeddedPath ?? $"Embedded resource {i}")
                 {
-                    Kind = SubResourceKind.EmbeddedFile,
-                    Name = resource.EmbeddedPath ?? $"Embedded resource {i}"
+                    Content = resource.Content,
+                    Size = resource.Size,
                 };
-                result.AddSubResource(subResource);
-                CollectItems(result, resource, subResource);
+                CollectEmbeddedItems(embedded, resource);
+                result.AddEmbedded(embedded);
             }
 
             return result;
@@ -104,6 +93,23 @@ namespace Librarian.Metadata.Providers.Tika
                 {
                     if (!string.IsNullOrWhiteSpace(value))
                         result.Add(@namespace, name, value, subResource);
+                }
+            }
+        }
+
+        private static void CollectEmbeddedItems(EmbeddedResource embedded, TikaResource resource)
+        {
+            foreach (var (key, values) in resource.Metadata)
+            {
+                if (key.StartsWith("X-TIKA:", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var (@namespace, name) = SplitKey(key);
+
+                foreach (var value in values)
+                {
+                    if (!string.IsNullOrWhiteSpace(value))
+                        embedded.Add(@namespace, name, value);
                 }
             }
         }

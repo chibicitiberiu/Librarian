@@ -291,7 +291,9 @@ namespace Librarian.Services
         private async Task PruneMissing(ScopedServices scopedServices)
         {
             var indexed = await scopedServices.DbContext.IndexedFiles
-                .Where(f => f.Exists)
+                // Virtual files (archive entries) have no on-disk path; they are pruned by archive
+                // re-expansion, not by the filesystem walk (collection_plan.md §7).
+                .Where(f => f.Exists && f.Source == FileSource.Filesystem)
                 .Select(f => new { f.Id, f.Path })
                 .ToListAsync();
 
