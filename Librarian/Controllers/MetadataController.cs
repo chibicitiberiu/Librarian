@@ -93,6 +93,53 @@ namespace Librarian.Controllers
             }
         }
 
+        /// <summary>
+        /// Tier-0 save: persists the edited metadata fields to the folder's hidden <c>.librarian.meta</c>
+        /// sidecar (user authorship survives re-indexing). The form posts one entry per field, named
+        /// "<c>Group/Name</c>"; multi-valued fields post the same name several times.
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Save(string path)
+        {
+            try
+            {
+                string diskPath = fileService.Resolve(path);
+                string relative = fileService.GetRelativePath(diskPath);
+
+                var file = db.IndexedFiles.FirstOrDefault(f => f.Path == relative);
+                if (file == null)
+                    return NotFound("File is not indexed; nothing to edit.");
+
+                var edits = new List<MetadataService.UserMetadataEdit>();
+                foreach (var key in Request.Form.Keys)
+                {
+                    int slash = key.IndexOf('/');
+                    if (slash <= 0 || slash >= key.Length - 1)
+                        continue;   // not a "Group/Name" field (e.g. the hidden path / antiforgery token)
+
+                    string group = key[..slash];
+                    string name = key[(slash + 1)..];
+                    var values = Request.Form[key].Where(v => v != null).Select(v => v!).ToList();
+                    edits.Add(new MetadataService.UserMetadataEdit(group, name, values));
+                }
+
+                await metadataService.SaveUserEditsAsync(file, edits);
+
+                return RedirectToAction("Index", new { path });
+            }
+            catch (ArgumentException ex)
+            {
+                logger.LogError(ex, "Bad request!");
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error saving metadata!");
+                return StatusCode(500, ex.Message);
+            }
+        }
+
         /// <summary>Fills the Item Viewer pane: the Item's files grouped by role, and the cover to
         /// preview (the file itself when it's an image, otherwise the Item's best cover-art companion).</summary>
         private void PopulateItem(MetadataViewModel vm)

@@ -52,6 +52,15 @@ namespace Librarian.Model
 
         #endregion
 
+        #region Content hashing (plan.md Phase 4 — checksums & dedup)
+
+        /// <summary>SHA-256 of the file's first block — the dedup pass's cheap pre-filter for files that
+        /// share a size. Null until hashed; cleared when the file changes. The full content hash lives as
+        /// the "File attributes/Checksum" canonical attribute, computed lazily (dedup) or always (integrity).</summary>
+        public byte[]? PrefixHash { get; set; }
+
+        #endregion
+
         #region Foreign keys
         public virtual IndexedFileContents? Contents { get; set; }
         public virtual ICollection<RawMetadataAttribute> RawMetadata { get; set; } = null!;

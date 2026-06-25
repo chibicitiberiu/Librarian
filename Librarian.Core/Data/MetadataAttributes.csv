@@ -5,15 +5,15 @@ Audio,Album artist,Text,,,
 Audio,Album artist (sort),Text,,,
 Audio,Album gain,Float,The ideal listening gain for an entire album,,
 Audio,Album peak,Float,"Peak album amplitude, used to predict whether the required replay gain adjustment will cause clipping during playback",dB,
-Audio,Artist,Text,,dB,
+Audio,Artist,Text,,,
 Audio,Artist (sort),Text,,,
-Audio,Beats per minute,Integer,,,
+Audio,Beats per minute,Integer,,bpm,
 Audio,Bits per sample,Integer,,,TRUE
 Audio,Channels,Integer,,,TRUE
 Audio,Composer,Text,,,
 Audio,Engineer,Text,,,
-Audio,Initial key,Text,,bpm,
-Audio,Lyrics,BigText,,bps,
+Audio,Initial key,Text,,,
+Audio,Lyrics,BigText,,,
 Audio,Original album,Text,,,
 Audio,Reference loudness,Float,,,
 Audio,Sample rate,Integer,,,TRUE
@@ -81,7 +81,7 @@ Image,Aspect ratio,Float,Ratio obtained by dividing the width by the height.,,TR
 Image,Height,Integer,Image height in pixels.,,TRUE
 Image,Pixels,Integer,Total number of pixels in this image.,,TRUE
 Image,Width,Integer,Image width in pixels.,,TRUE
-Media,Actor,Text,,dB,
+Media,Actor,Text,,,
 Media,Bit rate,Integer,,,TRUE
 Media,Codec,Text,,,TRUE
 Media,Date recorded,Date,,,
@@ -108,8 +108,8 @@ Media,Stream type,Text,,,TRUE
 Media,Studio,Text,,,
 Media,Total discs,Integer,,,
 Package,Version,Text,Version of this package.,,
-Software,Architecture,Text,System architecture for which this software was compiled,dB,
-Software,End of life date,Date,,dB,
+Software,Architecture,Text,System architecture for which this software was compiled,,
+Software,End of life date,Date,,,
 Software,Installation instructions,FormattedText,,,
 Software,Minimum CPU,Text,,,
 Software,Minimum disk space,Integer,,,
@@ -119,3 +119,4 @@ Software,Serial key,Text,,,
 Software,User interface,Text,,,
 Video,Frame rate,Float,,,TRUE
 Video,Frames,Integer,,,TRUE
+File attributes,Checksum,Text,SHA-256 content hash (hex).,,TRUE

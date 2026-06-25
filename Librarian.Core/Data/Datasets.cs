@@ -20,7 +20,11 @@ namespace Librarian.Data
 
             while (csvReader.Read())
             {
-                bool isReadOnly = (csvReader["IsReadOnly"] ?? string.Empty).StartsWith("y") || (csvReader["IsReadOnly"] == "true");
+                // Accept yes/y/true in any casing (the CSV uses "TRUE"); a case-sensitive `== "true"`
+                // previously matched none of them, so every IsReadOnly flag silently seeded as false.
+                string readOnlyRaw = (csvReader["IsReadOnly"] ?? string.Empty).Trim();
+                bool isReadOnly = readOnlyRaw.StartsWith("y", StringComparison.OrdinalIgnoreCase)
+                                  || (bool.TryParse(readOnlyRaw, out bool parsed) && parsed);
 
                 yield return new AttributeDefinition(id: index++,
                                                      name: csvReader["Name"]!,

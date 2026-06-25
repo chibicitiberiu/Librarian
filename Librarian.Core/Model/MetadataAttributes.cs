@@ -32,6 +32,7 @@ namespace Librarian.Model.MetadataAttributes
 
     public static class FileAttributes
     {
+        public static readonly int Checksum = 121;
         public static readonly int DateCreated = 24;
         public static readonly int DateModified = 25;
         public static readonly int FileExtension = 26;

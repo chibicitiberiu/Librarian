@@ -25,6 +25,9 @@
         </div>
     </div>
 
+    <form id="metadata-form" method="post" asp-route="Metadata_Save">
+    <input type="hidden" name="path" value="@Model.Path" />
+
     <div class="menubar">
         <ul>
             <li>
@@ -46,10 +49,10 @@
     <hr />
 
     <div class="toolbar">
-        <button id="btn-save" title="Save changes"><img src="~/icons/32/document-save.png" />Save</button>
+        <button id="btn-save" type="submit" title="Save changes"><img src="~/icons/32/document-save.png" />Save</button>
         <div class="separator"></div>
-        <button id="btn-add" title="Add metadata fields"><img src="~/icons/32/edit-add.png" />Add</button>
-        <button id="btn-delete" title="Delete the selected metadata fields."><img src="~/icons/32/edit-delete.png" />Delete</button>
+        <button id="btn-add" type="button" title="Add metadata fields"><img src="~/icons/32/edit-add.png" />Add</button>
+        <button id="btn-delete" type="button" title="Delete the selected metadata fields."><img src="~/icons/32/edit-delete.png" />Delete</button>
     </div>
 
     <div class="window-body">
@@ -175,6 +178,8 @@
     </div>
 
     </div>
+
+    </form>
 
     <div class="window-statusbar">
         <div id="window-statusbar-message" class="flex-fill">Ready</div>

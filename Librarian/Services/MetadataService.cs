@@ -15,9 +15,19 @@ namespace Librarian.Services
 {
     public class MetadataService
     {
+        /// <summary>Name of the hidden, folder-level sidecar that stores user-authored metadata
+        /// (and, later, Item/role facts). One per edited folder, co-located with the files it describes;
+        /// it is the on-disk system of record — the DB is rebuildable from file contents + this sidecar.</summary>
+        public const string SidecarFileName = ".librarian.meta";
+
+        /// <summary>Provider id stamped on canonical rows that originate from a user edit (the sidecar),
+        /// so they can be told apart from extracted/promoted values.</summary>
+        public static readonly Guid SidecarProvider = new("b6e1f3a4-2c7d-4e58-9a0b-1f2e3d4c5b6a");
+
         private readonly Dictionary<Guid, IMetadataProvider> metadataProviders = new();
         private readonly IReadOnlyList<IRawMetadataProvider> rawProviders;
         private readonly MetadataNormalizer normalizer;
+        private readonly MetadataFactory factory;
         private readonly ILogger logger;
         private readonly MetadataSerializer serializer;
         private readonly FileService fileService;
@@ -28,6 +38,7 @@ namespace Librarian.Services
                                IEnumerable<IMetadataProvider> providers,
                                IEnumerable<IRawMetadataProvider> rawProviders,
                                MetadataNormalizer normalizer,
+                               MetadataFactory factory,
                                MetadataSerializer serializer,
                                FileService fileService,
                                DatabaseContext dbContext,
@@ -41,6 +52,7 @@ namespace Librarian.Services
 
             this.rawProviders = rawProviders.ToList();
             this.normalizer = normalizer;
+            this.factory = factory;
             this.fileService = fileService;
             this.dbContext = dbContext;
             this.searchVectors = searchVectors;
@@ -67,6 +79,10 @@ namespace Librarian.Services
 
             // Raw providers (Tika): persist the raw layer and promote it to canonical.
             await UpdateRawMetadata(indexedFile);
+
+            // User edits in the .meta sidecar are authoritative: replace the matching extracted/promoted
+            // values so the DB reflects what's on disk (the system of record).
+            await ApplySidecarOverrides(indexedFile);
 
             // Refresh the FTS vectors for the content + text attributes just written.
             await searchVectors.UpdateFileVectorsAsync(indexedFile.Id);
@@ -278,19 +294,16 @@ namespace Librarian.Services
                 }
             }
 
-            // Fetch metadata from .meta file
-            foreach (var attribute in await LoadMetaFile(filePath))
-                yield return attribute;
+            // The .meta sidecar is no longer merged here: it is applied as an authoritative override
+            // (see ApplySidecarOverrides for persistence, CollectMetadataAsync for display), so a user
+            // edit replaces — rather than duplicates — the matching extracted value.
         }
 
-        /// <summary>
-        /// Collects all canonical metadata for display: canonical providers, the .meta
-        /// sidecar, and raw providers promoted through the normalizer. Does not persist.
-        /// </summary>
-        public async IAsyncEnumerable<AttributeBase> CollectMetadataAsync(string filePath)
+        /// <summary>Raw providers (Tika) promoted to canonical attributes, with their definition
+        /// resolved for display. Does not persist.</summary>
+        private async Task<List<AttributeBase>> CollectPromotedAsync(string filePath)
         {
-            await foreach (var attribute in CollectCanonicalAsync(filePath))
-                yield return attribute;
+            var list = new List<AttributeBase>();
 
             foreach (var provider in rawProviders)
             {
@@ -310,39 +323,224 @@ namespace Librarian.Services
                 {
                     foreach (var canonical in normalizer.NormalizeAll(item.Namespace, item.Key, item.Value, provider.ProviderId, item.SubResource))
                     {
-                        // Populate the definition reference so the view can show group/name.
                         canonical.AttributeDefinition ??= dbContext.AttributeDefinitions.Find(canonical.AttributeDefinitionId)!;
-                        yield return canonical;
+                        list.Add(canonical);
                     }
                 }
             }
+
+            return list;
+        }
+
+        /// <summary>
+        /// Collects all canonical metadata for display: canonical providers, the .meta
+        /// sidecar, and raw providers promoted through the normalizer. Does not persist.
+        /// </summary>
+        public async IAsyncEnumerable<AttributeBase> CollectMetadataAsync(string filePath)
+        {
+            var result = new List<AttributeBase>();
+
+            await foreach (var attribute in CollectCanonicalAsync(filePath))
+                result.Add(attribute);
+
+            result.AddRange(await CollectPromotedAsync(filePath));
+
+            // Apply .meta sidecar overrides last: a user edit replaces the matching file-level
+            // extracted/promoted value (same definition), rather than showing both.
+            var overrides = (await LoadMetaFile(filePath)).ToList();
+            if (overrides.Count > 0)
+            {
+                var overriddenDefs = overrides.Where(o => o.SubResource == null).Select(DefId).ToHashSet();
+                result.RemoveAll(a => a.SubResource == null && overriddenDefs.Contains(DefId(a)));
+                foreach (var o in overrides)
+                {
+                    o.AttributeDefinition ??= dbContext.AttributeDefinitions.Find(o.AttributeDefinitionId)!;
+                    result.Add(o);
+                }
+            }
+
+            foreach (var attribute in result)
+                yield return attribute;
         }
 
         #endregion
 
-        private async Task<IEnumerable<AttributeBase>> LoadMetaFile(string fileName)
-        {
-            var metaFile = GetMetaFile(fileName);
-            if (File.Exists(metaFile))
-                return await serializer.Deserialize(metaFile);
+        #region User edits / .meta write-back
 
-            return Enumerable.Empty<AttributeBase>();
+        /// <summary>A single field's worth of user-submitted values from the edit form
+        /// (one entry per (group, name); multiple values for a multi-valued field such as Tag).</summary>
+        public record UserMetadataEdit(string? Group, string Name, IReadOnlyList<string> Values);
+
+        /// <summary>
+        /// Persists a user's metadata edits for one file to the folder's hidden <c>.librarian.meta</c>
+        /// sidecar, then rebuilds the file's DB metadata so the change takes effect immediately.
+        ///
+        /// Only genuine overrides are written: a submitted value is kept only if it differs from what
+        /// extraction itself reports (so the sidecar holds authorship, not a copy of the cache), and only
+        /// for editable, non-filesystem definitions. The file's whole sidecar entry is rebuilt from the
+        /// submission, so reverting a field back to its extracted value drops the override.
+        /// </summary>
+        public async Task SaveUserEditsAsync(IndexedFile file, IReadOnlyList<UserMetadataEdit> edits)
+        {
+            string filePath = fileService.Resolve(file.Path);
+
+            // Baseline = what extraction yields WITHOUT the sidecar, keyed by definition id.
+            var baseline = new Dictionary<int, HashSet<string>>();
+            await foreach (var attr in CollectCanonicalAsync(filePath))
+                AddBaseline(baseline, attr);
+            foreach (var attr in await CollectPromotedAsync(filePath))
+                AddBaseline(baseline, attr);
+
+            var overrides = new List<AttributeBase>();
+            foreach (var edit in edits)
+            {
+                var def = dbContext.AttributeDefinitions
+                    .FirstOrDefault(d => d.Group == edit.Group && d.Name == edit.Name);
+
+                // Persist only user-authored descriptive metadata: skip unknown, read-only, and
+                // filesystem facts (those are derived and rebuilt from disk, never authored here).
+                if (def == null || def.IsReadOnly || def.Group == "File attributes")
+                    continue;
+
+                var values = edit.Values
+                    .Select(v => v?.Trim() ?? string.Empty)
+                    .Where(v => v.Length > 0)
+                    .Distinct()
+                    .ToList();
+
+                // v1: an empty submission is treated as "no override" (a field can't yet be blanked to
+                // override a non-empty extracted value).
+                if (values.Count == 0)
+                    continue;
+
+                var built = new List<AttributeBase>();
+                foreach (var value in values)
+                {
+                    try
+                    {
+                        built.Add(factory.Create(def, value, SidecarProvider, editable: true));
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Skipping unparseable edit '{value}' for {group}/{name}", value, edit.Group, edit.Name);
+                    }
+                }
+                if (built.Count == 0)
+                    continue;
+
+                // Unchanged from extraction → not an override.
+                var builtKeys = built.Select(CanonicalValueKey).ToHashSet();
+                if (baseline.TryGetValue(def.Id, out var baseKeys) && baseKeys.SetEquals(builtKeys))
+                    continue;
+
+                overrides.AddRange(built);
+            }
+
+            await WriteSidecarEntry(filePath, overrides);
+
+            // Rebuild this file's DB metadata from disk + the updated sidecar.
+            await UpdateMetadata(file);
         }
 
-        private async Task SaveMetaFile(string fileName, IEnumerable<AttributeBase> fields)
+        /// <summary>Replaces a single file's entry in its folder sidecar; deletes the sidecar when the
+        /// folder no longer has any edited files.</summary>
+        private async Task WriteSidecarEntry(string filePath, IReadOnlyList<AttributeBase> overrides)
         {
-            //fields = fields.Where(x => x.CanSaveToFile);
-            await serializer.Serialize(GetMetaFile(fileName), fields);
+            string sidecar = GetSidecarPath(filePath);
+            string name = Path.GetFileName(filePath);
+
+            var folder = new Dictionary<string, IReadOnlyList<AttributeBase>>(StringComparer.OrdinalIgnoreCase);
+            if (File.Exists(sidecar))
+                foreach (var entry in await serializer.LoadFolder(sidecar))
+                    folder[entry.Key] = entry.Value;
+
+            if (overrides.Count > 0)
+                folder[name] = overrides;
+            else
+                folder.Remove(name);
+
+            if (folder.Count == 0)
+            {
+                if (File.Exists(sidecar))
+                    File.Delete(sidecar);
+            }
+            else
+            {
+                await serializer.SaveFolder(sidecar, folder);
+            }
         }
 
-        private static string GetMetaFile(string fileName)
+        /// <summary>Applies the file's sidecar overrides to the DB: each overridden definition's
+        /// file-level canonical rows (from any provider) are replaced by the user's value(s).</summary>
+        private async Task ApplySidecarOverrides(IndexedFile indexedFile)
         {
-            return fileName + ".meta";
+            string filePath = fileService.Resolve(indexedFile.Path);
+            var overrides = (await LoadMetaFile(filePath)).Where(a => a.SubResource == null).ToList();
+            if (overrides.Count == 0)
+                return;
+
+            foreach (var defGroup in overrides.GroupBy(DefId))
+            {
+                RemoveCanonicalForDefinition(indexedFile.Id, defGroup.Key);
+                foreach (var attribute in defGroup)
+                {
+                    attribute.File = indexedFile;
+                    attribute.ProviderId = SidecarProvider.ToString();
+                    attribute.Editable = true;
+                    StoreNormalized(attribute);
+                }
+            }
+
+            await dbContext.SaveChangesAsync();
+        }
+
+        private void RemoveCanonicalForDefinition(int fileId, int definitionId)
+        {
+            dbContext.TextAttributes.RemoveRange(dbContext.TextAttributes.Where(a => a.FileId == fileId && a.SubResourceId == null && a.AttributeDefinitionId == definitionId));
+            dbContext.IntegerAttributes.RemoveRange(dbContext.IntegerAttributes.Where(a => a.FileId == fileId && a.SubResourceId == null && a.AttributeDefinitionId == definitionId));
+            dbContext.FloatAttributes.RemoveRange(dbContext.FloatAttributes.Where(a => a.FileId == fileId && a.SubResourceId == null && a.AttributeDefinitionId == definitionId));
+            dbContext.DateAttributes.RemoveRange(dbContext.DateAttributes.Where(a => a.FileId == fileId && a.SubResourceId == null && a.AttributeDefinitionId == definitionId));
+            dbContext.BlobAttributes.RemoveRange(dbContext.BlobAttributes.Where(a => a.FileId == fileId && a.SubResourceId == null && a.AttributeDefinitionId == definitionId));
+        }
+
+        private static void AddBaseline(Dictionary<int, HashSet<string>> baseline, AttributeBase attribute)
+        {
+            if (attribute.SubResource != null)
+                return;
+            int def = DefId(attribute);
+            if (!baseline.TryGetValue(def, out var set))
+                baseline[def] = set = new HashSet<string>();
+            set.Add(CanonicalValueKey(attribute));
+        }
+
+        /// <summary>An attribute's definition id, reading the navigation property when the FK column
+        /// hasn't been fixed up yet (freshly factory-built, untracked attributes).</summary>
+        private static int DefId(AttributeBase attribute) =>
+            attribute.AttributeDefinition?.Id ?? attribute.AttributeDefinitionId;
+
+        #endregion
+
+        private async Task<IEnumerable<AttributeBase>> LoadMetaFile(string filePath)
+        {
+            string sidecar = GetSidecarPath(filePath);
+            if (!File.Exists(sidecar))
+                return Enumerable.Empty<AttributeBase>();
+
+            var folder = await serializer.LoadFolder(sidecar);
+            return folder.TryGetValue(Path.GetFileName(filePath), out var attributes)
+                ? attributes
+                : Enumerable.Empty<AttributeBase>();
+        }
+
+        private static string GetSidecarPath(string filePath)
+        {
+            string dir = Path.GetDirectoryName(filePath) ?? string.Empty;
+            return Path.Combine(dir, SidecarFileName);
         }
 
         public bool IsMetaFile(string fileName)
         {
-            return fileName.EndsWith(".meta");
+            return Path.GetFileName(fileName).Equals(SidecarFileName, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -4,7 +4,9 @@ Forward-looking roadmap for the metadata/search subsystem and the browsing UX.
 Phases 1–3 (Tika integration, two-layer metadata model, code-based normalization,
 full-text search, dockerization) are complete and shipped. The real-library
 correctness/reliability program (formerly a separate `findings.md`, now folded in here) is
-largely done — see **Status**. Updated 2026-06-25.
+largely done — see **Status**. The old scratch `Ideas.md` (marking/clipboard, browse TODOs,
+checksums, indexing config, non-indexed search) has also been folded into the phases below.
+Progress re-evaluated against the code at commit `d88a416`. Updated 2026-06-25.
 
 ## Status — real-library program (was findings.md M0–M6)
 
@@ -95,7 +97,20 @@ make everything browsable and searchable — delivered as a self-hosted server v
   sidecars*. On-disk format = **one hidden, dot-named, folder-level sidecar** per edited folder (an
   edited 14-track album = one file; the only place Item/role facts can live), **co-located** so
   metadata survives partial moves. **Never mutate originals by default** — embedding tags back
-  ("promote to source") is opt-in, per-format. (The write path doesn't exist yet → Phase 4.)
+  ("promote to source") is opt-in, per-format. The attribute-layer write path **ships** (Phase 4,
+  `.librarian.meta` + `MetadataService.SaveUserEditsAsync`); Item/role facts in the sidecar are still TODO.
+  - **Why folder-level, not per-file `name.ext.meta` (don't relitigate).** (1) **Item/role facts are
+    group-scoped** — "these 144 files are one Item, `OUTPOST2.EXE` is primary, this folder is not a
+    bundle" has no natural per-file home; stashing it in the primary's sidecar orphans the grouping if
+    the primary moves. Per-file would force a *second* folder-level file anyway → worst of both. (2) The
+    **clutter** argument is weaker than it looks: we only write sidecars for *edited* files, so it's "1
+    file per edited folder" vs "1 per edited file," not "a sidecar for every file." (3) The per-file
+    **portability** win ("metadata travels with the file") is mostly illusory — a generic file manager
+    won't co-move the `.meta`, and in a folder-organized library *folder* moves dominate, which the
+    folder sidecar (living inside the folder) handles perfectly; in-app moves rewrite sidecars either
+    way (Phase 6e). **Escape hatch if single-file portability ever matters:** keep folder-level as
+    canonical and *additionally* honor a per-file `name.ext.meta` on read, written only on an explicit
+    app "export/move one file" — YAGNI until asked.
 - **Item corrections are durable overrides, surfaced in the Item Viewer.** The association pass is a
   re-runnable projection that resets its own assignments each run, so manual fixes need a protected
   layer: `RoleSource ∈ {Auto, Manual}` (on the file and the Item) + per-folder
@@ -110,20 +125,49 @@ make everything browsable and searchable — delivered as a self-hosted server v
 
 Make the collected metadata actually *usable*, not just stored.
 
-- [ ] **Metadata editing / `.meta` write-back.** `SaveMetadataAsync` is unimplemented (both providers
-      throw, no save endpoint). Wire the edit UI through to persistence and write back to the hidden
-      **folder-level** sidecar so user edits survive re-indexing. **This is the prerequisite for
-      disk-persisting Item/role overrides** (Standing decisions) — the `.meta` schema must be extended
-      to express Item facts (`primary:`, `role:`, `bundle: none`, per-file overrides), not just a flat
-      per-file attribute list.
-- [ ] **Vocabulary data bugs + validation test.** Some units in `MetadataAttributes.csv` are wrong
-      (e.g. Artist = "dB"), which surfaced as a meta-cli `'-4.23 dB'` `FormatException`. Fix them and
-      add a test that validates the vocabulary on load. (Replaygain fields are also still unmapped.)
-- [ ] **AttributeDefinition id-space.** Seed defs (CSV/`HasData`, ids 1–120) and runtime-curated
-      "Other"-group defs (auto-identity, **121+**) share one identity space, so a CSV-appended
-      attribute collides on the PK. Separate the ranges (reserve a high seed range, or give curation
-      its own range) before adding more seed attributes. (Worked around once by reusing
-      `General.Collection` for TV "Series".)
+- [x] ~~**Metadata editing / `.meta` write-back (attribute layer).**~~ Done. User edits now persist to a
+      hidden **folder-level** sidecar (`.librarian.meta`, one per folder, `<librarian>`→`<file name>`
+      entries; the on-disk system of record) and survive re-indexing. `MetadataService.SaveUserEditsAsync`
+      writes only genuine **overrides** (a submitted value kept only if it differs from what extraction
+      reports, and only for editable, non-`File attributes` definitions; reverting to the extracted value
+      drops the override and deletes empty sidecars). The sidecar is applied as an **authoritative
+      override** — `ApplySidecarOverrides` (indexing) and `CollectMetadataAsync` (display) replace the
+      matching extracted/promoted value rather than duplicating it. Tier-0 form-POST: `MetadataController.Save`
+      via the `metadata_actions/save` route, the metadata view wrapped in a `<form>` (Save = submit,
+      antiforgery). Verified live: author Title + multi-Tag → written to disk → survives `reindex?force`;
+      override replaces an extracted Title (one row); revert drops it. Indexer already skips the sidecar
+      (`IsMetaFile`). Serializer reuses the per-attribute vocabulary (text/int/float/date/timeSpan/blob).
+- [ ] **Item/role facts in the sidecar** (the remaining write-back piece). The `<file>` element is the
+      reserved home for `primary:`/`role:`/`bundle: none` + per-file overrides; wiring them (and making
+      `ItemAssociationService` respect on-disk overrides) folds into the **M6 correction-actions** UI
+      (Phase 6d) — the in-DB override layer (`RoleSource`) already exists; this just persists it to disk.
+- [x] ~~**Vocabulary data bugs + validation test.**~~ Done. Cleared the bogus units that had landed on
+      non-numeric fields (Artist/Initial key/Lyrics/Actor/Architecture/End-of-life-date carried
+      `dB`/`bpm`/`bps`; the Artist = "dB" one surfaced as a meta-cli `'-4.23 dB'` `FormatException`),
+      and relocated `bpm` to its real home (Beats per minute). `FixVocabularyUnits` migration ships the
+      seed update; `VocabularyTests` validates the parsed dataset (sequential ids, name/group present,
+      unique group+name, **units only on numeric types**). (Replaygain fields are still unmapped.)
+- [x] ~~**AttributeDefinition id-space.**~~ Done. Seed defs (CSV/`HasData`, ids 1–120) and
+      runtime-curated "Other"-group defs shared one identity space, so a CSV-appended attribute would
+      collide on the PK. `ReserveCurationIdSpace` migration vacates any curated rows squatting in the
+      reserved range (they're rebuildable from the raw layer → recreated by `renormalize`) and restarts
+      the identity sequence at **1,000,000**: ids `<1,000,000` are reserved for the seed, curation lives
+      at `1,000,000+`. (Previously worked around by reusing `General.Collection` for TV "Series".)
+- [x] ~~**Checksums & integrity** *(Ideas.md)*.~~ Done (`ChecksumService`, its own pass — not inline with
+      extraction). SHA-256, **change-gated**: the prefix hash is cleared and the full-hash attribute
+      dropped when a file changes, so a normal incremental index never re-hashes an unchanged file.
+      **Three-state toggle** (`Checksum:Mode`, default **Off**; overridable per-run via `?mode=`):
+      - **Dedup** — *staged*: group by **size** (free) → store a **prefix hash** (first block) for
+        size-collisions → full hash only for files that still collide. Lazy — most files never fully read.
+      - **Integrity** — always full SHA-256 (a prefix hash can't catch mid-file bitrot).
+      **Storage = hybrid:** full hash = the read-only `File attributes/Checksum` canonical attribute
+      (id 121 — the seed append the id-space fix unblocked; shows in the Item Viewer); prefix hash =
+      internal `IndexedFile.PrefixHash` column the dedup pass groups on. Endpoints:
+      `POST /api/metadata/checksum[?mode=]` + `GET /api/metadata/duplicates` (sets sharing a full hash).
+      Verified live on the dev library: integrity hashed 276 files; **dedup found the same 8 duplicate
+      sets / 17 files while fully reading only 17** (16× fewer reads); change-gating clears only the
+      edited file's hashes. *Remaining (smaller follow-ups):* a per-Item **validate** action + a
+      **duplicates view** in the Item Viewer (the data + endpoints exist; this is UI).
 - [x] ~~**Cross-provider precedence / dedup.**~~ Investigated and **moot**: there are no real
       meta-cli↔Tika value conflicts; the MIME generic-vs-specific case is handled by `MediaType.Resolve`
       (M2), and stale accumulated values were flushed by the force-reindex. Canonical writes are now
@@ -135,6 +179,11 @@ Required before exposing this beyond a trusted dev box.
 
 - [ ] **Authentication.** There is none today, and the server exposes the whole mounted library.
       Add auth (and document running behind a TLS-terminating reverse proxy).
+- [ ] **Indexing configuration + admin UI** *(Ideas.md)*. Indexing is configured by env-vars /
+      `appsettings.json` only (`BaseDirectory`, ignore list, schedule). Add an in-app settings page to
+      configure indexing (roots, ignore patterns, schedule, checksum on/off) and to trigger the
+      existing re-runnable admin endpoints (`reindex` / `renormalize` / `associate` /
+      `reindex-search`) from the UI instead of curl.
 - [x] ~~**Indexing robustness.**~~ Done: per-unit-of-work `DbContext` (each file/dir in its own
       scope), FS-watcher **debounce** (per-path, coalesces a write's event burst), idempotent
       replace-on-reindex (no more duplicate rows), `PruneMissing` after a full walk, a `force` full
@@ -218,15 +267,31 @@ cover-art companion, else folder art). Remaining:
 - **Prev/next** across the current listing — a lightbox over the browse results (Tier 1).
 - Replaces the standalone metadata page as a file's "open" target.
 
-**6e — Browse view modes + actions.**
+**6e — Browse: view modes, selection & actions, chrome.**
 - **View modes:** Details (with a per-category **column chooser** sourced from the vocabulary;
   defaults per category — Music → Track/Artist/Album/Duration, Photos → Dimensions/Date, folder
-  → Size/Type/Modified), Icons, Thumbnails.
-- **Actions:** context menu as the primary surface; clipboard with clear cut-state feedback;
-  bulk Properties (edit common fields across a selection). Modern tier adds drag-and-drop —
-  **onto a folder = move; onto a category facet = set that attribute** (drag songs onto "Jazz" →
-  set genre; onto a Tag node → add tag) — plus trash + undo for move/rename/delete.
-- Separate the gestures: single-click selects, double-click opens the Viewer, the name link
+  → Size/Type/Modified), Icons, Thumbnails. Persist the chosen mode/columns per category.
+- **Selection & actions — the "mark set" model** *(Ideas.md; supersedes the bare cut/copy
+  clipboard).* A persistent set of *marked* files is the single action target:
+  - Mark files from **browse** pages, **search** results, or a **quick-mark box** that accepts simple
+    glob patterns (`*.exe`, `*.bmp`). Marks **persist across pages** (as the clipboard does today).
+  - Operations on the mark set: **move, copy, delete, bulk rename** (only single-file `RenameFile`
+    exists today — add a pattern/sequence bulk rename), plus **bulk Properties** (edit common fields
+    across the set) and the Item-correction actions from 6d.
+  - Context menu is the primary per-row surface; the mark set drives the toolbar/menu actions.
+  - Modern tier adds drag-and-drop — **onto a folder = move; onto a category facet = set that
+    attribute** (drag songs onto "Jazz" → set genre; onto a Tag node → add tag) — plus trash +
+    undo for move/rename/delete.
+  - **Tier-0 note:** the current actions go through `XMLHttpRequest`+JSON (`browse.js`), which breaks
+    on RetroZilla. The mark set must have classic **form-POST** endpoints as the baseline, enhanced
+    by JS — same as the rest of Phase 6.
+- **Menus & chrome** *(Ideas.md)*: a Nautilus-style **menu bar** (File / Edit / View / Go) as the
+  Tier-0 home for actions a context menu can't always reach; a **browse-settings page** for view
+  defaults, column sets, and ignore / quick-mark preferences.
+- **Index stays consistent with app-initiated file ops** *(Ideas.md)*. Move/copy/rename/delete
+  currently rely on the FS-watcher round-trip; when the app itself performs the operation it should
+  update the index **directly** so the browse view is correct immediately.
+- **Gestures:** single-click selects/marks, double-click opens the Viewer, the name link
   navigates (folders) / opens (files), Properties lives in the viewer.
 
 **Progressive-enhancement tiers (applies to all of 6a–6e):**
@@ -257,6 +322,9 @@ Phase 4 write-back) → view modes / column chooser → smart-view builder.
       already generated and ready if a single raw layer for media is wanted.
 - [ ] **CJK search.** Stock Postgres can't word-segment Chinese/Japanese/Thai. If that content
       matters, add an extension (`pgroonga` / `zhparser`). Latin/Cyrillic/Greek work today.
+- [ ] **Non-indexed (live-filesystem) search** *(Ideas.md)*. Full-text + structured search over the
+      *index* is done; add an option to also search the live filesystem for not-yet-indexed paths
+      (name globs / recent files), so freshly-added files are findable before the next index pass.
 
 ---
 

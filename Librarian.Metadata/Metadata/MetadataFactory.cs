@@ -180,7 +180,9 @@ namespace Librarian.Metadata
                 return Create(attribute, value, providerId, providerAttributeId, editable, subResource);
             }
 
-            // Create attribute
+            // Create attribute. Its Id comes from the identity sequence, which the
+            // ReserveCurationIdSpace migration restarts at 1,000,000 — so curated "Other" defs live in
+            // their own id range and never collide with seed-appended attributes (1..N from the CSV).
             var newAttribute = new AttributeDefinition(cleanedName, "Other", GetDatatype(value));
 
             dbContext.Add(newAttribute);

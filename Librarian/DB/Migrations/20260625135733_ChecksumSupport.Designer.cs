@@ -3,6 +3,7 @@ using System;
 using Librarian.DB;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -12,9 +13,11 @@ using NpgsqlTypes;
 namespace Librarian.DB.Migrations
 {
     [DbContext(typeof(PostgresDatabaseContext))]
-    partial class PostgresDatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260625135733_ChecksumSupport")]
+    partial class ChecksumSupport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -920,7 +923,7 @@ namespace Librarian.DB.Migrations
                             Id = 10,
                             Description = "",
                             Group = "Audio",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Bits per sample",
                             Type = 3,
                             Unit = ""
@@ -930,7 +933,7 @@ namespace Librarian.DB.Migrations
                             Id = 11,
                             Description = "",
                             Group = "Audio",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Channels",
                             Type = 3,
                             Unit = ""
@@ -1000,7 +1003,7 @@ namespace Librarian.DB.Migrations
                             Id = 18,
                             Description = "",
                             Group = "Audio",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Sample rate",
                             Type = 3,
                             Unit = ""
@@ -1010,7 +1013,7 @@ namespace Librarian.DB.Migrations
                             Id = 19,
                             Description = "",
                             Group = "Audio",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Total tracks",
                             Type = 3,
                             Unit = ""
@@ -1060,7 +1063,7 @@ namespace Librarian.DB.Migrations
                             Id = 24,
                             Description = "Date and time when the file was created on disk.",
                             Group = "File attributes",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Date created",
                             Type = 5,
                             Unit = ""
@@ -1070,7 +1073,7 @@ namespace Librarian.DB.Migrations
                             Id = 25,
                             Description = "Date and time when the file was last modified.",
                             Group = "File attributes",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Date modified",
                             Type = 5,
                             Unit = ""
@@ -1080,7 +1083,7 @@ namespace Librarian.DB.Migrations
                             Id = 26,
                             Description = "The file extension.",
                             Group = "File attributes",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "File extension",
                             Type = 0,
                             Unit = ""
@@ -1100,7 +1103,7 @@ namespace Librarian.DB.Migrations
                             Id = 28,
                             Description = "File type as detected by the 'file' command.",
                             Group = "File attributes",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "File type",
                             Type = 0,
                             Unit = ""
@@ -1110,7 +1113,7 @@ namespace Librarian.DB.Migrations
                             Id = 29,
                             Description = "The full file system path to the file.",
                             Group = "File attributes",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Full path",
                             Type = 0,
                             Unit = ""
@@ -1120,7 +1123,7 @@ namespace Librarian.DB.Migrations
                             Id = 30,
                             Description = "Number of items (files or folders) in the directory.",
                             Group = "File attributes",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Item count",
                             Type = 3,
                             Unit = ""
@@ -1130,7 +1133,7 @@ namespace Librarian.DB.Migrations
                             Id = 31,
                             Description = "The detected mime type of the file.",
                             Group = "File attributes",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Mime type",
                             Type = 0,
                             Unit = ""
@@ -1140,7 +1143,7 @@ namespace Librarian.DB.Migrations
                             Id = 32,
                             Description = "The size of the file in bytes.",
                             Group = "File attributes",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Size",
                             Type = 3,
                             Unit = ""
@@ -1340,7 +1343,7 @@ namespace Librarian.DB.Migrations
                             Id = 52,
                             Description = "",
                             Group = "General",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Id",
                             Type = 0,
                             Unit = ""
@@ -1350,7 +1353,7 @@ namespace Librarian.DB.Migrations
                             Id = 53,
                             Description = "",
                             Group = "General",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Index",
                             Type = 3,
                             Unit = ""
@@ -1610,7 +1613,7 @@ namespace Librarian.DB.Migrations
                             Id = 79,
                             Description = "Ratio obtained by dividing the width by the height.",
                             Group = "Image",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Aspect ratio",
                             Type = 4,
                             Unit = ""
@@ -1620,7 +1623,7 @@ namespace Librarian.DB.Migrations
                             Id = 80,
                             Description = "Image height in pixels.",
                             Group = "Image",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Height",
                             Type = 3,
                             Unit = ""
@@ -1630,7 +1633,7 @@ namespace Librarian.DB.Migrations
                             Id = 81,
                             Description = "Total number of pixels in this image.",
                             Group = "Image",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Pixels",
                             Type = 3,
                             Unit = ""
@@ -1640,7 +1643,7 @@ namespace Librarian.DB.Migrations
                             Id = 82,
                             Description = "Image width in pixels.",
                             Group = "Image",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Width",
                             Type = 3,
                             Unit = ""
@@ -1660,7 +1663,7 @@ namespace Librarian.DB.Migrations
                             Id = 84,
                             Description = "",
                             Group = "Media",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Bit rate",
                             Type = 3,
                             Unit = ""
@@ -1670,7 +1673,7 @@ namespace Librarian.DB.Migrations
                             Id = 85,
                             Description = "",
                             Group = "Media",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Codec",
                             Type = 0,
                             Unit = ""
@@ -1700,7 +1703,7 @@ namespace Librarian.DB.Migrations
                             Id = 88,
                             Description = "Media duration.",
                             Group = "Media",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Duration",
                             Type = 6,
                             Unit = ""
@@ -1710,7 +1713,7 @@ namespace Librarian.DB.Migrations
                             Id = 89,
                             Description = "",
                             Group = "Media",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "End time",
                             Type = 6,
                             Unit = ""
@@ -1870,7 +1873,7 @@ namespace Librarian.DB.Migrations
                             Id = 105,
                             Description = "",
                             Group = "Media",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Start time",
                             Type = 6,
                             Unit = ""
@@ -1880,7 +1883,7 @@ namespace Librarian.DB.Migrations
                             Id = 106,
                             Description = "",
                             Group = "Media",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Stream type",
                             Type = 0,
                             Unit = ""
@@ -2010,7 +2013,7 @@ namespace Librarian.DB.Migrations
                             Id = 119,
                             Description = "",
                             Group = "Video",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Frame rate",
                             Type = 4,
                             Unit = ""
@@ -2020,7 +2023,7 @@ namespace Librarian.DB.Migrations
                             Id = 120,
                             Description = "",
                             Group = "Video",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Frames",
                             Type = 3,
                             Unit = ""
@@ -2030,7 +2033,7 @@ namespace Librarian.DB.Migrations
                             Id = 121,
                             Description = "SHA-256 content hash (hex).",
                             Group = "File attributes",
-                            IsReadOnly = true,
+                            IsReadOnly = false,
                             Name = "Checksum",
                             Type = 0,
                             Unit = ""

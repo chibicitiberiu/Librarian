@@ -18,6 +18,7 @@ namespace Librarian.Controllers.Api
         private readonly SearchVectorService searchVectors;
         private readonly ItemAssociationService itemAssociation;
         private readonly IndexingService indexingService;
+        private readonly ChecksumService checksumService;
         private readonly DatabaseContext db;
         private readonly MetadataNormalizer normalizer;
 
@@ -25,6 +26,7 @@ namespace Librarian.Controllers.Api
                                        SearchVectorService searchVectors,
                                        ItemAssociationService itemAssociation,
                                        IndexingService indexingService,
+                                       ChecksumService checksumService,
                                        DatabaseContext db,
                                        MetadataNormalizer normalizer)
         {
@@ -32,6 +34,7 @@ namespace Librarian.Controllers.Api
             this.searchVectors = searchVectors;
             this.itemAssociation = itemAssociation;
             this.indexingService = indexingService;
+            this.checksumService = checksumService;
             this.db = db;
             this.normalizer = normalizer;
         }
@@ -80,6 +83,26 @@ namespace Librarian.Controllers.Api
         {
             int updated = await searchVectors.RebuildAllAsync();
             return Ok(new { updated });
+        }
+
+        /// <summary>
+        /// Runs the content-hashing pass. Uses the configured <c>Checksum:Mode</c> unless overridden
+        /// (<c>?mode=Dedup|Integrity|Off</c>): Dedup hashes lazily (size → prefix → full) to find
+        /// duplicates; Integrity computes every file's full SHA-256. Change-gated and re-runnable.
+        /// </summary>
+        [HttpPost("checksum")]
+        public async Task<IActionResult> Checksum([FromQuery] ChecksumMode? mode = null)
+        {
+            var result = await checksumService.RunAsync(mode);
+            return Ok(result);
+        }
+
+        /// <summary>Sets of files that share a full content hash (computed by the checksum pass).</summary>
+        [HttpGet("duplicates")]
+        public async Task<IActionResult> Duplicates()
+        {
+            var sets = await checksumService.GetDuplicatesAsync();
+            return Ok(new { count = sets.Count, files = sets.Sum(s => s.Paths.Count), sets });
         }
 
         /// <summary>

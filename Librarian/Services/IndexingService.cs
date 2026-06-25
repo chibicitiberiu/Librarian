@@ -434,6 +434,9 @@ namespace Librarian.Services
                 indexedFile.Created = file.CreationTimeUtc;
                 indexedFile.Modified = file.LastWriteTimeUtc;
                 indexedFile.Size = file.Length;
+                // Content changed → its hashes are stale. Clear the prefix hash (the full-hash Checksum
+                // attribute is dropped by UpdateMetadata's canonical rebuild); the checksum pass recomputes.
+                indexedFile.PrefixHash = null;
                 await scopedServices.DbContext.SaveChangesAsync();
 
                 await scopedServices.MetadataService.UpdateMetadata(indexedFile);

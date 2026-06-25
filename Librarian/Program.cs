@@ -57,6 +57,7 @@ namespace Librarian
             builder.Services.AddScoped<RenormalizationService>();
             builder.Services.AddScoped<ItemAssociationService>();
             builder.Services.AddScoped<SearchVectorService>();
+            builder.Services.AddScoped<ChecksumService>();
             builder.Services.AddScoped<SearchService>();
             builder.Services.AddScoped<LibraryService>();
             builder.Services.AddScoped<MetadataFactory>();
@@ -136,6 +137,8 @@ namespace Librarian
             app.MapControllerRoute("AdvancedSearch",
                                     "/advanced_search",
                                     new { controller = "Search", action = "Advanced" });
+
+            app.MapControllerRoute("Metadata_Save", "metadata_actions/save", new { controller = "Metadata", action = "Save" });
 
             app.MapControllerRoute("Metadata",
                                     "metadata/{**path}",
