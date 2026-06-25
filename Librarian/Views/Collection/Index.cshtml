@@ -1,0 +1,150 @@
+@using Librarian.Utils
+@using Librarian.Model
+@using MimeMapping
+@model Librarian.Services.CollectionDetails
+@{
+    ViewData["Title"] = Model.Name;
+    ViewData["CurrentPage"] = "collections";
+
+    string KindLabel(CollectionKind k) => k switch
+    {
+        CollectionKind.Show => "Show",
+        CollectionKind.Season => "Season",
+        CollectionKind.Album => "Album",
+        CollectionKind.Series => "Series",
+        CollectionKind.AppBundle => "App",
+        _ => "Collection",
+    };
+}
+
+<div class="window">
+    <div class="window-title">
+        <div class="window-title-inner">
+            <h1>@Model.Name <span class="badge-primary" title="Collection kind">@KindLabel(Model.Kind)</span></h1>
+        </div>
+    </div>
+
+    <div class="window-body">
+
+    <partial name="_Sidebar" />
+
+    <div class="window-content">
+
+        <nav style="margin:.25em 0 .75em;">
+            <a href="@Url.Action("Roots", "Collection")">Collections</a>
+            @foreach (var a in Model.Ancestors)
+            {
+                <span> › </span>
+                <a href="@Url.Action("Index", "Collection", new { id = a.Id })">@a.Name</a>
+            }
+            <span> › </span>
+            <strong>@Model.Name</strong>
+        </nav>
+
+        <div class="item-header">
+            @if (Model.CoverPath != null)
+            {
+                <a class="item-cover" href="@Url.Action("Index", "Browse", new { path = Model.CoverPath })">
+                    <img src="@Url.Action("Index", "Browse", new { path = Model.CoverPath })" alt="Cover preview" />
+                </a>
+            }
+
+            <div class="item-files">
+                @if (Model.Children.Count > 0)
+                {
+                    <h2 class="metadata-group-title">Collections (@Model.Children.Count)</h2>
+                    <ul class="item-file-list">
+                        @foreach (var c in Model.Children)
+                        {
+                            <li class="item-file">
+                                <img src="~/icons/16/file-types/folder.png" alt="" />
+                                <a class="item-file-name" href="@Url.Action("Index", "Collection", new { id = c.Id })">@c.Name</a>
+                                <span class="badge-primary">@KindLabel(c.Kind)</span>
+                                <span style="color:#666;">@(c.ChildCount > 0 ? $"{c.ChildCount} sub" : "")@(c.ItemCount > 0 ? $" {c.ItemCount} items" : "")</span>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                @if (Model.Items.Count > 0)
+                {
+                    <h2 class="metadata-group-title">Items (@Model.Items.Count)</h2>
+                    <ul class="item-file-list">
+                        @foreach (var i in Model.Items)
+                        {
+                            string mime = i.PrimaryPath != null ? MimeUtility.GetMimeMapping(i.Name) : "application/octet-stream";
+                            <li class="item-file">
+                                <img src="@Url.Content(IconMapping.GetIconUrl(i.Name, mime))" alt="" />
+                                @if (i.PrimaryPath != null)
+                                {
+                                    <a class="item-file-name" href="@Url.Action("Index", "Metadata", new { path = i.PrimaryPath })">@i.Name</a>
+                                    <a class="item-file-open" href="@Url.Action("Index", "Browse", new { path = i.PrimaryPath })" title="Open file">↗</a>
+                                }
+                                else
+                                {
+                                    <span class="item-file-name">@i.Name</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+
+                @if (Model.Children.Count == 0 && Model.Items.Count == 0)
+                {
+                    <p style="color:#666;">This collection is empty.</p>
+                }
+
+                @if (Model.Files.Count > 0)
+                {
+                    <details class="item-resources" open="@(Model.Files.Count <= 6)">
+                        <summary>Collection files (@Model.Files.Count)</summary>
+                        <ul class="item-file-list">
+                            @foreach (var f in Model.Files)
+                            {
+                                <li class="item-file">
+                                    <img src="@Url.Content(IconMapping.GetIconUrl(f.Name, MimeUtility.GetMimeMapping(f.Name)))" alt="" />
+                                    <a class="item-file-name" href="@Url.Action("Index", "Metadata", new { path = f.Path })">@f.Name</a>
+                                    <a class="item-file-open" href="@Url.Action("Index", "Browse", new { path = f.Path })" title="Open file">↗</a>
+                                </li>
+                            }
+                        </ul>
+                    </details>
+                }
+            </div>
+        </div>
+
+        @foreach (var group in Model.Metadata.GroupBy(x => x.AttributeDefinition.Group))
+        {
+            <div class="metadata-group">
+                <h2 class="metadata-group-title">@group.Key</h2>
+                <table>
+                    <tbody>
+                        @foreach (var field in group.OrderBy(x => x.AttributeDefinition.Name))
+                        {
+                            <tr>
+                                <td>@field.AttributeDefinition.Name</td>
+                                <td class="col-input">
+                                    @switch (field)
+                                    {
+                                        case TextAttribute t: <span>@t.Value</span> break;
+                                        case IntegerAttribute n: <span>@n.Value</span> break;
+                                        case FloatAttribute fl: <span>@fl.Value</span> break;
+                                        case DateAttribute d: <span>@d.Value</span> break;
+                                        case BlobAttribute b: <span>@(b.Value.Length) bytes</span> break;
+                                    }
+                                </td>
+                                <td class="fill"></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    </div>
+
+    <div class="window-statusbar">
+        <div id="window-statusbar-message" class="flex-fill">@Model.Items.Count items · @Model.Children.Count sub-collections</div>
+    </div>
+</div>

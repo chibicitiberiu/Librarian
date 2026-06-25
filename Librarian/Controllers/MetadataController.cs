@@ -20,13 +20,15 @@ namespace Librarian.Controllers
         private readonly ILogger<MetadataController> logger;
         readonly FileService fileService;
         readonly MetadataService metadataService;
+        readonly CollectionService collectionService;
         readonly DatabaseContext db;
 
         public MetadataController(ILogger<MetadataController> logger, MetadataService metadataService,
-                                  FileService fileService, DatabaseContext db)
+                                  CollectionService collectionService, FileService fileService, DatabaseContext db)
         {
             this.logger = logger;
             this.metadataService = metadataService;
+            this.collectionService = collectionService;
             this.fileService = fileService;
             this.db = db;
         }
@@ -78,6 +80,7 @@ namespace Librarian.Controllers
                     .ToDictionary(grouping => grouping.Key, grouping => grouping.ToArray().AsEnumerable());
 
                 PopulateItem(vm);
+                await PopulateCollectionContextAsync(vm);
 
                 return View(vm);
             }
@@ -190,6 +193,19 @@ namespace Librarian.Controllers
                     .Where(p => ParentDir(p) == folder);
                 vm.CoverPath = BestCover(folderArt);
             }
+        }
+
+        /// <summary>Adds the "Part of:" collection breadcrumb and, when the item still has no cover, falls
+        /// back to the nearest ancestor collection's cover (collection_plan.md §9.2).</summary>
+        private async Task PopulateCollectionContextAsync(MetadataViewModel vm)
+        {
+            var indexed = db.IndexedFiles.FirstOrDefault(f => f.Path == vm.Path);
+            if (indexed?.ItemId is not int itemId)
+                return;
+
+            var (crumbs, cover) = await collectionService.GetItemContextAsync(itemId);
+            vm.CollectionCrumbs = crumbs;
+            vm.CoverPath ??= cover;
         }
 
         private static string ParentDir(string path)

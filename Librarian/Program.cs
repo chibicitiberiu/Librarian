@@ -63,6 +63,7 @@ namespace Librarian
             builder.Services.AddScoped<ChecksumService>();
             builder.Services.AddScoped<SearchService>();
             builder.Services.AddScoped<LibraryService>();
+            builder.Services.AddScoped<CollectionService>();
             builder.Services.AddScoped<MetadataFactory>();
             builder.Services.AddScoped<MetadataSerializer>();
 
@@ -141,6 +142,13 @@ namespace Librarian
             app.MapControllerRoute("Library",
                                     "library/{category}/{view?}",
                                     new { controller = "Library", action = "Index" });
+
+            app.MapControllerRoute("Collections",
+                                    "collections",
+                                    new { controller = "Collection", action = "Roots" });
+            app.MapControllerRoute("Collection",
+                                    "collection/{id:int}",
+                                    new { controller = "Collection", action = "Index" });
 
             app.MapControllerRoute("Search",
                                     "/search",

@@ -48,5 +48,13 @@ namespace Librarian.ViewModels
         public IReadOnlyList<ItemFileRow> Resources { get; set; } = Array.Empty<ItemFileRow>();
 
         #endregion
+
+        #region Structural collection (collection_plan.md §9.2)
+
+        /// <summary>"Part of:" breadcrumb up the owning collection chain (root … nearest), empty when the
+        /// item belongs to no collection.</summary>
+        public IReadOnlyList<(int Id, string Name)> CollectionCrumbs { get; set; } = Array.Empty<(int, string)>();
+
+        #endregion
     }
 }

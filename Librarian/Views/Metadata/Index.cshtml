@@ -61,6 +61,19 @@
 
     <div class="window-content">
 
+        @if (Model.CollectionCrumbs.Count > 0)
+        {
+            <nav style="margin:.25em 0 .75em;">
+                <span style="color:#666;">Part of:</span>
+                <a href="@Url.Action("Roots", "Collection")">Collections</a>
+                @foreach (var c in Model.CollectionCrumbs)
+                {
+                    <span> › </span>
+                    <a href="@Url.Action("Index", "Collection", new { id = c.Id })">@c.Name</a>
+                }
+            </nav>
+        }
+
         @if (Model.CoverPath != null || Model.HasItem)
         {
             <div class="item-header">
