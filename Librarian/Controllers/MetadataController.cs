@@ -5,6 +5,7 @@ using Librarian.Services;
 using Librarian.Utils;
 using Librarian.ViewModels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MimeMapping;
 using System;
@@ -57,8 +58,15 @@ namespace Librarian.Controllers
                 }
                 else
                 {
-                    logger.LogError("File not found: {}", diskPath);
-                    return NotFound("File not found!");
+                    // Not on disk — it may be a virtual archive entry (collection_plan.md §3.1), which is
+                    // catalogued but has no standalone file. Render it from the DB.
+                    var entry = db.IndexedFiles.FirstOrDefault(f => f.Path == path && f.Source == FileSource.ArchiveEntry);
+                    if (entry == null)
+                    {
+                        logger.LogError("File not found: {}", diskPath);
+                        return NotFound("File not found!");
+                    }
+                    return View(await BuildVirtualViewModelAsync(entry));
                 }
 
                 vm.DisplayName = fsInfo.Name;
@@ -193,6 +201,49 @@ namespace Librarian.Controllers
                     .Where(p => ParentDir(p) == folder);
                 vm.CoverPath = BestCover(folderArt);
             }
+        }
+
+        /// <summary>Builds the Item Viewer model for a virtual archive entry (no disk file): its metadata
+        /// comes from the DB, and the in-archive cover isn't servable so it falls back to an ancestor
+        /// collection cover (collection_plan.md §3.1, §9.2).</summary>
+        private async Task<MetadataViewModel> BuildVirtualViewModelAsync(IndexedFile entry)
+        {
+            int bang = entry.Path.IndexOf("!/", StringComparison.Ordinal);
+            string archiveRel = bang >= 0 ? entry.Path[..bang] : entry.Path;
+
+            var vm = new MetadataViewModel
+            {
+                IsDirectory = false,
+                DisplayName = NameOf(entry.Path),
+                Path = entry.Path,
+                DisplayPath = entry.Path,
+                ParentPath = ParentDir(archiveRel),
+            };
+
+            var attrs = await LoadDbAttributesAsync(entry.Id);
+            vm.Metadata = attrs.Where(a => a.SubResourceId == null);
+            vm.SubResourceMetadata = attrs
+                .Where(a => a.SubResource != null)
+                .GroupBy(a => a.SubResource!)
+                .ToDictionary(g => g.Key, g => g.ToArray().AsEnumerable());
+
+            PopulateItem(vm);
+            vm.CoverPath = null;   // in-archive bytes aren't servable; prefer a real ancestor collection cover
+            await PopulateCollectionContextAsync(vm);
+            return vm;
+        }
+
+        /// <summary>Loads a file's canonical attributes (with their definitions) from the DB, for displaying
+        /// virtual files that have no disk path to re-extract.</summary>
+        private async Task<List<AttributeBase>> LoadDbAttributesAsync(int fileId)
+        {
+            var list = new List<AttributeBase>();
+            list.AddRange(await db.TextAttributes.Include(a => a.AttributeDefinition).Include(a => a.SubResource).Where(a => a.FileId == fileId).ToListAsync());
+            list.AddRange(await db.IntegerAttributes.Include(a => a.AttributeDefinition).Include(a => a.SubResource).Where(a => a.FileId == fileId).ToListAsync());
+            list.AddRange(await db.FloatAttributes.Include(a => a.AttributeDefinition).Include(a => a.SubResource).Where(a => a.FileId == fileId).ToListAsync());
+            list.AddRange(await db.DateAttributes.Include(a => a.AttributeDefinition).Include(a => a.SubResource).Where(a => a.FileId == fileId).ToListAsync());
+            list.AddRange(await db.BlobAttributes.Include(a => a.AttributeDefinition).Include(a => a.SubResource).Where(a => a.FileId == fileId).ToListAsync());
+            return list;
         }
 
         /// <summary>Adds the "Part of:" collection breadcrumb and, when the item still has no cover, falls

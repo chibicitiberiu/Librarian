@@ -21,10 +21,14 @@ namespace Librarian.Metadata
             await WriteDocument(fileName, Serialize(attributes));
         }
 
-        /// <summary>Writes a folder's sidecar (<c>.librarian.meta</c>) to disk.</summary>
-        public async Task SaveFolder(string fileName, IReadOnlyDictionary<string, IReadOnlyList<AttributeBase>> files)
+        /// <summary>Writes a folder's sidecar (<c>.librarian.meta</c>) to disk. Carries both per-file
+        /// overrides (keyed by filename or an archive-entry locator) and collection-level overrides
+        /// (keyed by the collection's source path) — collection_plan.md §8.</summary>
+        public async Task SaveFolder(string fileName,
+            IReadOnlyDictionary<string, IReadOnlyList<AttributeBase>> files,
+            IReadOnlyDictionary<string, IReadOnlyList<AttributeBase>>? collections = null)
         {
-            await WriteDocument(fileName, SerializeFolder(files));
+            await WriteDocument(fileName, SerializeFolder(files, collections));
         }
 
         private static async Task WriteDocument(string fileName, XDocument document)
@@ -47,9 +51,12 @@ namespace Librarian.Metadata
         /// system-of-record format (plan.md "DB is a cache, disk is the system of record"); the
         /// per-file element is the natural place to later carry Item/role facts (role/primary/bundle).
         /// </summary>
-        public XDocument SerializeFolder(IReadOnlyDictionary<string, IReadOnlyList<AttributeBase>> files)
+        public XDocument SerializeFolder(IReadOnlyDictionary<string, IReadOnlyList<AttributeBase>> files,
+            IReadOnlyDictionary<string, IReadOnlyList<AttributeBase>>? collections = null)
         {
-            var rootNode = new XElement("librarian", new XAttribute("version", "1"));
+            // version 2 adds <collection> entries and archive-entry locator keys on <file>; the reader
+            // stays back-compatible with version 1 (which had only filename-keyed <file> entries).
+            var rootNode = new XElement("librarian", new XAttribute("version", "2"));
 
             foreach (var entry in files.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
             {
@@ -61,8 +68,21 @@ namespace Librarian.Metadata
                 rootNode.Add(fileNode);
             }
 
+            foreach (var entry in (collections ?? EmptyMap).OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                if (entry.Value.Count == 0)
+                    continue;
+
+                var colNode = new XElement("collection", new XAttribute("name", entry.Key));
+                AddBody(colNode, entry.Value);
+                rootNode.Add(colNode);
+            }
+
             return new XDocument(rootNode);
         }
+
+        private static readonly IReadOnlyDictionary<string, IReadOnlyList<AttributeBase>> EmptyMap =
+            new Dictionary<string, IReadOnlyList<AttributeBase>>();
 
         /// <summary>Adds a file's attributes (and any sub-resource attributes) to a container element.</summary>
         private void AddBody(XElement parent, IEnumerable<AttributeBase> attributes)
@@ -198,6 +218,24 @@ namespace Librarian.Metadata
             {
                 string name = fileNode.StringAttribute("name", true)!;
                 result[name] = DeserializeContainer(fileNode).ToList();
+            }
+            return result;
+        }
+
+        /// <summary>Reads a folder sidecar's collection-level overrides into a per-source-path map
+        /// (collection_plan.md §8). Empty for a v1 sidecar (no <c>&lt;collection&gt;</c> elements).</summary>
+        public async Task<Dictionary<string, List<AttributeBase>>> LoadFolderCollections(string fileName)
+        {
+            using var reader = new StreamReader(fileName);
+            XDocument document = await XDocument.LoadAsync(reader, LoadOptions.SetLineInfo, new CancellationToken());
+            if (document.Root == null)
+                throw new MetadataSerializationException(document, "Missing root element!");
+
+            var result = new Dictionary<string, List<AttributeBase>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var colNode in document.Root.Elements("collection"))
+            {
+                string name = colNode.StringAttribute("name", true)!;
+                result[name] = DeserializeContainer(colNode).ToList();
             }
             return result;
         }

@@ -41,13 +41,15 @@ namespace Librarian.Services
 
         private readonly DatabaseContext db;
         private readonly SearchVectorService searchVectors;
+        private readonly MetadataService metadataService;
         private readonly ILogger<ItemAssociationService> logger;
 
         public ItemAssociationService(DatabaseContext db, SearchVectorService searchVectors,
-                                      ILogger<ItemAssociationService> logger)
+                                      MetadataService metadataService, ILogger<ItemAssociationService> logger)
         {
             this.db = db;
             this.searchVectors = searchVectors;
+            this.metadataService = metadataService;
             this.logger = logger;
         }
 
@@ -625,6 +627,10 @@ namespace Librarian.Services
             foreach (var (fileId, col) in nfoPromotions)
                 await PromoteContentToCollectionAsync(fileId, col.Id, Attr.General.Comment);
             await db.SaveChangesAsync();
+
+            // User collection-level overrides (e.g. a corrected Show title) win and survive reindex (§8).
+            foreach (var col in created.Concat(manualByPath.Values))
+                await metadataService.ApplyCollectionOverridesAsync(col);
 
             return created.Count;
         }

@@ -336,6 +336,9 @@ namespace Librarian.Services
                 // Temp-materialize media entries so path-based providers can add deeper tags (§7.3).
                 if (canReExtract && ShouldReExtract(internalPath))
                     await ReExtractEntryAsync(child, archiveRealPath, internalPath);
+
+                // User overrides for this entry (sidecar beside the archive) win, and survive reindex (§8).
+                await ApplySidecarOverrides(child);
             }
 
             // Entries that vanished from the archive → drop their virtual files (cascades to their metadata).
@@ -704,15 +707,73 @@ namespace Librarian.Services
         /// </summary>
         public async Task SaveUserEditsAsync(IndexedFile file, IReadOnlyList<UserMetadataEdit> edits)
         {
-            string filePath = fileService.Resolve(file.Path);
+            // Baseline = what extraction yields WITHOUT the sidecar, keyed by definition id. A filesystem
+            // file is re-extracted from disk; an archive entry (no standalone disk path) uses its current
+            // non-override DB attributes as the baseline.
+            var baseline = file.Source == FileSource.ArchiveEntry
+                ? await DbBaselineAsync(file.Id)
+                : await ExtractionBaselineAsync(fileService.Resolve(file.Path));
 
-            // Baseline = what extraction yields WITHOUT the sidecar, keyed by definition id.
+            var overrides = BuildOverrides(edits, baseline);
+
+            await WriteSidecarEntry(file, overrides);
+
+            // Rebuild this file's DB metadata so the change takes effect immediately. A filesystem file is
+            // rebuilt from disk + sidecar; an archive entry can't be re-extracted standalone, so its current
+            // rows are kept and only the overridden definitions are replaced.
+            if (file.Source == FileSource.ArchiveEntry)
+            {
+                await ApplySidecarOverrides(file);
+                await searchVectors.UpdateFileVectorsAsync(file.Id);
+            }
+            else
+            {
+                await UpdateMetadata(file);
+            }
+        }
+
+        /// <summary>What extraction yields for a filesystem file WITHOUT its sidecar (canonical + promoted).</summary>
+        private async Task<Dictionary<int, HashSet<string>>> ExtractionBaselineAsync(string diskPath)
+        {
             var baseline = new Dictionary<int, HashSet<string>>();
-            await foreach (var attr in CollectCanonicalAsync(filePath))
+            await foreach (var attr in CollectCanonicalAsync(diskPath))
                 AddBaseline(baseline, attr);
-            foreach (var attr in await CollectPromotedAsync(filePath))
+            foreach (var attr in await CollectPromotedAsync(diskPath))
                 AddBaseline(baseline, attr);
+            return baseline;
+        }
 
+        /// <summary>A file's current non-override canonical attributes as the edit baseline (for archive
+        /// entries, which have no standalone disk path to re-extract).</summary>
+        private async Task<Dictionary<int, HashSet<string>>> DbBaselineAsync(int fileId)
+        {
+            string sidecar = SidecarProvider.ToString();
+            var baseline = new Dictionary<int, HashSet<string>>();
+
+            foreach (var a in await dbContext.TextAttributes.AsNoTracking()
+                .Where(a => a.FileId == fileId && a.SubResourceId == null && a.ProviderId != sidecar).ToListAsync())
+                AddBaseline(baseline, a);
+            foreach (var a in await dbContext.IntegerAttributes.AsNoTracking()
+                .Where(a => a.FileId == fileId && a.SubResourceId == null && a.ProviderId != sidecar).ToListAsync())
+                AddBaseline(baseline, a);
+            foreach (var a in await dbContext.FloatAttributes.AsNoTracking()
+                .Where(a => a.FileId == fileId && a.SubResourceId == null && a.ProviderId != sidecar).ToListAsync())
+                AddBaseline(baseline, a);
+            foreach (var a in await dbContext.DateAttributes.AsNoTracking()
+                .Where(a => a.FileId == fileId && a.SubResourceId == null && a.ProviderId != sidecar).ToListAsync())
+                AddBaseline(baseline, a);
+            foreach (var a in await dbContext.BlobAttributes.AsNoTracking()
+                .Where(a => a.FileId == fileId && a.SubResourceId == null && a.ProviderId != sidecar).ToListAsync())
+                AddBaseline(baseline, a);
+
+            return baseline;
+        }
+
+        /// <summary>Turns submitted edit fields into the override attributes to persist: editable,
+        /// non-filesystem definitions whose value actually differs from the baseline.</summary>
+        private List<AttributeBase> BuildOverrides(IReadOnlyList<UserMetadataEdit> edits,
+            Dictionary<int, HashSet<string>> baseline)
+        {
             var overrides = new List<AttributeBase>();
             foreach (var edit in edits)
             {
@@ -757,38 +818,152 @@ namespace Librarian.Services
 
                 overrides.AddRange(built);
             }
-
-            await WriteSidecarEntry(filePath, overrides);
-
-            // Rebuild this file's DB metadata from disk + the updated sidecar.
-            await UpdateMetadata(file);
+            return overrides;
         }
 
-        /// <summary>Replaces a single file's entry in its folder sidecar; deletes the sidecar when the
-        /// folder no longer has any edited files.</summary>
-        private async Task WriteSidecarEntry(string filePath, IReadOnlyList<AttributeBase> overrides)
-        {
-            string sidecar = GetSidecarPath(filePath);
-            string name = Path.GetFileName(filePath);
+        #region Collection write-back (collection_plan.md §8)
 
-            var folder = new Dictionary<string, IReadOnlyList<AttributeBase>>(StringComparer.OrdinalIgnoreCase);
-            if (File.Exists(sidecar))
-                foreach (var entry in await serializer.LoadFolder(sidecar))
-                    folder[entry.Key] = entry.Value;
+        /// <summary>The sidecar and key for a collection's overrides: the <c>.librarian.meta</c> in the
+        /// collection's own folder, under a <c>&lt;collection&gt;</c> element keyed by its source path.</summary>
+        private (string SidecarPath, string Key) CollectionSidecarLocation(Collection collection)
+        {
+            string folder = fileService.Resolve(collection.SourcePath!);
+            return (Path.Combine(folder, SidecarFileName), collection.SourcePath!);
+        }
+
+        /// <summary>Persists a user's edits to a collection (e.g. correcting a Show title) into the
+        /// collection folder's sidecar and re-applies them so the change takes effect and survives reindex.</summary>
+        public async Task SaveCollectionEditsAsync(Collection collection, IReadOnlyList<UserMetadataEdit> edits)
+        {
+            if (string.IsNullOrEmpty(collection.SourcePath))
+                return;   // no stable on-disk home to write the override to
+
+            var baseline = await CollectionDbBaselineAsync(collection.Id);
+            var overrides = BuildOverrides(edits, baseline);
+
+            var (sidecar, key) = CollectionSidecarLocation(collection);
+            var (files, collections) = await LoadSidecarMaps(sidecar);
+            if (overrides.Count > 0)
+                collections[key] = overrides;
+            else
+                collections.Remove(key);
+            await WriteOrDeleteSidecar(sidecar, files, collections);
+
+            await ApplyCollectionOverridesAsync(collection);
+        }
+
+        /// <summary>Applies a collection's sidecar overrides to its attributes (replacing the matching
+        /// derived/promoted values). Called on save and during the association pass so they survive reindex.</summary>
+        public async Task ApplyCollectionOverridesAsync(Collection collection)
+        {
+            if (string.IsNullOrEmpty(collection.SourcePath))
+                return;
+
+            var (sidecar, key) = CollectionSidecarLocation(collection);
+            if (!File.Exists(sidecar))
+                return;
+
+            var map = await serializer.LoadFolderCollections(sidecar);
+            if (!map.TryGetValue(key, out var overrides) || overrides.Count == 0)
+                return;
+
+            foreach (var defGroup in overrides.Where(a => a.SubResource == null).GroupBy(DefId))
+            {
+                RemoveCollectionCanonicalForDefinition(collection.Id, defGroup.Key);
+                foreach (var attribute in defGroup)
+                {
+                    attribute.CollectionId = collection.Id;
+                    attribute.File = null;
+                    attribute.FileId = null;
+                    attribute.ProviderId = SidecarProvider.ToString();
+                    attribute.Editable = true;
+                    StoreNormalized(attribute);
+                }
+            }
+
+            await dbContext.SaveChangesAsync();
+        }
+
+        private async Task<Dictionary<int, HashSet<string>>> CollectionDbBaselineAsync(int collectionId)
+        {
+            string sidecar = SidecarProvider.ToString();
+            var baseline = new Dictionary<int, HashSet<string>>();
+
+            foreach (var a in await dbContext.TextAttributes.AsNoTracking()
+                .Where(a => a.CollectionId == collectionId && a.ProviderId != sidecar).ToListAsync())
+                AddBaseline(baseline, a);
+            foreach (var a in await dbContext.IntegerAttributes.AsNoTracking()
+                .Where(a => a.CollectionId == collectionId && a.ProviderId != sidecar).ToListAsync())
+                AddBaseline(baseline, a);
+            foreach (var a in await dbContext.FloatAttributes.AsNoTracking()
+                .Where(a => a.CollectionId == collectionId && a.ProviderId != sidecar).ToListAsync())
+                AddBaseline(baseline, a);
+            foreach (var a in await dbContext.DateAttributes.AsNoTracking()
+                .Where(a => a.CollectionId == collectionId && a.ProviderId != sidecar).ToListAsync())
+                AddBaseline(baseline, a);
+            foreach (var a in await dbContext.BlobAttributes.AsNoTracking()
+                .Where(a => a.CollectionId == collectionId && a.ProviderId != sidecar).ToListAsync())
+                AddBaseline(baseline, a);
+
+            return baseline;
+        }
+
+        private void RemoveCollectionCanonicalForDefinition(int collectionId, int definitionId)
+        {
+            dbContext.TextAttributes.RemoveRange(dbContext.TextAttributes.Where(a => a.CollectionId == collectionId && a.AttributeDefinitionId == definitionId));
+            dbContext.IntegerAttributes.RemoveRange(dbContext.IntegerAttributes.Where(a => a.CollectionId == collectionId && a.AttributeDefinitionId == definitionId));
+            dbContext.FloatAttributes.RemoveRange(dbContext.FloatAttributes.Where(a => a.CollectionId == collectionId && a.AttributeDefinitionId == definitionId));
+            dbContext.DateAttributes.RemoveRange(dbContext.DateAttributes.Where(a => a.CollectionId == collectionId && a.AttributeDefinitionId == definitionId));
+            dbContext.BlobAttributes.RemoveRange(dbContext.BlobAttributes.Where(a => a.CollectionId == collectionId && a.AttributeDefinitionId == definitionId));
+        }
+
+        #endregion
+
+        /// <summary>Replaces a single file's entry in its folder sidecar (filesystem file keyed by name, or
+        /// archive entry keyed by its "archive!/internal" locator), preserving any sibling file and
+        /// collection overrides; deletes the sidecar when nothing is left in it.</summary>
+        private async Task WriteSidecarEntry(IndexedFile file, IReadOnlyList<AttributeBase> overrides)
+        {
+            var (sidecar, key) = SidecarLocation(file);
+
+            var (files, collections) = await LoadSidecarMaps(sidecar);
 
             if (overrides.Count > 0)
-                folder[name] = overrides;
+                files[key] = overrides;
             else
-                folder.Remove(name);
+                files.Remove(key);
 
-            if (folder.Count == 0)
+            await WriteOrDeleteSidecar(sidecar, files, collections);
+        }
+
+        /// <summary>Loads a sidecar's file- and collection-keyed override maps (empty when absent).</summary>
+        private async Task<(Dictionary<string, IReadOnlyList<AttributeBase>> Files,
+                            Dictionary<string, IReadOnlyList<AttributeBase>> Collections)> LoadSidecarMaps(string sidecar)
+        {
+            var files = new Dictionary<string, IReadOnlyList<AttributeBase>>(StringComparer.OrdinalIgnoreCase);
+            var collections = new Dictionary<string, IReadOnlyList<AttributeBase>>(StringComparer.OrdinalIgnoreCase);
+            if (File.Exists(sidecar))
+            {
+                foreach (var e in await serializer.LoadFolder(sidecar))
+                    files[e.Key] = e.Value;
+                foreach (var e in await serializer.LoadFolderCollections(sidecar))
+                    collections[e.Key] = e.Value;
+            }
+            return (files, collections);
+        }
+
+        private async Task WriteOrDeleteSidecar(string sidecar,
+            Dictionary<string, IReadOnlyList<AttributeBase>> files,
+            Dictionary<string, IReadOnlyList<AttributeBase>> collections)
+        {
+            if (files.Count == 0 && collections.Count == 0)
             {
                 if (File.Exists(sidecar))
                     File.Delete(sidecar);
             }
             else
             {
-                await serializer.SaveFolder(sidecar, folder);
+                await serializer.SaveFolder(sidecar, files, collections);
             }
         }
 
@@ -796,8 +971,7 @@ namespace Librarian.Services
         /// file-level canonical rows (from any provider) are replaced by the user's value(s).</summary>
         private async Task ApplySidecarOverrides(IndexedFile indexedFile)
         {
-            string filePath = fileService.Resolve(indexedFile.Path);
-            var overrides = (await LoadMetaFile(filePath)).Where(a => a.SubResource == null).ToList();
+            var overrides = (await LoadOverridesForFile(indexedFile)).Where(a => a.SubResource == null).ToList();
             if (overrides.Count == 0)
                 return;
 
@@ -858,6 +1032,41 @@ namespace Librarian.Services
         {
             string dir = Path.GetDirectoryName(filePath) ?? string.Empty;
             return Path.Combine(dir, SidecarFileName);
+        }
+
+        /// <summary>
+        /// Locates the sidecar and key for an indexed file's overrides (collection_plan.md §8). A
+        /// filesystem file is keyed by its filename in its own folder's sidecar; an archive entry — whose
+        /// archive is read-only — is keyed by an "archive.zip!/internal/path" locator in the sidecar of the
+        /// archive's containing folder.
+        /// </summary>
+        private (string SidecarPath, string Key) SidecarLocation(IndexedFile file)
+        {
+            if (file.Source == FileSource.ArchiveEntry)
+            {
+                int bang = file.Path.IndexOf("!/", StringComparison.Ordinal);
+                string archiveRel = bang >= 0 ? file.Path[..bang] : file.Path;
+                string internalPath = bang >= 0 ? file.Path[(bang + 2)..] : string.Empty;
+                string archiveName = Path.GetFileName(archiveRel.Replace('\\', '/'));
+                string archiveDisk = fileService.Resolve(archiveRel);
+                string folder = Path.GetDirectoryName(archiveDisk) ?? string.Empty;
+                return (Path.Combine(folder, SidecarFileName), archiveName + "!/" + internalPath);
+            }
+
+            string diskPath = fileService.Resolve(file.Path);
+            return (GetSidecarPath(diskPath), Path.GetFileName(diskPath));
+        }
+
+        /// <summary>An indexed file's sidecar overrides, resolved via <see cref="SidecarLocation"/> so it
+        /// works for both filesystem files and archive entries.</summary>
+        private async Task<IEnumerable<AttributeBase>> LoadOverridesForFile(IndexedFile file)
+        {
+            var (sidecar, key) = SidecarLocation(file);
+            if (!File.Exists(sidecar))
+                return Enumerable.Empty<AttributeBase>();
+
+            var folder = await serializer.LoadFolder(sidecar);
+            return folder.TryGetValue(key, out var attributes) ? attributes : Enumerable.Empty<AttributeBase>();
         }
 
         public bool IsMetaFile(string fileName)

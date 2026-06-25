@@ -113,33 +113,70 @@
             </div>
         </div>
 
-        @foreach (var group in Model.Metadata.GroupBy(x => x.AttributeDefinition.Group))
-        {
+        @{
+            // Existing collection text values, keyed by "Group/Name", so the curated edit fields below
+            // are pre-filled when the value already exists (and we don't duplicate them).
+            var existingText = Model.Metadata
+                .OfType<TextAttribute>()
+                .GroupBy(a => $"{a.AttributeDefinition.Group}/{a.AttributeDefinition.Name}")
+                .ToDictionary(g => g.Key, g => g.First().Value);
+
+            string Val(string key) => existingText.TryGetValue(key, out var v) ? v : "";
+        }
+
+        <form method="post" asp-route="Collection_Save">
+            <input type="hidden" name="id" value="@Model.Id" />
+
             <div class="metadata-group">
-                <h2 class="metadata-group-title">@group.Key</h2>
+                <h2 class="metadata-group-title">Collection metadata</h2>
                 <table>
                     <tbody>
-                        @foreach (var field in group.OrderBy(x => x.AttributeDefinition.Name))
-                        {
-                            <tr>
-                                <td>@field.AttributeDefinition.Name</td>
-                                <td class="col-input">
-                                    @switch (field)
-                                    {
-                                        case TextAttribute t: <span>@t.Value</span> break;
-                                        case IntegerAttribute n: <span>@n.Value</span> break;
-                                        case FloatAttribute fl: <span>@fl.Value</span> break;
-                                        case DateAttribute d: <span>@d.Value</span> break;
-                                        case BlobAttribute b: <span>@(b.Value.Length) bytes</span> break;
-                                    }
-                                </td>
-                                <td class="fill"></td>
-                            </tr>
-                        }
+                        <tr>
+                            <td>Title</td>
+                            <td class="col-input"><input type="text" name="General/Title" value="@Val("General/Title")" /></td>
+                            <td class="fill"></td>
+                        </tr>
+                        <tr>
+                            <td>Description</td>
+                            <td class="col-input"><textarea name="General/Description">@Val("General/Description")</textarea></td>
+                            <td class="fill"></td>
+                        </tr>
                     </tbody>
                 </table>
+                <button type="submit"><img src="~/icons/32/document-save.png" />Save</button>
             </div>
-        }
+
+            @foreach (var group in Model.Metadata
+                        .Where(x => x.AttributeDefinition.Group != "General"
+                                 || (x.AttributeDefinition.Name != "Title" && x.AttributeDefinition.Name != "Description"))
+                        .GroupBy(x => x.AttributeDefinition.Group))
+            {
+                <div class="metadata-group">
+                    <h2 class="metadata-group-title">@group.Key</h2>
+                    <table>
+                        <tbody>
+                            @foreach (var field in group.OrderBy(x => x.AttributeDefinition.Name))
+                            {
+                                <tr>
+                                    <td>@field.AttributeDefinition.Name</td>
+                                    <td class="col-input">
+                                        @switch (field)
+                                        {
+                                            case TextAttribute t: <span>@t.Value</span> break;
+                                            case IntegerAttribute n: <span>@n.Value</span> break;
+                                            case FloatAttribute fl: <span>@fl.Value</span> break;
+                                            case DateAttribute d: <span>@d.Value</span> break;
+                                            case BlobAttribute b: <span>@(b.Value.Length) bytes</span> break;
+                                        }
+                                    </td>
+                                    <td class="fill"></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </form>
     </div>
 
     </div>

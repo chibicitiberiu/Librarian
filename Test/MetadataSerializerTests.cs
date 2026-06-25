@@ -21,6 +21,43 @@ namespace Test
         }
 
         [Fact]
+        public void SerializeFolder_is_version_2()
+        {
+            var doc = Serializer().SerializeFolder(new Dictionary<string, IReadOnlyList<AttributeBase>>());
+            Assert.Equal("2", (string)doc.Root!.Attribute("version")!);
+        }
+
+        [Fact]
+        public void SerializeFolder_writes_archive_entry_locator_keys()
+        {
+            // An archive entry's override is keyed by its "archive.zip!/internal" locator (§8).
+            var files = new Dictionary<string, IReadOnlyList<AttributeBase>>
+            {
+                ["album.zip!/Disc1/03.flac"] = new AttributeBase[] { Text("General", "Title", "Track 3") },
+            };
+
+            var doc = Serializer().SerializeFolder(files);
+            var node = doc.Root!.Elements("file").Single();
+            Assert.Equal("album.zip!/Disc1/03.flac", (string)node.Attribute("name")!);
+        }
+
+        [Fact]
+        public void SerializeFolder_writes_collection_elements()
+        {
+            var collections = new Dictionary<string, IReadOnlyList<AttributeBase>>
+            {
+                ["My Shows/Tom and Jerry"] = new AttributeBase[] { Text("General", "Title", "Tom & Jerry") },
+            };
+
+            var doc = Serializer().SerializeFolder(
+                new Dictionary<string, IReadOnlyList<AttributeBase>>(), collections);
+
+            var col = doc.Root!.Elements("collection").Single();
+            Assert.Equal("My Shows/Tom and Jerry", (string)col.Attribute("name")!);
+            Assert.Equal("Tom & Jerry", col.Elements("text").Single().Value);
+        }
+
+        [Fact]
         public void SerializeFolder_writes_one_file_element_per_non_empty_entry()
         {
             var files = new Dictionary<string, IReadOnlyList<AttributeBase>>

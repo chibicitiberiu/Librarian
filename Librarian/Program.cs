@@ -146,6 +146,8 @@ namespace Librarian
             app.MapControllerRoute("Collections",
                                     "collections",
                                     new { controller = "Collection", action = "Roots" });
+            app.MapControllerRoute("Collection_Save", "collection_actions/save",
+                                    new { controller = "Collection", action = "Save" });
             app.MapControllerRoute("Collection",
                                     "collection/{id:int}",
                                     new { controller = "Collection", action = "Index" });
