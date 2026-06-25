@@ -5,6 +5,7 @@ using Librarian.Metadata;
 using Librarian.Metadata.Providers;
 using Librarian.Metadata.Providers.MetadataCli;
 using Librarian.Metadata.Normalization;
+using Librarian.Metadata.Providers.ExifTool;
 using Librarian.Metadata.Providers.Tika;
 using Librarian.Services;
 using Microsoft.AspNetCore.Builder;
@@ -68,6 +69,8 @@ namespace Librarian
             //builder.Services.AddScoped<IMetadataProvider, MetadataExtractorProvider>();
             builder.Services.AddScoped<IMetadataProvider, MetadataCliProvider>();
             builder.Services.AddScoped<IRawMetadataProvider, TikaProvider>();
+            // ExifTool augments Tika with deeper embedded image/media tags; both raw providers run.
+            builder.Services.AddScoped<IRawMetadataProvider, ExifToolProvider>();
             builder.Services.AddSingleton<MetadataNormalizer>();
             builder.Services.AddSession(opts =>
             {
@@ -78,6 +81,7 @@ namespace Librarian
 
             builder.Services.AddSingleton<MetadataCliService>();
             builder.Services.AddSingleton<TikaService>();
+            builder.Services.AddSingleton<ExifToolService>();
 
             var app = builder.Build();
 

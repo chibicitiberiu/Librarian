@@ -39,9 +39,10 @@ RUN cmake -S meta-cli -B meta-cli/build -DCMAKE_BUILD_TYPE=Release \
 
 # ---- 3. Runtime image ----
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
-# ffmpeg pulls the libav* shared libraries meta-cli needs; file backs file-type detection.
+# ffmpeg pulls the libav* shared libraries meta-cli needs; file backs file-type detection;
+# libimage-exiftool-perl provides the exiftool binary that augments Tika with deep embedded tags.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ffmpeg file \
+        ffmpeg file libimage-exiftool-perl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -52,7 +53,8 @@ COPY --from=cli-build /src/meta-cli/build/meta-cli /app/meta-cli/meta-cli
 ENV ASPNETCORE_ENVIRONMENT=Production \
     ASPNETCORE_HTTP_PORTS=8080 \
     AppDataDirectory=/data \
-    MetadataCliPath=/app/meta-cli/meta-cli
+    MetadataCliPath=/app/meta-cli/meta-cli \
+    ExifToolPath=exiftool
 EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "Librarian.dll"]

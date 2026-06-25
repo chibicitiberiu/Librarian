@@ -92,12 +92,28 @@ namespace Librarian.Metadata.Normalization
             Date("dcterms", "modified", General.DateReleased);
             Text("tika", "content-type", General.ContentType);
 
-            // EXIF (example of a source-specific date transform living next to the mapping)
+            // EXIF (example of a source-specific date transform living next to the mapping).
+            // These keys are emitted by both Tika's image parser and the exiftool provider (which
+            // augments it); idempotent canonical writes dedupe any overlap by (definition, value).
             Date("exif", "datetimeoriginal", Media.DateRecorded, ValueCoercer.ExifDate);
 
+            RegisterImageRules();
             RegisterAudioRules();
             RegisterDocumentRules();
             RegisterSoftwareRules();
+        }
+
+        // Image dimensions surfaced by the exiftool provider (and Tika). exiftool with -G0 reports
+        // decoded dimensions under the generic "File" group (cross-format), and EXIF/PNG carry their
+        // own copies; mapping all three covers JPEG/PNG/RAW/etc. Idempotent writes dedupe overlap.
+        private void RegisterImageRules()
+        {
+            Integer("file", "imagewidth", Image.Width);
+            Integer("file", "imageheight", Image.Height);
+            Integer("exif", "exifimagewidth", Image.Width);
+            Integer("exif", "exifimageheight", Image.Height);
+            Integer("png", "imagewidth", Image.Width);
+            Integer("png", "imageheight", Image.Height);
         }
 
         // Embedded audio tags surfaced by Tika (xmpDM / tika namespaces). These populate the

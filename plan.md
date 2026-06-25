@@ -6,7 +6,8 @@ full-text search, dockerization) are complete and shipped. The real-library
 correctness/reliability program (formerly a separate `findings.md`, now folded in here) is
 largely done — see **Status**. The old scratch `Ideas.md` (marking/clipboard, browse TODOs,
 checksums, indexing config, non-indexed search) has also been folded into the phases below.
-Progress re-evaluated against the code at commit `d88a416`. Updated 2026-06-25.
+Progress re-evaluated against the code at commit `5f9069f` (Phase-4 write-back, checksums, and
+vocabulary fixes all shipped). Updated 2026-06-25.
 
 ## Status — real-library program (was findings.md M0–M6)
 
@@ -71,7 +72,12 @@ make everything browsable and searchable — delivered as a self-hosted server v
 ## Standing decisions (don't relitigate)
 
 - **Extraction:** Apache **Tika** (sidecar) for broad formats + content text; **meta-cli**
-  (libavformat) for deep media; `FileMetadataProvider` for filesystem facts.
+  (libavformat) for deep media; `FileMetadataProvider` for filesystem facts; **ExifTool** for deep
+  embedded image/media tags (EXIF/IPTC/XMP/GPS/maker-notes/RAW). **ExifTool augments Tika, it does
+  not replace it:** it runs as an additional raw provider alongside Tika (Tika still does
+  content-text extraction); both contribute raw values and the normalizer reconciles. The **read**
+  provider ships (ported from the older `NewLibrarian2` line); the **embed writer** (opt-in
+  promote-to-source) is still Phase 4.
 - **Search:** PostgreSQL **full-text search**, **not** Lucene — revisit only if PG FTS proves
   insufficient.
 - **Normalization rules live in code** (`MetadataNormalizer`), not in data.
@@ -168,6 +174,20 @@ Make the collected metadata actually *usable*, not just stored.
       sets / 17 files while fully reading only 17** (16× fewer reads); change-gating clears only the
       edited file's hashes. *Remaining (smaller follow-ups):* a per-Item **validate** action + a
       **duplicates view** in the Item Viewer (the data + endpoints exist; this is UI).
+- [x] ~~**ExifTool provider (read) — deep embedded metadata.**~~ Done. Ported from the older
+      `NewLibrarian2` line and rewritten A-idiomatically as an **`IRawMetadataProvider`** that
+      **augments Tika** (both run side by side; the normalizer reconciles). `ExifToolService` invokes
+      the external `exiftool` binary (`-json -G0 -n`, mirroring the meta-cli subprocess pattern —
+      config `ExifToolPath`, defaults to PATH, warn-once-and-skip when absent); `ExifToolProvider`
+      splits each `Group0:Tag` into a raw namespaced record (`EXIF:Make` → `exif`/`Make`), dropping
+      filesystem-duplicate keys and binary blobs. Normalizer rules promote image width/height; the
+      existing `exif:datetimeoriginal` rule already coerces exiftool dates. Wired into DI; `exiftool`
+      added to the Docker runtime image; 8 unit tests. Maker-notes/IPTC/XMP/GPS/RAW land in the raw
+      layer now (browsable; promotable once canonical camera/GPS attributes are seeded — see id-space).
+- [ ] **ExifTool — the embed writer (`SaveMetadataAsync`).** The remaining half: ExifTool is the
+      natural writer for the opt-in "promote to source" path (write EXIF/IPTC/XMP back into
+      originals), complementing the `.meta` write-back. Open sub-decision: per-file invoke vs a
+      `-stay_open` daemon for throughput.
 - [x] ~~**Cross-provider precedence / dedup.**~~ Investigated and **moot**: there are no real
       meta-cli↔Tika value conflicts; the MIME generic-vs-specific case is handled by `MediaType.Resolve`
       (M2), and stale accumulated values were flushed by the force-reindex. Canonical writes are now
