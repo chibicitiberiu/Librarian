@@ -196,6 +196,30 @@ namespace Librarian.Metadata.Normalization
             return false;
         }
 
+        /// <summary>Maps a PE/COFF machine-type code (as exiftool's <c>-n</c> reports it) to a friendly
+        /// architecture name matching Tika's <c>machine:machineType</c>, e.g. 332 -> "x86-32",
+        /// 34404 -> "x86-64". An unrecognised code fails (so a bare number isn't stored as an arch).</summary>
+        public static bool PeMachineType(string raw, out object value)
+        {
+            value = "";
+            if (!int.TryParse(raw.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int code))
+                return false;
+            string? arch = code switch
+            {
+                0x014c => "x86-32",     // IMAGE_FILE_MACHINE_I386
+                0x8664 => "x86-64",     // AMD64
+                0x0200 => "IA-64",
+                0xAA64 => "ARM64",
+                0x01c0 => "ARM",
+                0x01c4 => "ARM-Thumb2",
+                _ => null,
+            };
+            if (arch is null)
+                return false;
+            value = arch;
+            return true;
+        }
+
         /// <summary>ISO-8601 / common date formats (e.g. Dublin Core, Tika).</summary>
         public static bool IsoDate(string raw, out object value)
             => TryDate(raw, PlainDateFormats, out value);

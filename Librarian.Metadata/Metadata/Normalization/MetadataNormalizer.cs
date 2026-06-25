@@ -109,6 +109,10 @@ namespace Librarian.Metadata.Normalization
             RegisterImageRules();
             RegisterAudioRules();
             RegisterMediaRules();
+            // ExifTool exposes the same audio tags under vorbis: (FLAC/Ogg) and id3: (MP3) that Tika
+            // exposes under xmpDM:/tika: — map them so exiftool actually contributes.
+            RegisterAudioTagRules("vorbis", includeGenre: true);
+            RegisterAudioTagRules("id3", includeGenre: false); // exiftool -n makes the ID3 genre numeric
             RegisterDocumentRules();
             RegisterSoftwareRules();
         }
@@ -226,6 +230,74 @@ namespace Librarian.Metadata.Normalization
 
             Float("xmpdm", "videoframerate", Video.FrameRate, UnitCategory.FrameRate, min: 1, max: 240);
             Float("quicktime", "videoframerate", Video.FrameRate, UnitCategory.FrameRate, min: 1, max: 240);
+
+            // Codec / compressor (xmpDM audio/video compressor; QuickTime fourcc).
+            Text("xmpdm", "audiocompressor", Media.Codec);
+            Text("xmpdm", "videocompressor", Media.Codec);
+            Text("quicktime", "compressorid", Media.Codec);
+
+            // Cataloguing fields Tika surfaces but didn't map (sort names, grouping, physical media,
+            // MusicBrainz album status/type, the original release date).
+            Text("tika", "artists", Audio.Artist);
+            Text("tika", "artistsort", Audio.ArtistSort);
+            Text("tika", "albumartistsort", Audio.AlbumArtistSort);
+            Text("tika", "grouping", General.Collection);
+            Text("tika", "media", Media.MediaFormat);
+            Date("tika", "originaldate", General.DateCreated);
+            Text("tika", "musicbrainz_albumstatus", General.ReleaseStatus);
+            Text("tika", "musicbrainz_albumtype", General.ReleaseType);
+        }
+
+        // ExifTool surfaces FLAC/Vorbis comments under "vorbis:" and ID3 frames under "id3:" — the same
+        // concepts Tika reports under xmpDM:/tika:. Mapping them lets exiftool actually contribute;
+        // idempotent canonical writes dedupe any overlap with Tika. Vorbis tag names arrive de-underscored
+        // (e.g. "albumartistsort", "musicbrainztrackid", "replaygaintrackgain").
+        private void RegisterAudioTagRules(string ns, bool includeGenre)
+        {
+            Text(ns, "title", General.Title);
+            Text(ns, "artist", Audio.Artist);
+            Text(ns, "artists", Audio.Artist);
+            Text(ns, "album", Audio.Album);
+            Text(ns, "albumartist", Audio.AlbumArtist);
+            Text(ns, "band", Audio.AlbumArtist); // ID3 TPE2 = album artist
+            Text(ns, "composer", Audio.Composer);
+            Text(ns, "artistsort", Audio.ArtistSort);
+            Text(ns, "albumartistsort", Audio.AlbumArtistSort);
+            Integer(ns, "track", Audio.Track);
+            Integer(ns, "tracknumber", Audio.Track);
+            Integer(ns, "tracktotal", Audio.TotalTracks);
+            Integer(ns, "totaltracks", Audio.TotalTracks);
+            Integer(ns, "discnumber", Media.Disc);
+            Integer(ns, "disctotal", Media.TotalDiscs);
+            Integer(ns, "totaldiscs", Media.TotalDiscs);
+            Integer(ns, "year", General.Year);
+            Integer(ns, "originalyear", General.Year);
+            Date(ns, "date", General.DateReleased);
+            Date(ns, "originaldate", General.DateCreated);
+            Text(ns, "label", Media.Label);
+            Text(ns, "barcode", General.BarCode);
+            Text(ns, "catalognumber", General.CatalogNumber);
+            Text(ns, "asin", General.AmazonStandardIdentificationNumberASIN);
+            Text(ns, "media", Media.MediaFormat);
+            Text(ns, "script", General.Script);
+            Text(ns, "releasestatus", General.ReleaseStatus);
+            Text(ns, "releasetype", General.ReleaseType);
+            Text(ns, "releasecountry", General.ReleaseCountry);
+            Text(ns, "organization", General.Organization);
+            Text(ns, "grouping", General.Collection);
+            Text(ns, "musicbrainzalbumid", Media.MusicBrainzAlbumID);
+            Text(ns, "musicbrainzartistid", Media.MusicBrainzArtistID);
+            Text(ns, "musicbrainzalbumartistid", Media.MusicBrainzAlbumArtistID);
+            Text(ns, "musicbrainztrackid", Media.MusicBrainzTrackID);
+            Text(ns, "musicbrainzreleasegroupid", Media.MusicBrainzReleaseGroupID);
+            Text(ns, "musicbrainzreleasetrackid", Media.MusicBrainzReleaseTrackID);
+            Text(ns, "acoustidid", Audio.AcoustIDID);
+            Float(ns, "replaygaintrackgain", Audio.TrackGain, ValueCoercer.Number);
+            Float(ns, "replaygaintrackpeak", Audio.TrackPeak, ValueCoercer.Number);
+            Float(ns, "replaygainalbumgain", Audio.AlbumGain, ValueCoercer.Number);
+            Float(ns, "replaygainalbumpeak", Audio.AlbumPeak, ValueCoercer.Number);
+            if (includeGenre)
+                TextMulti(ns, "genre", Media.Genre);
         }
 
         // Document metadata (Dublin Core via Tika). dc:title/subject/description/language/rights
@@ -244,6 +316,16 @@ namespace Librarian.Metadata.Normalization
         {
             Text("machine", "platform", Software.Platform);
             Text("machine", "machinetype", Software.Architecture);
+
+            // exiftool's exe: namespace (PE VERSIONINFO + header) — richer than Tika's machine: parser.
+            Text("exe", "productname", General.Product);
+            Text("exe", "companyname", General.Publisher);
+            Text("exe", "filedescription", General.Description);
+            Text("exe", "legalcopyright", General.Copyright);
+            Text("exe", "fileversion", Package.Version);
+            Text("exe", "productversion", Package.Version);
+            // exiftool -n reports MachineType as a numeric PE code; map it to a friendly arch name.
+            Text("exe", "machinetype", Software.Architecture, ValueCoercer.PeMachineType);
         }
 
         #endregion

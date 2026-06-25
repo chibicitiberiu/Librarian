@@ -183,6 +183,19 @@ Make the collected metadata actually *usable*, not just stored.
       *Noted follow-up:* `MetadataFactory`'s date parsing still uses current-culture `DateTimeOffset.Parse`
       (real data has both `"1999-10-25"` and `"05/01/2018 17:50:54"`), a candidate for the same
       invariant/multi-format hardening.
+- [x] ~~**Collector-driven rule + parsing expansion.**~~ Done. Built `MetadataCollector` (see
+      Diagnostics) and ran it over a real library; it showed **ExifTool only ~1% mapped** (its tags land
+      under namespaces with no rules) plus parsing gaps. Parsing: **content type** strips MIME params
+      (`text/plain; charset=…` → `text/plain`); **image width/height** now map from Tika
+      (`tiff:imagewidth`/`tiff:imagelength`, `tika:Image Width`="N pixels" via a lenient integer
+      coercer), not just exiftool; **audio channels/sample-rate/bits** map from `flac:`; **archive
+      recursion capped** (`TikaMaxEmbeddedResources`, default 100 — a 2.2k-entry zip went 12.9k → 589
+      raw rows). Rule batch: **`vorbis:`/`id3:`** audio tags (mirror of the xmpDM:/tika: set), **`exe:`**
+      PE VERSIONINFO → Product/Publisher/Copyright/Description/Version (+ a PE-machine-type → Architecture
+      coercer), **codec** (xmpDM/QuickTime compressor), and Tika cataloguing extras (sort names,
+      grouping, media, MusicBrainz album status/type). Result on the dev library: **ExifTool ~1% → ~36%
+      mapped, canonical items +60%**; exe metadata now populates Software facets (Version / Architecture
+      / Publisher). 26 new tests.
 - [x] ~~**AttributeDefinition id-space.**~~ Done. Seed defs (CSV/`HasData`, ids 1–120) and
       runtime-curated "Other"-group defs shared one identity space, so a CSV-appended attribute would
       collide on the PK. `ReserveCurationIdSpace` migration vacates any curated rows squatting in the
