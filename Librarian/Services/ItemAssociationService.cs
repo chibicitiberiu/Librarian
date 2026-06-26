@@ -416,10 +416,11 @@ namespace Librarian.Services
             await db.DateAttributes.Where(a => a.ProviderId == promo).ExecuteDeleteAsync();
 
             await db.IndexedFiles
-                .Where(f => f.RoleSource == RoleSource.Auto && (f.Role != FileRole.Primary || f.ItemId != null))
+                .Where(f => f.RoleSource == RoleSource.Auto && (f.Role != FileRole.Primary || f.ItemId != null || f.CollectionId != null))
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(f => f.Role, FileRole.Primary)
-                    .SetProperty(f => f.ItemId, (int?)null));
+                    .SetProperty(f => f.ItemId, (int?)null)
+                    .SetProperty(f => f.CollectionId, (int?)null));
 
             await db.Items.Where(i => i.RoleSource == RoleSource.Auto).ExecuteDeleteAsync();
 

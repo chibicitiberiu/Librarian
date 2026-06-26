@@ -1,9 +1,13 @@
-﻿using Librarian.Models;
+﻿using Librarian.DB;
+using Librarian.Metadata.Archives;
+using Librarian.Model;
+using Librarian.Models;
 using Librarian.Services;
 using Librarian.Utils;
 using Librarian.ViewModels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MimeMapping;
 using System;
@@ -20,13 +24,18 @@ namespace Librarian.Controllers
     {
         private readonly ILogger<BrowseController> logger;
         readonly FileService fileService;
+        readonly DatabaseContext db;
+        readonly ArchiveByteReader archiveBytes;
 
         const string BrowseClipboardKey = "browseClipboard";
 
-        public BrowseController(ILogger<BrowseController> logger, FileService fileService)
+        public BrowseController(ILogger<BrowseController> logger, FileService fileService,
+                                DatabaseContext db, ArchiveByteReader archiveBytes)
         {
             this.logger = logger;
             this.fileService = fileService;
+            this.db = db;
+            this.archiveBytes = archiveBytes;
         }
 
         private IEnumerable<BrowseFileViewModel> GetFiles(string dirPath)
@@ -83,7 +92,7 @@ namespace Librarian.Controllers
                 {
                     return this.InlineFileFromDisk(diskPath);
                 }
-                else
+                else if (Directory.Exists(diskPath))
                 {
                     DirectoryInfo directoryInfo = new(diskPath);
 
@@ -108,6 +117,12 @@ namespace Librarian.Controllers
                     vm.Breadcrumbs = BuildBreadcrumbs(vm.Path);
                     return View(vm);
                 }
+                else
+                {
+                    // Not a real file or directory — it may be a virtual archive entry (collection_plan.md
+                    // §3.1) whose bytes live inside an archive. Serve them straight from the parent archive.
+                    return ServeArchiveEntry(path);
+                }
             }
             catch (ArgumentException ex)
             {
@@ -119,6 +134,29 @@ namespace Librarian.Controllers
                 logger.LogError(ex, "Error handling request!");
                 return StatusCode(500, ex.Message);
             }
+        }
+
+        /// <summary>Serves the bytes of a virtual archive entry (no standalone disk file) by reading them out
+        /// of its parent archive (collection_plan.md §3.1, §7.3). Returns 404 when the path is not a known
+        /// archive entry, the archive is missing, or its family has no registered byte source.</summary>
+        private IActionResult ServeArchiveEntry(string path)
+        {
+            var entry = db.IndexedFiles
+                .Include(f => f.ParentFile)
+                .FirstOrDefault(f => f.Path == path && f.Source == FileSource.ArchiveEntry);
+
+            if (entry?.ParentFile == null || entry.InternalPath == null)
+                return NotFound("File not found!");
+
+            string archiveDisk = fileService.Resolve(entry.ParentFile.Path);
+            if (!System.IO.File.Exists(archiveDisk))
+                return NotFound("Archive not found!");
+
+            Stream? stream = archiveBytes.OpenEntry(archiveDisk, entry.InternalPath);
+            if (stream == null)
+                return NotFound("Archive entry not readable!");
+
+            return this.InlineStream(stream, Path.GetFileName(entry.InternalPath), entry.Size, entry.Modified);
         }
 
         private static IEnumerable<(string, string)> BuildBreadcrumbs(string path)

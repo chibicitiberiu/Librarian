@@ -723,6 +723,12 @@ namespace Librarian.Services
             // rows are kept and only the overridden definitions are replaced.
             if (file.Source == FileSource.ArchiveEntry)
             {
+                // An archive entry can't be re-extracted standalone, so unlike the filesystem branch (which
+                // rebuilds via UpdateMetadata → RemoveDerivedCanonical) nothing else drops its prior override
+                // rows. Clear them first so a cleared/removed field doesn't leave a stale value behind
+                // (collection_plan.md §8 — fixes the clear/revert divergence for archive entries).
+                RemoveCanonicalForProvider(file.Id, SidecarProvider.ToString());
+                await dbContext.SaveChangesAsync();
                 await ApplySidecarOverrides(file);
                 await searchVectors.UpdateFileVectorsAsync(file.Id);
             }
@@ -859,25 +865,31 @@ namespace Librarian.Services
             if (string.IsNullOrEmpty(collection.SourcePath))
                 return;
 
+            // Clear the collection's previous override layer first, so a cleared field doesn't leave its
+            // stale value behind. Auto collections are torn down and rebuilt each association run, but a
+            // Manual collection is never rebuilt, so without this its cache would diverge from the sidecar
+            // permanently (collection_plan.md §8 — fixes the clear/revert divergence for collections).
+            RemoveCollectionCanonicalForProvider(collection.Id, SidecarProvider.ToString());
+
             var (sidecar, key) = CollectionSidecarLocation(collection);
-            if (!File.Exists(sidecar))
-                return;
-
-            var map = await serializer.LoadFolderCollections(sidecar);
-            if (!map.TryGetValue(key, out var overrides) || overrides.Count == 0)
-                return;
-
-            foreach (var defGroup in overrides.Where(a => a.SubResource == null).GroupBy(DefId))
+            if (File.Exists(sidecar))
             {
-                RemoveCollectionCanonicalForDefinition(collection.Id, defGroup.Key);
-                foreach (var attribute in defGroup)
+                var map = await serializer.LoadFolderCollections(sidecar);
+                if (map.TryGetValue(key, out var overrides) && overrides.Count > 0)
                 {
-                    attribute.CollectionId = collection.Id;
-                    attribute.File = null;
-                    attribute.FileId = null;
-                    attribute.ProviderId = SidecarProvider.ToString();
-                    attribute.Editable = true;
-                    StoreNormalized(attribute);
+                    foreach (var defGroup in overrides.Where(a => a.SubResource == null).GroupBy(DefId))
+                    {
+                        RemoveCollectionCanonicalForDefinition(collection.Id, defGroup.Key);
+                        foreach (var attribute in defGroup)
+                        {
+                            attribute.CollectionId = collection.Id;
+                            attribute.File = null;
+                            attribute.FileId = null;
+                            attribute.ProviderId = SidecarProvider.ToString();
+                            attribute.Editable = true;
+                            StoreNormalized(attribute);
+                        }
+                    }
                 }
             }
 
@@ -915,6 +927,15 @@ namespace Librarian.Services
             dbContext.FloatAttributes.RemoveRange(dbContext.FloatAttributes.Where(a => a.CollectionId == collectionId && a.AttributeDefinitionId == definitionId));
             dbContext.DateAttributes.RemoveRange(dbContext.DateAttributes.Where(a => a.CollectionId == collectionId && a.AttributeDefinitionId == definitionId));
             dbContext.BlobAttributes.RemoveRange(dbContext.BlobAttributes.Where(a => a.CollectionId == collectionId && a.AttributeDefinitionId == definitionId));
+        }
+
+        private void RemoveCollectionCanonicalForProvider(int collectionId, string providerId)
+        {
+            dbContext.TextAttributes.RemoveRange(dbContext.TextAttributes.Where(a => a.CollectionId == collectionId && a.ProviderId == providerId));
+            dbContext.IntegerAttributes.RemoveRange(dbContext.IntegerAttributes.Where(a => a.CollectionId == collectionId && a.ProviderId == providerId));
+            dbContext.FloatAttributes.RemoveRange(dbContext.FloatAttributes.Where(a => a.CollectionId == collectionId && a.ProviderId == providerId));
+            dbContext.DateAttributes.RemoveRange(dbContext.DateAttributes.Where(a => a.CollectionId == collectionId && a.ProviderId == providerId));
+            dbContext.BlobAttributes.RemoveRange(dbContext.BlobAttributes.Where(a => a.CollectionId == collectionId && a.ProviderId == providerId));
         }
 
         #endregion
