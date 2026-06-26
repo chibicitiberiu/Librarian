@@ -39,6 +39,12 @@
                     <img src="~/icons/16/places/all.png" /> Collections
                 </a>
             </li>
+            <li>
+                <a class="sidebar-item @HtmlUtils.ActiveOnPage("duplicates", currentPage)"
+                   href="@Url.Action("Index", "Duplicates")">
+                    <img src="~/icons/16/places/all.png" /> Duplicates
+                </a>
+            </li>
             @foreach (var cat in LibraryCategories.All)
             {
                 var active = (string?)currentPage == "library" && currentCategory == cat.Key ? "active" : "";

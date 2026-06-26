@@ -152,6 +152,10 @@ namespace Librarian
                                     "collection/{id:int}",
                                     new { controller = "Collection", action = "Index" });
 
+            app.MapControllerRoute("Duplicates",
+                                    "duplicates",
+                                    new { controller = "Duplicates", action = "Index" });
+
             app.MapControllerRoute("Search",
                                     "/search",
                                     new { controller = "Search", action = "Index" });

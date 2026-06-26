@@ -421,3 +421,21 @@ td.fill {
 .item-collection-crumbs {
   margin: 0.25em 0 0.75em;
 }
+
+.item-badges {
+  margin: 0.25em 0;
+}
+
+.badge-archive,
+.badge-duplicate {
+  margin-left: 0.5em;
+  padding: 0 0.4em;
+  font-size: 0.75em;
+  vertical-align: middle;
+  text-decoration: none;
+}
+
+.metadata-subresource-title {
+  margin: 0.25em 0 0;
+  font-size: 1em;
+}

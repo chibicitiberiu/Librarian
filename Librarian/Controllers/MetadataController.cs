@@ -79,13 +79,20 @@ namespace Librarian.Controllers
                     vm.DisplayPath = "Home";
                 }
 
-                // collect and fill metadata
+                // File-level metadata: live extraction from disk so unsaved overrides are reflected.
                 var allMetadata = await metadataService.CollectMetadataAsync(diskPath).ToListAsync();
                 vm.Metadata = allMetadata.Where(x => x.SubResource == null);
-                vm.SubResourceMetadata = allMetadata
-                    .Where(x => x.SubResource != null)
-                    .GroupBy(x => x.SubResource!)
-                    .ToDictionary(grouping => grouping.Key, grouping => grouping.ToArray().AsEnumerable());
+
+                // Sub-resource metadata (media streams/chapters) is produced by the indexing pass and
+                // stored in the DB; the live display extraction above doesn't re-derive it, so load it
+                // from the DB by file id.
+                var dbFile = db.IndexedFiles.FirstOrDefault(f => f.Path == vm.Path);
+                vm.SubResourceMetadata = dbFile == null
+                    ? new Dictionary<SubResource, IEnumerable<AttributeBase>>()
+                    : (await LoadDbAttributesAsync(dbFile.Id))
+                        .Where(a => a.SubResource != null)
+                        .GroupBy(a => a.SubResource!)
+                        .ToDictionary(g => g.Key, g => g.AsEnumerable());
 
                 PopulateItem(vm);
                 await PopulateCollectionContextAsync(vm);
@@ -159,7 +166,23 @@ namespace Librarian.Controllers
                 vm.CoverPath = vm.Path;
 
             var indexed = db.IndexedFiles.FirstOrDefault(f => f.Path == vm.Path);
-            if (indexed?.ItemId is not int itemId)
+            if (indexed == null)
+                return;
+
+            // Duplicate count: other existing files that share this file's full content hash.
+            int checksumDef = Model.MetadataAttributes.FileAttributes.Checksum;
+            var myHash = db.TextAttributes
+                .Where(a => a.FileId == indexed.Id && a.SubResourceId == null && a.AttributeDefinitionId == checksumDef)
+                .Select(a => a.Value)
+                .FirstOrDefault();
+            if (!string.IsNullOrEmpty(myHash))
+            {
+                int shared = db.TextAttributes.Count(a => a.AttributeDefinitionId == checksumDef
+                    && a.SubResourceId == null && a.Value == myHash && a.File!.Exists);
+                vm.DuplicateCount = Math.Max(0, shared - 1);
+            }
+
+            if (indexed.ItemId is not int itemId)
                 return;
 
             var members = db.IndexedFiles
@@ -176,6 +199,7 @@ namespace Librarian.Controllers
                     Path = path,
                     IsPrimary = role == FileRole.Primary,
                     IsCurrent = path == vm.Path,
+                    InArchive = path.Contains("!/", StringComparison.Ordinal),
                     IconUrl = Url.Content(IconMapping.GetIconUrl(name, MimeUtility.GetMimeMapping(name))),
                 };
             }
@@ -218,6 +242,8 @@ namespace Librarian.Controllers
                 Path = entry.Path,
                 DisplayPath = entry.Path,
                 ParentPath = ParentDir(archiveRel),
+                InArchive = true,
+                ArchiveName = NameOf(archiveRel),
             };
 
             var attrs = await LoadDbAttributesAsync(entry.Id);

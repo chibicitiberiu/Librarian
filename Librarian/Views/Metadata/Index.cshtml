@@ -28,6 +28,29 @@
     ViewData["FormRoute"] = "Metadata_Save";
     ViewData["FormId"] = "metadata-form";
     ViewData["FormHidden"] = new Dictionary<string, string> { ["path"] = Model.Path };
+
+    string SubKindLabel(SubResourceKind k) => k switch
+    {
+        SubResourceKind.Stream => "Stream",
+        SubResourceKind.Chapter => "Chapter",
+        SubResourceKind.EmbeddedFile => "Embedded file",
+        _ => "Resource",
+    };
+
+    string SubValue(AttributeBase a)
+    {
+        string v = a switch
+        {
+            TextAttribute t => t.Value,
+            IntegerAttribute n => n.Value.ToString(),
+            FloatAttribute f when a.AttributeDefinition.Type == AttributeType.TimeSpan => TimeSpan.FromSeconds(f.Value).ToString(),
+            FloatAttribute f => f.Value.ToString(),
+            DateAttribute d => d.Value.ToString(),
+            BlobAttribute b => $"{b.Value.Length} bytes",
+            _ => "",
+        };
+        return string.IsNullOrEmpty(a.AttributeDefinition.Unit) ? v : $"{v} {a.AttributeDefinition.Unit}";
+    }
 }
 
 @section Scripts {
@@ -57,6 +80,21 @@
             <a href="@Url.Action("Index", "Collection", new { id = c.Id })">@c.Name</a>
         }
     </nav>
+}
+
+@if (Model.InArchive || Model.DuplicateCount > 0)
+{
+    <p class="item-badges">
+        @if (Model.InArchive)
+        {
+            <span class="badge-archive" title="This file lives inside @Model.ArchiveName">inside @Model.ArchiveName</span>
+        }
+        @if (Model.DuplicateCount > 0)
+        {
+            <a class="badge-duplicate" href="@Url.Action("Index", "Duplicates")"
+               title="This file's content matches @Model.DuplicateCount other file(s)">@Model.DuplicateCount duplicate@(Model.DuplicateCount == 1 ? "" : "s")</a>
+        }
+    </p>
 }
 
 @if (Model.CoverPath != null || Model.HasItem)
@@ -172,4 +210,27 @@
             </tbody>
         </table>
     </div>
+}
+
+@if (Model.SubResourceMetadata != null && Model.SubResourceMetadata.Count > 0)
+{
+    <h2 class="metadata-group-title">Streams &amp; chapters</h2>
+    @foreach (var (sub, attrs) in Model.SubResourceMetadata.OrderBy(kv => kv.Key.Kind).ThenBy(kv => kv.Key.InternalId ?? 0))
+    {
+        <div class="metadata-group">
+            <h3 class="metadata-subresource-title">@SubKindLabel(sub.Kind) — @sub.Name</h3>
+            <table>
+                <tbody>
+                    @foreach (var a in attrs.OrderBy(x => x.AttributeDefinition.Group).ThenBy(x => x.AttributeDefinition.Name))
+                    {
+                        <tr>
+                            <td>@a.AttributeDefinition.Name</td>
+                            <td class="col-input"><span>@SubValue(a)</span></td>
+                            <td class="fill"></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 }

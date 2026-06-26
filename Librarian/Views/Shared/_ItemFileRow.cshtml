@@ -6,5 +6,9 @@
     {
         <span class="badge-primary" title="The Item's primary content file">primary</span>
     }
+    @if (Model.InArchive)
+    {
+        <span class="badge-archive" title="This file lives inside an archive">in archive</span>
+    }
     <a class="item-file-open" href="@Url.Action("Index", "Browse", new { path = Model.Path })" title="Open file">↗</a>
 </li>

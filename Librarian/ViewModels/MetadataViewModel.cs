@@ -16,6 +16,9 @@ namespace Librarian.ViewModels
 
         /// <summary>The file currently being viewed (so it can be highlighted).</summary>
         public bool IsCurrent { get; set; }
+
+        /// <summary>True when this file lives inside an archive (a virtual entry) rather than on disk.</summary>
+        public bool InArchive { get; set; }
     }
 
     public class MetadataViewModel
@@ -33,6 +36,15 @@ namespace Librarian.ViewModels
         public IEnumerable<AttributeBase> Metadata { get; set; } = null!;
 
         public Dictionary<SubResource, IEnumerable<AttributeBase>> SubResourceMetadata { get; set; } = null!;
+
+        /// <summary>Number of OTHER files that share this file's content hash (0 = none / not hashed).
+        /// Surfaced as a badge linking to the duplicates view.</summary>
+        public int DuplicateCount { get; set; }
+
+        /// <summary>True when the viewed file is a virtual archive entry; <see cref="ArchiveName"/> is the
+        /// containing archive's file name (collection_plan.md §3.1).</summary>
+        public bool InArchive { get; set; }
+        public string? ArchiveName { get; set; }
 
         #region Item (plan.md Phase 6d)
 

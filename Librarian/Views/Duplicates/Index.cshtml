@@ -1,0 +1,38 @@
+@using Librarian.Utils
+@model List<Librarian.Services.DuplicateSet>
+@{
+    ViewData["Title"] = "Duplicates";
+    ViewData["CurrentPage"] = "duplicates";
+    ViewData["Status"] = $"{Model.Count} duplicate set{(Model.Count == 1 ? "" : "s")}";
+    ViewData["Breadcrumbs"] = new List<Breadcrumb>
+    {
+        new("Duplicates", null, Url.Content("~/icons/16/places/all.png")),
+    };
+}
+
+@if (Model.Count == 0)
+{
+    <p class="muted">No duplicates found. Files that share identical content appear here once the checksum
+    pass has run in Dedup mode (<code>POST /api/metadata/checksum?mode=Dedup</code>).</p>
+}
+else
+{
+    @foreach (var set in Model)
+    {
+        <div class="metadata-group">
+            <h2 class="metadata-group-title">
+                @set.Paths.Count copies · @HumanizeUtils.HumanizeSize(set.Size ?? 0)
+            </h2>
+            <ul class="item-file-list">
+                @foreach (var p in set.Paths)
+                {
+                    <li class="item-file">
+                        <a class="item-file-name" href="@Url.Action("Index", "Metadata", new { path = p })">@p</a>
+                        <a class="item-file-open" href="@Url.Action("Index", "Browse", new { path = p })" title="Open file">↗</a>
+                    </li>
+                }
+            </ul>
+            <p class="muted">SHA-256: <code>@set.Hash</code></p>
+        </div>
+    }
+}
