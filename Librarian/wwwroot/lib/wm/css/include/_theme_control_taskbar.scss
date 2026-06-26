@@ -23,3 +23,14 @@
 .wm-tray {
     border-left: 1px solid $color-panel-border-dark;
 }
+
+.wm-tray-badge {
+    color: $color-link-active;
+    font-weight: bold;
+}
+
+// A running-jobs indicator gets a subtle highlight.
+.wm-tray-icon.wm-busy {
+    background: $color-panel-active;
+    border-radius: .15em;
+}

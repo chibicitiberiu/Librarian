@@ -1,0 +1,31 @@
+@import "theme_colors";
+
+.wm-viewer-props {
+    border-left: 1px solid $color-panel-border-dark;
+    background: $color-panel;
+}
+
+.wm-viewer-facts {
+    border-bottom: 1px solid $color-panel-border-dark;
+}
+
+.wm-viewer-prop-group-title {
+    color: #555;
+}
+
+.wm-viewer-prop-name {
+    color: #555;
+}
+
+.wm-viewer-text {
+    background: $color-content;
+    color: $color-foreground;
+    border: 1px solid $color-input-outer-border;
+    padding: .5em;
+}
+
+.wm-viewer-image {
+    background: $color-content;
+    border: 1px solid $color-input-outer-border;
+    padding: 2px;
+}

@@ -19,22 +19,24 @@
 
     @RenderBody()
 
-    <div class="wm-taskbar">
-        <a class="wm-task wm-task-active" href="@Url.Action("Index", "UiTest", new { path = "" })"
-           title="Browse the library">
-            <img src="~/icons/16/file-manager.png" alt="" /> Browse
-        </a>
-        <a class="wm-task" href="@Url.Action("Index", "Admin")" title="Settings &amp; maintenance">
-            <img src="~/icons/16/gnome-searchtool.png" alt="" /> Settings
-        </a>
+    @{ var taskbarActive = ViewData["TaskbarActive"] as string ?? "browse"; }
+    <wm-taskbar>
+        <wm-task icon="/icons/16/file-manager.png" text="Browse" href="@Url.Action("Index", "UiTest", new { path = "" })"
+                 active="@(taskbarActive == "browse")" tooltip="Browse the library"></wm-task>
+        <wm-task icon="/icons/16/gnome-searchtool.png" text="Settings" href="@Url.Action("Index", "Admin")"
+                 active="@(taskbarActive == "settings")" tooltip="Settings and maintenance"></wm-task>
         <div class="wm-layout-fill"></div>
-        <div class="wm-tray">
+        <wm-tray>
             <span class="wm-tray-icon" id="wm-tray-jobs" title="Background jobs: idle">
                 <img src="~/icons/16/gnome-searchtool.png" alt="Background jobs" />
+                <span class="wm-tray-badge"></span>
             </span>
-        </div>
-    </div>
+        </wm-tray>
+    </wm-taskbar>
 
+    <script>
+        window.wm_url_jobs = "@Url.Action("GetJobsSummary", "Jobs")";
+    </script>
     <script src="~/lib/wm/js/wm.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

@@ -45,11 +45,23 @@
 }
 
 .wm-tray-icon {
+    position: relative;
     display: inline-block;
+    padding: 0 .15em;
     cursor: default;
 }
 
 .wm-tray-icon img {
     border: 0;
     vertical-align: middle;
+}
+
+.wm-tray-badge {
+    margin-left: .15em;
+    font-size: .8em;
+    vertical-align: middle;
+}
+
+.wm-tray-badge:empty {
+    display: none;
 }

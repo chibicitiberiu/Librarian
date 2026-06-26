@@ -216,6 +216,36 @@
   color: white !important;
 }
 
+.wm-viewer-props {
+  border-left: 1px solid #A1A1A1;
+  background: #E6E6E6;
+}
+
+.wm-viewer-facts {
+  border-bottom: 1px solid #A1A1A1;
+}
+
+.wm-viewer-prop-group-title {
+  color: #555;
+}
+
+.wm-viewer-prop-name {
+  color: #555;
+}
+
+.wm-viewer-text {
+  background: white;
+  color: black;
+  border: 1px solid #999999;
+  padding: 0.5em;
+}
+
+.wm-viewer-image {
+  background: white;
+  border: 1px solid #999999;
+  padding: 2px;
+}
+
 .wm-panel, .wm-panel-bottom, .wm-panel-top {
   color: black;
   background: #E6E6E6;
@@ -405,6 +435,16 @@
 
 .wm-tray {
   border-left: 1px solid #A1A1A1;
+}
+
+.wm-tray-badge {
+  color: #2649b4;
+  font-weight: bold;
+}
+
+.wm-tray-icon.wm-busy {
+  background: #CCCCCC;
+  border-radius: 0.15em;
 }
 
 body {

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
+using Librarian.Model;
 using Librarian.Services;
 using Librarian.Utils;
 using Librarian.ViewModels;
@@ -24,24 +26,29 @@ namespace Librarian.Controllers
 
         private readonly ILogger<UiTestController> logger;
         private readonly FileService fileService;
+        private readonly MetadataService metadataService;
 
-        public UiTestController(ILogger<UiTestController> logger, FileService fileService)
+        public UiTestController(ILogger<UiTestController> logger, FileService fileService,
+                                MetadataService metadataService)
         {
             this.logger = logger;
             this.fileService = fileService;
+            this.metadataService = metadataService;
         }
 
-        public IActionResult Index(string path, string? view, int? zoom, string? sort)
+        public async Task<IActionResult> Index(string path, string? view, int? zoom, string? sort)
         {
             string sortKey = ValidSorts.Contains(sort) ? sort! : "name";
             try
             {
                 string diskPath = fileService.Resolve(path);
 
-                // Files are handled by the real Browse/Metadata controllers for now; the in-window viewer
-                // (Phase E) will render them here instead. Directories drive the browse-clone.
+                // A file path opens the in-window viewer; a directory drives the browse-clone.
+                if (System.IO.File.Exists(diskPath))
+                    return View("Viewer", await BuildViewerAsync(diskPath));
+
                 if (!Directory.Exists(diskPath))
-                    return NotFound("Not a directory.");
+                    return NotFound("Not found.");
 
                 var directoryInfo = new DirectoryInfo(diskPath);
                 string relPath = fileService.GetRelativePath(diskPath);
@@ -143,7 +150,9 @@ namespace Librarian.Controllers
                     Name = file.Name,
                     Path = p,
                     IsContainer = false,
-                    Href = $"{Url.Action("Index", "Metadata")}/{p}",
+                    // Clicking a file opens the in-window viewer (Phase E); the context menu's Properties
+                    // action still goes to the full metadata editor.
+                    Href = Url.Action("Index", "UiTest", new { path = p }),
                     IconUrl = Url.Content(IconMapping.GetIconUrl(file.Name, mime)),
                     // Real thumbnails are a future job (ImageSharp); for now point image tiles at the file
                     // bytes served by the Browse controller.
@@ -157,6 +166,109 @@ namespace Librarian.Controllers
                     },
                 };
             }
+        }
+
+        private static readonly string[] TextExtensions =
+        {
+            "txt", "md", "markdown", "json", "xml", "csv", "tsv", "log", "yml", "yaml", "ini", "cfg",
+            "srt", "vtt", "sub", "nfo", "cs", "js", "ts", "css", "scss", "html", "htm", "sh", "py", "sql",
+        };
+
+        private async Task<WmViewerViewModel> BuildViewerAsync(string diskPath)
+        {
+            var fi = new FileInfo(diskPath);
+            string relPath = fileService.GetRelativePath(diskPath);
+            string mime = MimeUtility.GetMimeMapping(fi.Name);
+            string kind = PreviewKind(mime, fi.Name);
+
+            // Live file-level metadata (same extraction the metadata page uses), grouped for display.
+            var attrs = new List<AttributeBase>();
+            try
+            {
+                await foreach (var a in metadataService.CollectMetadataAsync(diskPath))
+                    if (a.SubResource == null)
+                        attrs.Add(a);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Metadata collection failed for {}", diskPath);
+            }
+
+            var groups = attrs
+                .Where(a => a.AttributeDefinition != null)
+                .GroupBy(a => a.AttributeDefinition.Group)
+                .OrderBy(g => g.Key)
+                .Select(g => new WmPropGroup(
+                    g.Key,
+                    g.OrderBy(x => x.AttributeDefinition.Name)
+                     .Select(x => (x.AttributeDefinition.Name, AttrValue(x)))
+                     .Where(t => !string.IsNullOrEmpty(t.Item2))
+                     // Tika and ExifTool often both report the same field (e.g. Width/Height) — collapse exact dupes.
+                     .Distinct()
+                     .ToList()))
+                .Where(g => g.Items.Count > 0)
+                .ToList();
+
+            string? textPreview = null;
+            if (kind == "text")
+            {
+                try
+                {
+                    using var fs = fi.OpenRead();
+                    var buf = new byte[64 * 1024];
+                    int read = fs.Read(buf, 0, buf.Length);
+                    textPreview = Encoding.UTF8.GetString(buf, 0, read);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Text preview read failed for {}", diskPath);
+                    kind = "none";
+                }
+            }
+
+            return new WmViewerViewModel
+            {
+                DisplayName = fi.Name,
+                Path = relPath,
+                ParentPath = fi.Directory != null ? fileService.GetRelativePath(fi.Directory.FullName) : null,
+                Breadcrumbs = BuildBreadcrumbs(relPath).ToList(),
+                PreviewKind = kind,
+                PreviewUrl = Url.Action("Index", "Browse", new { path = relPath })!,
+                TextPreview = textPreview,
+                MimeType = mime,
+                DisplaySize = HumanizeUtils.HumanizeSize(fi.Length),
+                Modified = fi.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                IconUrl = Url.Content(IconMapping.GetIconUrl(fi.Name, mime)),
+                FullMetadataUrl = $"{Url.Action("Index", "Metadata")}/{relPath}",
+                Properties = groups,
+            };
+        }
+
+        private static string PreviewKind(string mime, string name)
+        {
+            if (mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) return "image";
+            if (mime.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)) return "audio";
+            if (mime.StartsWith("video/", StringComparison.OrdinalIgnoreCase)) return "video";
+            if (mime.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)) return "pdf";
+            if (mime.StartsWith("text/", StringComparison.OrdinalIgnoreCase)) return "text";
+
+            string ext = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
+            return TextExtensions.Contains(ext) ? "text" : "none";
+        }
+
+        private static string AttrValue(AttributeBase a)
+        {
+            string v = a switch
+            {
+                TextAttribute t => t.Value,
+                IntegerAttribute n => n.Value.ToString(),
+                FloatAttribute f when a.AttributeDefinition.Type == AttributeType.TimeSpan => TimeSpan.FromSeconds(f.Value).ToString(),
+                FloatAttribute f => f.Value.ToString(),
+                DateAttribute d => d.Value.ToString(),
+                BlobAttribute b => $"{b.Value.Length} bytes",
+                _ => "",
+            };
+            return string.IsNullOrEmpty(a.AttributeDefinition.Unit) ? v : $"{v} {a.AttributeDefinition.Unit}";
         }
 
         private static IEnumerable<(string, string)> BuildBreadcrumbs(string path)

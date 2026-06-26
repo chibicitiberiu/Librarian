@@ -340,6 +340,41 @@ function wmSetupFileLists() {
 }
 
 /********************************
+ * Taskbar jobs tray            *
+ ********************************/
+function wmSetupTray() {
+    var icon = document.getElementById('wm-tray-jobs');
+    if (!icon || !window.wm_url_jobs) return;
+    var badge = icon.querySelector('.wm-tray-badge');
+
+    function poll() {
+        var r = new XMLHttpRequest();
+        r.onreadystatechange = function () {
+            if (r.readyState !== 4 || r.status !== 200) return;
+            try {
+                var s = JSON.parse(r.responseText);
+                var n = s.runningJobCount || 0;
+                if (n > 0) {
+                    icon.classList.add('wm-busy');
+                    icon.title = 'Background jobs: ' + (s.message || (n + ' running'));
+                    if (badge) badge.textContent = n;
+                } else {
+                    icon.classList.remove('wm-busy');
+                    icon.title = 'Background jobs: idle';
+                    if (badge) badge.textContent = '';
+                }
+            } catch (e) { /* ignore malformed responses */ }
+        };
+        r.open('GET', window.wm_url_jobs);
+        r.send();
+    }
+
+    poll();
+    // Polling (not websockets) by design for now — cheap and old-browser friendly.
+    setInterval(poll, 2500);
+}
+
+/********************************
  * Initialization               *
  ********************************/
 function wm_setup() {
@@ -349,6 +384,7 @@ function wm_setup() {
     wmSetupFileLists();
     wmSetupContextMenus();
     wmSetupModals();
+    wmSetupTray();
     wmSetupGlobalClose();
 }
 
