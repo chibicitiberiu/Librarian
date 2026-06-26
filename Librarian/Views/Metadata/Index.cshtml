@@ -151,7 +151,7 @@
                 {
                     var fieldId = $"{field.AttributeDefinition.Group}/{field.AttributeDefinition.Name}";
                     <tr data-id="@fieldId">
-                        <td><input id="chk-selected" type="checkbox" readonly="@(!field.Editable)" /></td>
+                        <td><input class="field-select" type="checkbox" disabled="@(!field.Editable)" /></td>
                         <td>@field.AttributeDefinition.Name</td>
                         <td class="col-input">
                             @switch (field.AttributeDefinition.Type)
@@ -208,6 +208,24 @@
                     </tr>
                 }
             </tbody>
+        </table>
+    </div>
+}
+
+@* Template + target group for the JS "Add field" control (btn-add). Tier-0: no JS, no add. *@
+@if (Model.AddableFields.Count > 0)
+{
+    <select id="metadata-field-options" style="display:none" aria-hidden="true">
+        @foreach (var f in Model.AddableFields)
+        {
+            <option value="@(f.Group)/@(f.Name)">@f.Group / @f.Name</option>
+        }
+    </select>
+
+    <div class="metadata-group" id="metadata-added" style="display:none">
+        <h2 class="metadata-group-title">Added fields</h2>
+        <table>
+            <tbody></tbody>
         </table>
     </div>
 }

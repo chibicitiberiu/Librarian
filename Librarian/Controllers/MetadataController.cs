@@ -94,6 +94,7 @@ namespace Librarian.Controllers
                         .GroupBy(a => a.SubResource!)
                         .ToDictionary(g => g.Key, g => g.AsEnumerable());
 
+                vm.AddableFields = LoadAddableFields();
                 PopulateItem(vm);
                 await PopulateCollectionContextAsync(vm);
 
@@ -157,6 +158,17 @@ namespace Librarian.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+
+        /// <summary>The editable (non read-only) attribute definitions a user may add to a file, as
+        /// (Group, Name) pairs ordered for the "Add field" picker.</summary>
+        private List<(string Group, string Name)> LoadAddableFields() =>
+            db.AttributeDefinitions
+                .Where(d => !d.IsReadOnly && d.Group != null)
+                .OrderBy(d => d.Group).ThenBy(d => d.Name)
+                .Select(d => new { d.Group, d.Name })
+                .ToList()
+                .Select(d => (d.Group!, d.Name))
+                .ToList();
 
         /// <summary>Fills the Item Viewer pane: the Item's files grouped by role, and the cover to
         /// preview (the file itself when it's an image, otherwise the Item's best cover-art companion).</summary>
@@ -253,6 +265,7 @@ namespace Librarian.Controllers
                 .GroupBy(a => a.SubResource!)
                 .ToDictionary(g => g.Key, g => g.ToArray().AsEnumerable());
 
+            vm.AddableFields = LoadAddableFields();
             PopulateItem(vm);
             vm.CoverPath = null;   // in-archive bytes aren't servable; prefer a real ancestor collection cover
             await PopulateCollectionContextAsync(vm);

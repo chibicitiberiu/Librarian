@@ -149,16 +149,44 @@
             <tbody>
                 @foreach (var field in group.OrderBy(x => x.AttributeDefinition.Name))
                 {
+                    var fieldName = $"{field.AttributeDefinition.Group}/{field.AttributeDefinition.Name}";
                     <tr>
                         <td>@field.AttributeDefinition.Name</td>
                         <td class="col-input">
-                            @switch (field)
+                            @if (!field.AttributeDefinition.IsReadOnly && field is not BlobAttribute)
                             {
-                                case TextAttribute t: <span>@t.Value</span> break;
-                                case IntegerAttribute n: <span>@n.Value</span> break;
-                                case FloatAttribute fl: <span>@fl.Value</span> break;
-                                case DateAttribute d: <span>@d.Value</span> break;
-                                case BlobAttribute b: <span>@(b.Value.Length) bytes</span> break;
+                                if (field is TextAttribute t
+                                    && field.AttributeDefinition.Type is AttributeType.BigText or AttributeType.FormattedText)
+                                {
+                                    <textarea name="@fieldName">@t.Value</textarea>
+                                }
+                                else if (field is TextAttribute tx)
+                                {
+                                    <input type="text" name="@fieldName" value="@tx.Value" />
+                                }
+                                else if (field is IntegerAttribute n)
+                                {
+                                    <input type="number" name="@fieldName" value="@n.Value" />
+                                }
+                                else if (field is FloatAttribute fl)
+                                {
+                                    <input type="text" name="@fieldName" value="@fl.Value" />
+                                }
+                                else if (field is DateAttribute d)
+                                {
+                                    <input type="text" name="@fieldName" value="@d.Value" />
+                                }
+                            }
+                            else
+                            {
+                                @switch (field)
+                                {
+                                    case TextAttribute t: <span>@t.Value</span> break;
+                                    case IntegerAttribute n: <span>@n.Value</span> break;
+                                    case FloatAttribute fl: <span>@fl.Value</span> break;
+                                    case DateAttribute d: <span>@d.Value</span> break;
+                                    case BlobAttribute b: <span>@(b.Value.Length) bytes</span> break;
+                                }
                             }
                         </td>
                         <td class="fill"></td>

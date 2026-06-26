@@ -55,6 +55,10 @@ namespace Librarian.ViewModels
         /// Item's cover art), or null when there's nothing to show.</summary>
         public string? CoverPath { get; set; }
 
+        /// <summary>Editable (non read-only) attribute definitions the user can add to this file, as
+        /// (Group, Name) pairs — backs the Item Viewer's "Add field" control.</summary>
+        public IReadOnlyList<(string Group, string Name)> AddableFields { get; set; } = Array.Empty<(string, string)>();
+
         public IReadOnlyList<ItemFileRow> Content { get; set; } = Array.Empty<ItemFileRow>();
         public IReadOnlyList<ItemFileRow> Sidecars { get; set; } = Array.Empty<ItemFileRow>();
         public IReadOnlyList<ItemFileRow> Resources { get; set; } = Array.Empty<ItemFileRow>();
