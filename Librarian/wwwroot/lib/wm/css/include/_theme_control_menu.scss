@@ -1,29 +1,56 @@
-﻿@import "theme_colors";
+@import "theme_colors";
+@import "theme_mixins";
 @import "browser_support";
 
-.wm-menu {
-    gap: .25em;
+.wm-menubar {
+    padding: .1em .25em;
+    border-bottom: 1px solid $color-panel-border-dark;
+}
 
-    li {
-        gap: .25em;
-        padding: .25em;
-        //box-sizing: border-box;
-        border: 1px solid transparent;
+.wm-menu-label {
+    color: $color-foreground;
+}
 
+.wm-menu-top:hover > .wm-menu-label,
+.wm-menu-top.wm-open > .wm-menu-label {
+    @include common-button-highlight;
+}
 
-        &:hover, &.wm-state-active {
-            @include linear-gradient-vert(background, $color-menu-active-background-dark, $color-menu-active-background-light);
-            border-top: 1px solid $color-menu-active-inner-border-light;
-            border-left: 1px solid $color-menu-active-inner-border-light;
-            border-bottom: 1px solid $color-menu-active-inner-border-dark;
-            border-right: 1px solid $color-menu-active-inner-border-dark;
-            outline: 1px solid $color-menu-active-outer-border;
-            color: $color-menu-active-foreground;
-        }
+.wm-menu-popup {
+    @include common-panel;
+    border: 1px solid $color-outer-border;
+    border-top-color: $color-inner-border-light;
+    border-left-color: $color-inner-border-light;
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, .4);
+}
+
+.wm-menuitem {
+    color: $color-foreground;
+
+    // Bluecurve selection: blue gradient with light text on hover / keyboard focus.
+    &:hover,
+    &.wm-open {
+        @include linear-gradient-vert(background, $color-menu-active-background-dark, $color-menu-active-background-light);
+        border-top: 1px solid $color-menu-active-inner-border-light;
+        border-left: 1px solid $color-menu-active-inner-border-light;
+        border-bottom: 1px solid $color-menu-active-inner-border-dark;
+        border-right: 1px solid $color-menu-active-inner-border-dark;
+        color: $color-menu-active-foreground;
     }
 
-    ul {
-        @extend .wm-panel;
-        height: auto !important;
+    &.disabled {
+        color: #9a9a9a;
+        opacity: 1;
     }
+
+    &.disabled:hover {
+        background: transparent;
+        border-color: transparent;
+        color: #9a9a9a;
+    }
+}
+
+.wm-menu-separator {
+    border-top: 1px solid $color-inner-border-dark;
+    border-bottom: 1px solid $color-inner-border-light;
 }

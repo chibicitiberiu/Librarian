@@ -1,4 +1,4 @@
-.wm-layout-hbox, .wm-menu li, .wm-menu {
+.wm-layout-hbox {
   display: -webkit-box;
   display: -webkit-flex;
   display: -ms-flexbox;
@@ -380,7 +380,81 @@ body.wm-desktop {
   cursor: pointer;
 }
 
-.wm-layout-hbox, .wm-menu li, .wm-menu {
+.wm-menubar {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -moz-box;
+  display: flex;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: row;
+  -moz-box-orient: horizontal;
+  -moz-box-direction: normal;
+  -ms-flex-direction: row;
+  flex-direction: row;
+  -webkit-box-align: stretch;
+  -webkit-align-items: stretch;
+  -moz-box-align: stretch;
+  -ms-flex-align: stretch;
+  align-items: stretch;
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+}
+
+.wm-menu-top {
+  position: relative;
+}
+
+.wm-menu-label {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  display: block;
+  font: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0.15em 0.6em;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.wm-menu-popup {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -moz-box;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: column;
+  -moz-box-orient: vertical;
+  -moz-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  -webkit-box-align: stretch;
+  -webkit-align-items: stretch;
+  -moz-box-align: stretch;
+  -ms-flex-align: stretch;
+  align-items: stretch;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 12em;
+  z-index: 100;
+  padding: 0.15em;
+  visibility: collapse;
+}
+
+.wm-menu-top:hover > .wm-menu-popup,
+.wm-menu-top.wm-open > .wm-menu-popup {
+  visibility: visible;
+}
+
+.wm-menuitem {
   display: -webkit-box;
   display: -webkit-flex;
   display: -ms-flexbox;
@@ -398,29 +472,38 @@ body.wm-desktop {
   -moz-box-align: center;
   -ms-flex-align: center;
   align-items: center;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  position: relative;
+  width: 100%;
+  gap: 0.5em;
+  padding: 0.2em 0.5em;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: default;
 }
 
-.wm-layout-vbox {
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
-  display: -moz-box;
-  display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-  -webkit-flex-direction: column;
-  -moz-box-orient: vertical;
-  -moz-box-direction: normal;
-  -ms-flex-direction: column;
-  flex-direction: column;
-  -webkit-box-align: center;
-  -webkit-align-items: center;
-  -moz-box-align: center;
-  -ms-flex-align: center;
-  align-items: center;
+.wm-menuitem-icon {
+  width: 16px;
+  height: 16px;
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+  border: 0;
 }
 
-.wm-layout-fill {
+.wm-menuitem-check {
+  width: 16px;
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.wm-menuitem-text {
   -webkit-box-flex: 1;
   -webkit-flex-grow: 1;
   -moz-box-flex: 1;
@@ -428,48 +511,38 @@ body.wm-desktop {
   flex-grow: 1;
 }
 
-.wm-menu {
-  margin: 0;
-  padding: 0;
-  cursor: pointer;
+.wm-menuitem-arrow {
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+  padding-left: 0.75em;
 }
-.wm-menu li {
-  position: relative;
-}
-.wm-menu ul {
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: -ms-flexbox;
-  display: -moz-box;
-  display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-  -webkit-flex-direction: column;
-  -moz-box-orient: vertical;
-  -moz-box-direction: normal;
-  -ms-flex-direction: column;
-  flex-direction: column;
-  -webkit-box-align: left;
-  -webkit-align-items: left;
-  -moz-box-align: left;
-  -ms-flex-align: left;
-  align-items: left;
-  position: absolute;
-  min-width: 12em;
-  visibility: collapse;
-}
-.wm-menu ul.wm-state-active {
-  visibility: visible;
-}
-.wm-menu > li > ul {
-  top: 100%;
-}
-.wm-menu > li > ul ul {
-  top: 0;
+
+.wm-menuitem-haspopup > .wm-menu-popup {
+  top: -0.15em;
   left: 100%;
 }
 
-.wm-panel, .wm-panel-bottom, .wm-panel-top, .wm-menu ul {
+.wm-menuitem-haspopup:hover > .wm-menu-popup,
+.wm-menuitem-haspopup.wm-open > .wm-menu-popup {
+  visibility: visible;
+}
+
+.wm-menu-separator {
+  height: 0;
+  margin: 0.2em 0.25em;
+}
+
+.wm-contextmenu {
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.wm-contextmenu.wm-open {
+  visibility: visible;
+}
+
+.wm-panel, .wm-panel-bottom, .wm-panel-top {
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
   box-sizing: border-box;

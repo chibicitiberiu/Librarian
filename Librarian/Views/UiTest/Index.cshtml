@@ -4,9 +4,56 @@
     Layout = "_WmLayout";
     ViewData["Title"] = Model.DisplayName;
     var count = ((System.Collections.Generic.ICollection<BrowseFileViewModel>)Model.Files).Count;
+    var isRoot = Model.Path == ".";
+    var folderProps = isRoot ? null : $"{Url.Action("Index", "Metadata")}/{Model.Path}";
 }
 
 <wm-window title="@Model.DisplayName" icon="/icons/16/file-manager.png">
+
+    <wm-menubar>
+        <wm-menu text="File" tooltip="Actions for the selected item(s)">
+            <wm-menuitem icon="/icons/32/edit-cut.png" text="Cut" action="cut" tooltip="Cut selection"></wm-menuitem>
+            <wm-menuitem icon="/icons/32/edit-copy.png" text="Copy" action="copy" tooltip="Copy selection"></wm-menuitem>
+            <wm-menuitem icon="/icons/32/edit-paste.png" text="Paste" action="paste" disabled="true" tooltip="Paste"></wm-menuitem>
+            <wm-menu-separator></wm-menu-separator>
+            <wm-menuitem icon="/icons/32/edit.png" text="Rename" action="rename" tooltip="Rename"></wm-menuitem>
+            <wm-menuitem icon="/icons/32/edit-delete.png" text="Delete" action="delete" tooltip="Delete"></wm-menuitem>
+            <wm-menu-separator></wm-menu-separator>
+            <wm-menuitem icon="/icons/32/gnome-stock-insert-table.png" text="Properties" action="properties" tooltip="Properties of the selection"></wm-menuitem>
+        </wm-menu>
+
+        <wm-menu text="Folder" tooltip="Actions for the current folder">
+            <wm-menuitem icon="/icons/16/go-up.png" text="Open parent" href="@(Model.ParentPath != null ? Url.Action("Index", "UiTest", new { path = Model.ParentPath }) : null)" disabled="@(Model.ParentPath == null)" tooltip="Go to the parent folder"></wm-menuitem>
+            <wm-menuitem text="Refresh" href="@Url.Action("Index", "UiTest", new { path = isRoot ? "" : Model.Path })" tooltip="Reload this folder"></wm-menuitem>
+            <wm-menu-separator></wm-menu-separator>
+            <wm-menuitem text="Paste" action="paste" disabled="true" tooltip="Paste into this folder"></wm-menuitem>
+            <wm-menuitem text="New folder…" action="newfolder" disabled="true" tooltip="Create a folder (coming soon)"></wm-menuitem>
+            <wm-menu-separator></wm-menu-separator>
+            <wm-menuitem text="Properties" href="@folderProps" disabled="@isRoot" tooltip="Folder metadata"></wm-menuitem>
+        </wm-menu>
+
+        <wm-menu text="View">
+            <wm-menuitem text="View mode">
+                <wm-menuitem text="Details" checked="true" action="view:details" tooltip="Details view"></wm-menuitem>
+                <wm-menuitem text="List" action="view:list" tooltip="List view (coming soon)" disabled="true"></wm-menuitem>
+                <wm-menuitem text="Tiles" action="view:tiles" tooltip="Tile view (coming soon)" disabled="true"></wm-menuitem>
+                <wm-menuitem text="Icons" action="view:icons" tooltip="Icon view (coming soon)" disabled="true"></wm-menuitem>
+            </wm-menuitem>
+            <wm-menuitem text="Sort by">
+                <wm-menuitem text="Name" action="sort:name" tooltip="Sort by name"></wm-menuitem>
+                <wm-menuitem text="Size" action="sort:size" tooltip="Sort by size"></wm-menuitem>
+                <wm-menuitem text="Type" action="sort:type" tooltip="Sort by type"></wm-menuitem>
+                <wm-menuitem text="Modified" action="sort:modified" tooltip="Sort by last modified"></wm-menuitem>
+            </wm-menuitem>
+            <wm-menu-separator></wm-menu-separator>
+            <wm-menuitem checkbox="true" text="Show hidden" action="toggle:hidden" tooltip="Show hidden files"></wm-menuitem>
+            <wm-menuitem checkbox="true" text="Item view" action="toggle:itemview" tooltip="Group files into items"></wm-menuitem>
+        </wm-menu>
+
+        <wm-menu text="Help">
+            <wm-menuitem icon="/icons/16/gnome-searchtool.png" text="About Librarian…" action="wm-about" tooltip="About this application"></wm-menuitem>
+        </wm-menu>
+    </wm-menubar>
 
     <wm-toolbar>
         <wm-button icon="/icons/32/edit-cut.png" text="Cut" tooltip="Cut selection"></wm-button>
@@ -27,7 +74,7 @@
         }
     </wm-breadcrumb>
 
-    <wm-content>
+    <wm-content data-wm-contextmenu="uitest-filemenu">
         <table class="wm-filelist sortable">
             <thead>
                 <tr>
@@ -44,7 +91,7 @@
                     var href = f.IsDirectory
                         ? Url.Action("Index", "UiTest", new { path = f.Path })
                         : $"{Url.Action("Index", "Metadata")}/{f.Path}";
-                    <tr class="wm-filelist-row">
+                    <tr class="wm-filelist-row" data-path="@f.Path">
                         <td><img src="@f.IconUrl" alt="" /></td>
                         <td data-sort="@(f.IsDirectory ? "0_" : "1_")@f.Name"><a href="@href">@f.Name</a></td>
                         <td data-sort="@(f.Size ?? -1)">@(f.IsDirectory ? "<DIR>" : f.DisplaySize)</td>
@@ -60,3 +107,13 @@
         <span class="wm-layout-fill">@count item@(count == 1 ? "" : "s")</span>
     </wm-statusbar>
 </wm-window>
+
+@* Right-click menu for the file list. JS positions it at the cursor and auto-selects the row. *@
+<wm-contextmenu id="uitest-filemenu" data-properties-url="/metadata">
+    <wm-menuitem icon="/icons/16/file-manager.png" text="Open" action="open" tooltip="Open"></wm-menuitem>
+    <wm-menuitem icon="/icons/32/gnome-stock-insert-table.png" text="Properties" action="properties" tooltip="View metadata"></wm-menuitem>
+    <wm-menu-separator></wm-menu-separator>
+    <wm-menuitem text="Cut" action="cut" disabled="true" tooltip="Cut (coming soon)"></wm-menuitem>
+    <wm-menuitem text="Copy" action="copy" disabled="true" tooltip="Copy (coming soon)"></wm-menuitem>
+    <wm-menuitem text="Delete" action="delete" disabled="true" tooltip="Delete (coming soon)"></wm-menuitem>
+</wm-contextmenu>

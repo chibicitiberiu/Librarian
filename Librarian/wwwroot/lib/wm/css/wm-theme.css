@@ -195,7 +195,7 @@
   text-decoration: none;
 }
 
-.wm-panel, .wm-menu ul, .wm-panel-bottom, .wm-panel-top {
+.wm-panel, .wm-panel-bottom, .wm-panel-top {
   color: black;
   background: #E6E6E6;
   height: 2em;
@@ -205,7 +205,7 @@
   border-right: 1px solid #CECECE;
   padding: 0.25em;
 }
-.wm-panel > .wm-separator, .wm-menu ul > .wm-separator, .wm-panel-bottom > .wm-separator, .wm-panel-top > .wm-separator {
+.wm-panel > .wm-separator, .wm-panel-bottom > .wm-separator, .wm-panel-top > .wm-separator {
   height: 1.5em;
 }
 
@@ -238,15 +238,38 @@
   padding: 0.25em;
 }
 
-.wm-menu {
-  gap: 0.25em;
+.wm-menubar {
+  padding: 0.1em 0.25em;
+  border-bottom: 1px solid #A1A1A1;
 }
-.wm-menu li {
-  gap: 0.25em;
-  padding: 0.25em;
-  border: 1px solid transparent;
+
+.wm-menu-label {
+  color: black;
 }
-.wm-menu li:hover, .wm-menu li.wm-state-active {
+
+.wm-menu-top:hover > .wm-menu-label,
+.wm-menu-top.wm-open > .wm-menu-label {
+  background: #F5F5F5;
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  border-bottom: 1px solid #CECECE;
+  border-right: 1px solid #CECECE;
+  outline-color: #000000;
+}
+
+.wm-menu-popup {
+  color: black;
+  background: #E6E6E6;
+  border: 1px solid #5C5C5C;
+  border-top-color: white;
+  border-left-color: white;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.wm-menuitem {
+  color: black;
+}
+.wm-menuitem:hover, .wm-menuitem.wm-open {
   background: -webkit-gradient(linear, left top, left bottom, from(#435E9B), to(#5476C3));
   background: -webkit-linear-gradient(#435E9B, #5476C3);
   background: -moz-linear-gradient(#435E9B, #5476C3);
@@ -255,11 +278,21 @@
   border-left: 1px solid #98B2ED;
   border-bottom: 1px solid #4468B8;
   border-right: 1px solid #4468B8;
-  outline: 1px solid #3C4D71;
   color: white;
 }
-.wm-menu ul {
-  height: auto !important;
+.wm-menuitem.disabled {
+  color: #9a9a9a;
+  opacity: 1;
+}
+.wm-menuitem.disabled:hover {
+  background: transparent;
+  border-color: transparent;
+  color: #9a9a9a;
+}
+
+.wm-menu-separator {
+  border-top: 1px solid #CECECE;
+  border-bottom: 1px solid white;
 }
 
 .wm-progress {

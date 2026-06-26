@@ -1,40 +1,117 @@
-﻿@import "browser_support";
-@import "layout";
+@import "browser_support";
 
-.wm-menu {
-    @extend .wm-layout-hbox;
-    margin: 0;
-    padding: 0;
-    cursor: pointer;
+// Menu bar — a horizontal row of top-level menus (File, View, …). Each top menu owns a popup that
+// drops down on hover (Tier-0, no JS) or when JS toggles `.wm-open` (click/keyboard, Tier-1).
+.wm-menubar {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(stretch);
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+}
 
-    li {
-        @extend .wm-layout-hbox;
-        position: relative;
-    }
+.wm-menu-top {
+    position: relative;
+}
 
-    ul {
-        @extend .wm-panel;
-        @include display-flex;
-        @include flex-direction-column;
-        @include align-items(left);
-        position: absolute;
-        min-width: 12em;
+.wm-menu-label {
+    @include box-sizing(border-box);
+    display: block;
+    font: inherit;
+    background: transparent;
+    border: 1px solid transparent;
+    padding: .15em .6em;
+    white-space: nowrap;
+    cursor: default;
+}
 
-        visibility: collapse;
+// Popup panel — used for dropdowns, submenus and context menus.
+.wm-menu-popup {
+    @include box-sizing(border-box);
+    @include display-flex;
+    @include flex-direction-column;
+    @include align-items(stretch);
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 12em;
+    z-index: 100;
+    padding: .15em;
+    visibility: collapse;
+}
 
-        &.wm-state-active {
-            visibility: visible;
-        }
-    }
+.wm-menu-top:hover > .wm-menu-popup,
+.wm-menu-top.wm-open > .wm-menu-popup {
+    visibility: visible;
+}
 
-    // top level submenus
-    > li > ul {
-        top: 100%;
+// Menu item — [check|icon] [label] [submenu arrow]. Renders as <a>, <button> or <span>.
+.wm-menuitem {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    @include box-sizing(border-box);
+    position: relative;
+    width: 100%;
+    gap: .5em;
+    padding: .2em .5em;
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    white-space: nowrap;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: default;
+}
 
-        // nested submenus
-        ul {
-            top: 0;
-            left: 100%;
-        }
-    }
+.wm-menuitem-icon {
+    width: 16px;
+    height: 16px;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    border: 0;
+}
+
+.wm-menuitem-check {
+    width: 16px;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.wm-menuitem-text {
+    @include flex-grow(1);
+}
+
+.wm-menuitem-arrow {
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    padding-left: .75em;
+}
+
+// Submenus open to the right of their parent item.
+.wm-menuitem-haspopup > .wm-menu-popup {
+    top: -.15em;
+    left: 100%;
+}
+
+.wm-menuitem-haspopup:hover > .wm-menu-popup,
+.wm-menuitem-haspopup.wm-open > .wm-menu-popup {
+    visibility: visible;
+}
+
+.wm-menu-separator {
+    height: 0;
+    margin: .2em .25em;
+}
+
+// Context menu — same popup, positioned at the cursor by JS (fixed, hidden until `.wm-open`).
+.wm-contextmenu {
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+.wm-contextmenu.wm-open {
+    visibility: visible;
 }

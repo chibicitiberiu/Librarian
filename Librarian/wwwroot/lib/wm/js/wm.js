@@ -1,4 +1,10 @@
-﻿/********************************
+/*
+ * Window-manager control library — Tier-1 progressive enhancement. Everything here is optional: the
+ * chrome renders and is usable without JS (menus open on :hover, tables render unsorted). This adds
+ * click/keyboard menus, right-click context menus and click-to-sort on top.
+ */
+
+/********************************
  * Sortable tables              *
  ********************************/
 const getCellValue = (tr, idx) => {
@@ -32,19 +38,9 @@ function setupSortableTables() {
     )
 }
 
-window.addEventListener("load", setupSortableTables);
-
 /********************************
- * Helpers                      *
+ * Layout (legacy demo support) *
  ********************************/
-function wm_find_parent_by_class(element, parentClassName) {
-    while (element != null && !element.classList.contains(parentClassName)) {
-        element = element.parentElement;
-    }
-
-    return element;
-}
-
 function wm_fix_layout() {
     var topPanel = document.querySelector('.wm-panel-top');
     if (topPanel != null) {
@@ -57,60 +53,113 @@ function wm_fix_layout() {
 }
 
 /********************************
- * Menus                        *
+ * Menus & context menus        *
  ********************************/
-function wm_menu_onclick(menuItem, event) {
-    subMenu = menuItem.querySelector('ul');
-    if (subMenu != null) {
-        wm_menu_submenu_show(menuItem, subMenu);
-    }
-    else {
-        // ensure child gets the event
-        if (event.target == menuItem
-            && menuItem.firstChild != null
-            && menuItem.firstChild.click !== undefined) {
-            menuItem.firstChild.click();
-        }
-
-        wm_menu_close(menuItem);
-        event.stopPropagation();
-    }
+function wmHideContextMenus() {
+    document.querySelectorAll('.wm-contextmenu.wm-open').forEach(function (m) {
+        m.classList.remove('wm-open');
+    });
 }
 
-function wm_menu_submenu_show(menuItem, subMenu) {
-    menuItem.classList.add("wm-state-active");
-    subMenu.classList.add("wm-state-active");
+function wmCloseAllMenus(except) {
+    document.querySelectorAll('.wm-menu-top.wm-open, .wm-menuitem-haspopup.wm-open').forEach(function (el) {
+        if (el !== except) el.classList.remove('wm-open');
+    });
+    wmHideContextMenus();
 }
 
-function wm_menu_submenu_hide(menuItem, subMenu) {
-    menuItem.classList.remove("wm-state-active");
-    subMenu.classList.remove("wm-state-active");
-}
+function wmSetupMenubar() {
+    document.querySelectorAll('.wm-menubar .wm-menu-label').forEach(function (label) {
+        var top = label.parentElement; // .wm-menu-top
 
-function wm_menu_close(menuItem) {
-    var menu = wm_find_parent_by_class(menuItem, 'wm-menu');
-    if (menu != null) {
-        menu.querySelectorAll('.wm-state-active')
-            .forEach(item => item.classList.remove('wm-state-active'));
-    }
-}
-
-function wm_menu_setup() {
-    document.querySelectorAll('.wm-menu').forEach(menu => {
-        menu.querySelectorAll('ul').forEach(nestedMenu => {
-            nestedMenu.parentElement.addEventListener('focusout', function (event) {
-                // only if no child has focus
-                if (!nestedMenu.contains(event.relatedTarget)) {
-                    wm_menu_submenu_hide(this, nestedMenu);
-                }
-            });
+        label.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var willOpen = !top.classList.contains('wm-open');
+            wmCloseAllMenus();
+            if (willOpen) top.classList.add('wm-open');
         });
 
-        menu.querySelectorAll('li').forEach(menuItem => {
-            menuItem.tabIndex = 0;
-            menuItem.addEventListener('click', function (event) { wm_menu_onclick(this, event); });
+        // When a menu is already open, hovering a sibling switches to it (classic menubar feel).
+        top.addEventListener('mouseenter', function () {
+            var anyOpen = document.querySelector('.wm-menubar .wm-menu-top.wm-open');
+            if (anyOpen && anyOpen !== top) {
+                wmCloseAllMenus();
+                top.classList.add('wm-open');
+            }
         });
     });
+
+    // Submenu parents toggle on click (hover is handled by CSS).
+    document.querySelectorAll('.wm-menuitem-haspopup').forEach(function (item) {
+        item.addEventListener('click', function (e) {
+            if (e.target.closest('.wm-menuitem') === item) {
+                e.stopPropagation();
+                item.classList.toggle('wm-open');
+            }
+        });
+    });
+}
+
+function wmJoinUrl(base, path) {
+    if (!base) return null;
+    return base.replace(/\/+$/, '') + '/' + String(path).split('/').map(encodeURIComponent).join('/');
+}
+
+function wmContextAction(menu, action) {
+    if (action === 'open') {
+        var href = menu.getAttribute('data-context-href');
+        if (href) window.location.href = href;
+    }
+    else if (action === 'properties') {
+        var url = wmJoinUrl(menu.getAttribute('data-properties-url'), menu.getAttribute('data-context-path') || '');
+        if (url) window.location.href = url;
+    }
+}
+
+function wmSetupContextMenus() {
+    document.querySelectorAll('[data-wm-contextmenu]').forEach(function (host) {
+        var menuId = host.getAttribute('data-wm-contextmenu');
+
+        host.addEventListener('contextmenu', function (e) {
+            var menu = document.getElementById(menuId);
+            if (!menu) return;
+            e.preventDefault();
+            wmCloseAllMenus();
+
+            // Right-click auto-selects the row under the cursor and remembers its target.
+            var row = e.target.closest('[data-wm-selectable], .wm-filelist-row');
+            if (row) {
+                host.querySelectorAll('.wm-selected').forEach(function (r) { r.classList.remove('wm-selected'); });
+                row.classList.add('wm-selected');
+                var link = row.querySelector('a');
+                menu.setAttribute('data-context-href', link ? link.href : '');
+                menu.setAttribute('data-context-path', row.getAttribute('data-path') || '');
+            }
+
+            menu.classList.add('wm-open');
+            var w = menu.offsetWidth, h = menu.offsetHeight;
+            var x = Math.min(e.clientX, window.innerWidth - w - 4);
+            var y = Math.min(e.clientY, window.innerHeight - h - 4);
+            menu.style.left = Math.max(0, x) + 'px';
+            menu.style.top = Math.max(0, y) + 'px';
+        });
+
+        // Wire data-action items inside this host's context menu.
+        var menu = document.getElementById(menuId);
+        if (menu) {
+            menu.querySelectorAll('[data-action]').forEach(function (item) {
+                item.addEventListener('click', function () { wmContextAction(menu, item.getAttribute('data-action')); });
+            });
+        }
+    });
+}
+
+function wmSetupGlobalClose() {
+    document.addEventListener('click', function () { wmCloseAllMenus(); });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' || e.keyCode === 27) wmCloseAllMenus();
+    });
+    window.addEventListener('blur', function () { wmCloseAllMenus(); });
 }
 
 /********************************
@@ -118,7 +167,10 @@ function wm_menu_setup() {
  ********************************/
 function wm_setup() {
     wm_fix_layout();
-    wm_menu_setup();
+    setupSortableTables();
+    wmSetupMenubar();
+    wmSetupContextMenus();
+    wmSetupGlobalClose();
 }
 
 window.addEventListener("load", wm_setup);
