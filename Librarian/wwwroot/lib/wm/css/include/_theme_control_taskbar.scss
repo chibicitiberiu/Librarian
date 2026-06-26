@@ -1,0 +1,25 @@
+@import "theme_colors";
+@import "theme_mixins";
+
+.wm-taskbar {
+    @include common-panel;
+    border-top: 1px solid $color-panel-border-light;
+    padding: .15em .35em;
+}
+
+.wm-task {
+    @include common-button-transparent;
+    color: $color-link;
+
+    &:hover {
+        @include common-button-highlight;
+    }
+
+    &.wm-task-active {
+        @include common-button-active;
+    }
+}
+
+.wm-tray {
+    border-left: 1px solid $color-panel-border-dark;
+}

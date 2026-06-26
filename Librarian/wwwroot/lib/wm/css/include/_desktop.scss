@@ -1,0 +1,12 @@
+@import "browser_support";
+@import "metrics";
+
+// The desktop is the root surface: a single maximised window floats above a bottom taskbar. The body
+// itself never scrolls — the window content scrolls internally — so the chrome stays put like a real
+// desktop app. Opt-in via `<body class="wm-desktop">` so non-chrome pages are unaffected.
+body.wm-desktop {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+}

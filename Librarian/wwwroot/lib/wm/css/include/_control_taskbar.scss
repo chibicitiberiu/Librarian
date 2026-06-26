@@ -1,0 +1,55 @@
+@import "browser_support";
+@import "metrics";
+
+// Taskbar — fixed strip along the bottom of the desktop. Holds task entries on the left (Browse,
+// Settings, …) and a tray on the right (background-jobs indicator, etc.). Replaces the old status bar.
+.wm-taskbar {
+    @include box-sizing(border-box);
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: $wm-taskbar-height;
+}
+
+.wm-task {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    @include box-sizing(border-box);
+    gap: .35em;
+    height: 100%;
+    padding: 0 .7em;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.wm-task img {
+    border: 0;
+    vertical-align: middle;
+}
+
+.wm-tray {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    gap: .25em;
+    height: 100%;
+    padding: 0 .35em;
+}
+
+.wm-tray-icon {
+    display: inline-block;
+    cursor: default;
+}
+
+.wm-tray-icon img {
+    border: 0;
+    vertical-align: middle;
+}

@@ -1,0 +1,27 @@
+@import "browser_support";
+
+// Button — optional icon + text laid out side by side. Works as either <button> or <a>; both reset to
+// look identical. Toolbars restyle these to stack icon-over-text (see _control_toolbar).
+.wm-button {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    @include box-sizing(border-box);
+    gap: .35em;
+    font: inherit;
+    text-decoration: none;
+    text-align: left;
+    cursor: default;
+    white-space: nowrap;
+}
+
+.wm-button-icon {
+    display: block;
+    border: 0;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+}
+
+.wm-button-text {
+    display: block;
+}

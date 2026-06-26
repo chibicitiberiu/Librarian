@@ -1,0 +1,25 @@
+@import "browser_support";
+
+// FileListView (minimal, Phase A) — a sortable details table. Phases later add tile/icon/list modes,
+// zoom, dynamic columns and checkbox selection on top of this structure.
+.wm-filelist {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.wm-filelist th,
+.wm-filelist td {
+    text-align: left;
+    padding: 2px 8px 2px 0;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.wm-filelist td img {
+    border: 0;
+    vertical-align: middle;
+}
+
+.wm-filelist th {
+    cursor: pointer;
+}

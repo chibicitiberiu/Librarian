@@ -1,0 +1,16 @@
+@import "theme_colors";
+
+.wm-filelist th {
+    border-bottom: 1px solid $color-panel-border-dark;
+    color: #555;
+    font-weight: bold;
+}
+
+.wm-filelist tbody tr:hover {
+    background: $color-panel-highlight;
+}
+
+.wm-filelist a {
+    color: $color-link;
+    text-decoration: none;
+}

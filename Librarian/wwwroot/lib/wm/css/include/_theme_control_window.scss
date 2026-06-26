@@ -1,0 +1,64 @@
+@import "theme_colors";
+@import "theme_mixins";
+@import "browser_support";
+
+// Window skin — Bluecurve. Panel body with a tiled gradient title bar; the title bar goes grayscale
+// when the window is inactive (a modal is open over it).
+.wm-window {
+    @include common-panel;
+    outline: 1px solid $color-outer-border-highlight;
+    border-radius: .25em;
+    box-shadow: 1px 1px 4px black;
+}
+
+.wm-titlebar {
+    background: url("/img/window-title-tile.png") repeat-x;
+    border-bottom: 1px solid $color-outer-border-highlight;
+    border-top-left-radius: .25em;
+    border-top-right-radius: .25em;
+}
+
+.wm-titlebar-inner {
+    background: url("/img/window-title-fade.png") no-repeat center top;
+}
+
+.wm-titlebar-text {
+    color: $color-title;
+    font-size: 10pt;
+    font-weight: bolder;
+    text-shadow: 1px 1px 2px #223256;
+}
+
+// Inactive window: drain the title bar to grayscale (modern browsers); old browsers simply keep the
+// colour, which is an acceptable fallback.
+.wm-window-inactive {
+    .wm-titlebar {
+        -webkit-filter: grayscale(100%);
+        filter: grayscale(100%);
+    }
+
+    .wm-titlebar-text {
+        color: #ededed;
+        text-shadow: 1px 1px 2px #555;
+    }
+}
+
+.wm-window-content {
+    background: $color-content;
+    color: $color-foreground;
+    border-top: 1px solid $color-inner-border-light;
+    border-left: 1px solid $color-inner-border-light;
+    border-bottom: 1px solid $color-inner-border-dark;
+    border-right: 1px solid $color-inner-border-dark;
+    padding: .35em .5em;
+}
+
+.wm-window-content a {
+    color: $color-link;
+    text-decoration: none;
+}
+
+.wm-statusbar {
+    padding: .15em .35em;
+    color: $color-foreground;
+}

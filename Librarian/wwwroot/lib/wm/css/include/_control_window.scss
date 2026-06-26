@@ -1,0 +1,68 @@
+@import "browser_support";
+@import "metrics";
+
+// Window — base container for the app chrome. A vertical stack: title bar (fixed height), then any
+// number of bars (menubar / toolbar / locationbar), the content area (grows + scrolls), and an
+// optional status bar. Floats as a maximised window between the desktop margins and the taskbar.
+.wm-window {
+    @include box-sizing(border-box);
+    @include display-flex;
+    @include flex-direction-column;
+    @include align-items(stretch);
+
+    position: fixed;
+    top: $wm-window-margin;
+    left: $wm-window-margin;
+    right: $wm-window-margin;
+    bottom: $wm-taskbar-height + $wm-window-margin;
+    min-height: 0;
+}
+
+.wm-titlebar {
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    height: $wm-titlebar-height;
+    overflow: hidden;
+}
+
+.wm-titlebar-inner {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    height: 100%;
+}
+
+.wm-titlebar-icon {
+    width: 16px;
+    height: 16px;
+    margin: 0 .25em;
+    border: 0;
+    vertical-align: middle;
+}
+
+.wm-titlebar-text {
+    @include flex-grow(1);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+// Slot for an optional title-bar control (e.g. a modal close button) on the far right.
+.wm-titlebar-actions {
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+}
+
+.wm-window-content {
+    @include flex-grow(1);
+    min-height: 0;
+    overflow: auto;
+}
+
+.wm-statusbar {
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+}

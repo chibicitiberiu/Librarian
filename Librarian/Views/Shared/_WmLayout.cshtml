@@ -1,0 +1,41 @@
+@*
+    Layout for the new window-manager chrome (lib/wm). The desktop hosts a single maximised window
+    (rendered by the view via <wm-window>) above a fixed taskbar. No top nav bar — that goes away in
+    the new design. Taskbar tray / live jobs are fleshed out in Phase E.
+*@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Librarian</title>
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="~/lib/wm/css/wm.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/lib/wm/css/wm-theme.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+    <link rel="icon" href="~/favicon.ico" asp-append-version="true" />
+</head>
+<body class="wm-desktop">
+
+    @RenderBody()
+
+    <div class="wm-taskbar">
+        <a class="wm-task wm-task-active" href="@Url.Action("Index", "UiTest", new { path = "" })"
+           title="Browse the library">
+            <img src="~/icons/16/file-manager.png" alt="" /> Browse
+        </a>
+        <a class="wm-task" href="@Url.Action("Index", "Admin")" title="Settings &amp; maintenance">
+            <img src="~/icons/16/gnome-searchtool.png" alt="" /> Settings
+        </a>
+        <div class="wm-layout-fill"></div>
+        <div class="wm-tray">
+            <span class="wm-tray-icon" id="wm-tray-jobs" title="Background jobs: idle">
+                <img src="~/icons/16/gnome-searchtool.png" alt="Background jobs" />
+            </span>
+        </div>
+    </div>
+
+    <script src="~/lib/wm/js/wm.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

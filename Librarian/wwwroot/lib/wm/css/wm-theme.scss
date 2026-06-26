@@ -1,15 +1,22 @@
-﻿@import "include/theme_colors";
+// Window-manager control library — Bluecurve theme (colours, borders, images). Pair with wm.css.
+// Build: npx --yes sass wm-theme.scss wm-theme.css
+@import "include/theme_colors";
 @import "include/theme_mixins";
-@import "include/theme_control_menu";
-@import "include/theme_control_panel";
-@import "include/theme_control_progress";
+@import "include/theme_control_window";
+@import "include/theme_control_toolbar";
+@import "include/theme_control_button";
+@import "include/theme_control_breadcrumb";
 @import "include/theme_control_separator";
+@import "include/theme_control_filelist";
+@import "include/theme_control_panel";
+@import "include/theme_control_menu";
+@import "include/theme_control_progress";
+@import "include/theme_control_taskbar";
 
 body {
     @include common-desktop;
     font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', 'Luxi Sans', Geneva, Verdana, sans-serif;
     font-size: 9pt;
-    padding: 1.5em;
 }
 
 a {
@@ -21,113 +28,11 @@ a {
     }
 }
 
-h1 {
-    margin-top: 0;
-    margin-bottom: .5em;
-}
-
-/*
-.nav {
-    .nav-brand {
-        font-weight: bold;
-        font-size: 14pt;
-        font-style: italic;
-    }
-    .nav-link {
-        @include common-button;
-        vertical-align: middle;
-        padding: .3em .5em;
-
-        &.active {
-            @include common-button-active;
-        }
-    }
-    a {
-        color: $color-link;
-        text-decoration: none;
-
-        &.active {
-            color: $color-link-active;
-        }
-    }
-}
-
-.window {
-    @include common-panel;
-    outline: 1px solid $color-outer-border-highlight;
-    border-radius: .25em;
-    box-shadow: 1px 1px 4px black;
-
-    .window-title {
-        background: url("/img/window-title-tile.png") repeat-x;
-        height: 18px;
-        border-bottom: 1px solid $color-outer-border-highlight;
-
-        .window-title-inner {
-            height: 100%;
-            background: url("/img/window-title-fade.png") no-repeat;
-            background-position: center;
-            background-position-y: top;
-        }
-
-        h1 {
-            color: $color-title;
-            font-size: 10pt;
-            font-weight: bolder;
-            text-align: center;
-            text-shadow: 1px 1px 2px #223256;
-            margin: 0;
-            padding: 0;
-        }
-    }
-
-    .window-content {
-        background: $color-content;
-        border-top: 1px solid $color-inner-border-light;
-        border-left: 1px solid $color-inner-border-light;
-        border-bottom: 1px solid $color-inner-border-dark;
-        border-right: 1px solid $color-inner-border-dark;
-    }
-}
-
-button, .button {
-    @include common-button;
-}
-
-.toolbar button, .toolbar-button, button.toolbar-button {
-    @include common-toolbar-button;
-}
-
 input, .input {
     @include common-input;
-    display: block;
     display: inline-block;
-}
-
-.location-bar {
-    min-width: 15em;
-    margin: 2px;
-}
-
-hr {
-    margin: 0 .5em;
-    border-top: 1px solid $color-inner-border-dark;
-    border-bottom: 1px solid $color-inner-border-light;
-}
-
-.separator {
-    display: inline;
-    display: inline-block;
-    width: 4px;
-    height: 25px;
-    background: url('/img/separator.gif');
-    margin: .5em .5em;
 }
 
 .disabled {
     opacity: .5;
 }
-
-.invalid {
-    background-color: lightcoral;
-}*/

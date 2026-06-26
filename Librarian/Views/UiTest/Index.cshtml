@@ -1,0 +1,62 @@
+@using Librarian.Models
+@model BrowseViewModel
+@{
+    Layout = "_WmLayout";
+    ViewData["Title"] = Model.DisplayName;
+    var count = ((System.Collections.Generic.ICollection<BrowseFileViewModel>)Model.Files).Count;
+}
+
+<wm-window title="@Model.DisplayName" icon="/icons/16/file-manager.png">
+
+    <wm-toolbar>
+        <wm-button icon="/icons/32/edit-cut.png" text="Cut" tooltip="Cut selection"></wm-button>
+        <wm-button icon="/icons/32/edit-copy.png" text="Copy" tooltip="Copy selection"></wm-button>
+        <wm-button icon="/icons/32/edit-paste.png" text="Paste" tooltip="Paste into this folder" disabled="@(Model.Clipboard == null)"></wm-button>
+        <wm-separator></wm-separator>
+        <wm-button icon="/icons/32/edit.png" text="Rename" tooltip="Rename"></wm-button>
+        <wm-button icon="/icons/32/edit-delete.png" text="Delete" tooltip="Delete"></wm-button>
+        <wm-separator></wm-separator>
+        <wm-button icon="/icons/32/gnome-stock-insert-table.png" text="Metadata" tooltip="View metadata"></wm-button>
+    </wm-toolbar>
+
+    <wm-breadcrumb>
+        <wm-crumb href="@Url.Action("Index", "UiTest", new { path = "" })" icon="/icons/16/go-home.png" text="Home"></wm-crumb>
+        @foreach (var (name, p) in Model.Breadcrumbs)
+        {
+            <wm-crumb href="@Url.Action("Index", "UiTest", new { path = p })" text="@name"></wm-crumb>
+        }
+    </wm-breadcrumb>
+
+    <wm-content>
+        <table class="wm-filelist sortable">
+            <thead>
+                <tr>
+                    <th data-col="icon"></th>
+                    <th>Name</th>
+                    <th>Size</th>
+                    <th>Type</th>
+                    <th>Modified</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Files)
+                {
+                    var href = f.IsDirectory
+                        ? Url.Action("Index", "UiTest", new { path = f.Path })
+                        : $"{Url.Action("Index", "Metadata")}/{f.Path}";
+                    <tr class="wm-filelist-row">
+                        <td><img src="@f.IconUrl" alt="" /></td>
+                        <td data-sort="@(f.IsDirectory ? "0_" : "1_")@f.Name"><a href="@href">@f.Name</a></td>
+                        <td data-sort="@(f.Size ?? -1)">@(f.IsDirectory ? "<DIR>" : f.DisplaySize)</td>
+                        <td>@(f.IsDirectory ? "Folder" : f.MimeType)</td>
+                        <td>@f.LastModified.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </wm-content>
+
+    <wm-statusbar>
+        <span class="wm-layout-fill">@count item@(count == 1 ? "" : "s")</span>
+    </wm-statusbar>
+</wm-window>

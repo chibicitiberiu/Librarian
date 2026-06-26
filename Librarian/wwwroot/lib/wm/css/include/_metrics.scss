@@ -1,0 +1,5 @@
+// Shared layout metrics for the window-manager chrome. Defined here (imported first) so both the
+// structural partials and the desktop positioning can reference the same values.
+$wm-window-margin: 1em;
+$wm-taskbar-height: 2.4em;
+$wm-titlebar-height: 18px;

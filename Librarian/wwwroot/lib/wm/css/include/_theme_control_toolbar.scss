@@ -1,0 +1,7 @@
+@import "theme_colors";
+
+// Bars stacked under the title bar share a faint dividing rule so they read as distinct strips.
+.wm-toolbar {
+    padding: .2em .25em;
+    border-bottom: 1px solid $color-panel-border-dark;
+}

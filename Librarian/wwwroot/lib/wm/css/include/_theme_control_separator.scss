@@ -1,6 +1,16 @@
-﻿.wm-separator {
+@import "theme_colors";
+
+// Vertical tiled divider (toolbar/menubar groups).
+.wm-separator-vertical {
     width: 4px;
-    //height: 25px;
-    background: url('../img/separator.gif');
-    margin: .5em .5em;
+    height: 1.6em;
+    background: url('/img/separator.gif');
+    margin: 0 .35em;
+}
+
+// Horizontal rule built from a light-over-dark border pair (engraved look).
+.wm-separator-horizontal {
+    border-top: 1px solid $color-inner-border-dark;
+    border-bottom: 1px solid $color-inner-border-light;
+    margin: 0 .25em;
 }

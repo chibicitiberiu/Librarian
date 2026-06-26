@@ -160,6 +160,11 @@ namespace Librarian
                                     "admin/{action=Index}",
                                     new { controller = "Admin" });
 
+            // Sandbox for the new window-manager control library (lib/wm). Functional browse-clone.
+            app.MapControllerRoute("UiTest",
+                                    "uitest/{**path}",
+                                    new { controller = "UiTest", action = "Index", path = string.Empty });
+
             app.MapControllerRoute("Search",
                                     "/search",
                                     new { controller = "Search", action = "Index" });

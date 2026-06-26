@@ -1,0 +1,16 @@
+@import "theme_colors";
+@import "theme_mixins";
+
+// Button skin. Standalone buttons get the raised Bluecurve look; toolbar buttons are flat/transparent
+// until hovered (so a toolbar reads as a row of icons, not a wall of boxes).
+.wm-button {
+    @include common-button;
+    padding: .2em .5em;
+    color: $color-foreground;
+}
+
+.wm-toolbar > .wm-button {
+    @include common-toolbar-button;
+    padding: .15em .4em;
+    color: $color-foreground;
+}

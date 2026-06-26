@@ -1,9 +1,19 @@
-﻿@import "include/browser_support";
+// Window-manager control library — structure (layout, no colours). Pair with wm-theme.css for the
+// Bluecurve skin. Build: npx --yes sass wm.scss wm.css  (and wm-theme.scss wm-theme.css)
+@import "include/browser_support";
+@import "include/metrics";
+@import "include/layout";
+@import "include/desktop";
+@import "include/control_window";
+@import "include/control_toolbar";
+@import "include/control_button";
+@import "include/control_breadcrumb";
+@import "include/control_separator";
+@import "include/control_filelist";
 @import "include/control_menu";
 @import "include/control_panel";
 @import "include/control_progress";
-@import "include/control_separator";
-@import "include/layout";
+@import "include/control_taskbar";
 
 body {
     margin: 0;

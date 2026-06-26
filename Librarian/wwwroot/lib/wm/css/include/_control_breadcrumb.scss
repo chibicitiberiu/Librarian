@@ -1,0 +1,45 @@
+@import "browser_support";
+
+// Breadcrumb navigation — a location bar holding a trail of crumbs. The first crumb carries an icon
+// (Home / Search), drawn to the LEFT of its text; deeper crumbs are text only, separated by a slash.
+.wm-locationbar {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+}
+
+.wm-breadcrumb {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    @include flex-grow(1);
+    @include box-sizing(border-box);
+    overflow: hidden;
+}
+
+.wm-crumb {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    @include box-sizing(border-box);
+    gap: .3em;
+    padding: .1em .35em;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.wm-crumb-icon {
+    display: block;
+    border: 0;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+}
+
+.wm-crumb-sep {
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    padding: 0 .1em;
+}

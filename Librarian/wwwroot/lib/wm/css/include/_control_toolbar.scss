@@ -1,0 +1,21 @@
+@import "browser_support";
+
+// Toolbar — a horizontal row of buttons and separators. Wraps when narrow. Buttons inside a toolbar
+// stack their icon above the text (classic file-manager toolbar), unlike standalone .wm-button.
+.wm-toolbar {
+    @include box-sizing(border-box);
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    -ms-flex-wrap: wrap;
+    flex-wrap: wrap;
+}
+
+.wm-toolbar > .wm-button {
+    @include flex-direction-column;
+    @include align-items(center);
+    text-align: center;
+    gap: .1em;
+}

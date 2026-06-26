@@ -1,3 +1,17 @@
-﻿.wm-separator {
+// Separator — two flavours: a vertical tiled divider (between toolbar/menubar groups) and a
+// horizontal rule made of borders (between stacked bars). Theme supplies the tile image / borders.
+.wm-separator {
     display: inline-block;
+}
+
+.wm-separator-vertical {
+    width: 4px;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+}
+
+.wm-separator-horizontal {
+    display: block;
+    width: auto;
+    height: 0;
 }
