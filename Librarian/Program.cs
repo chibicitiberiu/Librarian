@@ -156,6 +156,10 @@ namespace Librarian
                                     "duplicates",
                                     new { controller = "Duplicates", action = "Index" });
 
+            app.MapControllerRoute("Admin",
+                                    "admin/{action=Index}",
+                                    new { controller = "Admin" });
+
             app.MapControllerRoute("Search",
                                     "/search",
                                     new { controller = "Search", action = "Index" });

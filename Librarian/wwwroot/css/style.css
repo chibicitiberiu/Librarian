@@ -439,3 +439,16 @@ td.fill {
   margin: 0.25em 0 0;
   font-size: 1em;
 }
+
+.admin-banner {
+  padding: 0.4em 0.6em;
+  margin: 0.25em 0;
+  border: 1px solid;
+}
+
+.admin-actions {
+  flex-wrap: wrap;
+}
+.admin-actions form {
+  margin: 0;
+}

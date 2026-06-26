@@ -333,3 +333,18 @@ td.fill {
     margin: .25em 0 0;
     font-size: 1em;
 }
+
+.admin-banner {
+    padding: .4em .6em;
+    margin: .25em 0;
+    border: 1px solid;
+}
+
+.admin-actions {
+    -ms-flex-wrap: wrap;
+    flex-wrap: wrap;
+
+    form {
+        margin: 0;
+    }
+}

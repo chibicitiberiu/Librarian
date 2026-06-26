@@ -1,0 +1,99 @@
+@model Librarian.ViewModels.AdminViewModel
+@{
+    ViewData["Title"] = "Admin";
+    ViewData["CurrentPage"] = "admin";
+    ViewData["Status"] = $"{Model.TotalFiles} files · {Model.Items} items · {Model.Collections} collections";
+    ViewData["Breadcrumbs"] = new List<Breadcrumb>
+    {
+        new("Admin", null, Url.Content("~/icons/16/places/all.png")),
+    };
+}
+
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <p class="admin-banner">@Model.Message</p>
+}
+
+<div class="metadata-group">
+    <h2 class="metadata-group-title">Library</h2>
+    <table>
+        <tbody>
+            <tr><td>Indexed files</td><td class="fill">@Model.TotalFiles</td></tr>
+            <tr><td>Needs updating</td><td class="fill">@Model.NeedsUpdating</td></tr>
+            <tr><td>Incomplete extraction</td><td class="fill">@Model.Incomplete</td></tr>
+            <tr><td>Items</td><td class="fill">@Model.Items</td></tr>
+            <tr><td>Collections</td><td class="fill">@Model.Collections</td></tr>
+            <tr><td>Duplicate sets</td><td class="fill">@Model.DuplicateSets</td></tr>
+            <tr><td>Checksum mode</td><td class="fill">@Model.ChecksumMode</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="metadata-group">
+    <h2 class="metadata-group-title">Maintenance</h2>
+    <p class="muted">Each action runs now and may take a while on a large library; the page returns when it finishes.</p>
+    <div class="toolbar admin-actions">
+        <form method="post" asp-controller="Admin" asp-action="Reindex">
+            <button type="submit" title="Scan for changed files and re-group items">Reindex (incremental)</button>
+        </form>
+        <form method="post" asp-controller="Admin" asp-action="Reindex">
+            <input type="hidden" name="force" value="true" />
+            <button type="submit" title="Re-extract every file from scratch — slow">Re-extract all</button>
+        </form>
+        <form method="post" asp-controller="Admin" asp-action="ReindexIncomplete">
+            <button type="submit" title="Retry files whose last extraction was cut short">Reindex incomplete</button>
+        </form>
+        <form method="post" asp-controller="Admin" asp-action="Associate">
+            <button type="submit" title="Re-group files into items and collections">Associate items</button>
+        </form>
+        <form method="post" asp-controller="Admin" asp-action="Renormalize">
+            <button type="submit" title="Rebuild canonical attributes from stored raw metadata">Renormalize</button>
+        </form>
+        <form method="post" asp-controller="Admin" asp-action="ReindexSearch">
+            <button type="submit" title="Rebuild full-text-search vectors">Rebuild search</button>
+        </form>
+    </div>
+</div>
+
+<div class="metadata-group">
+    <h2 class="metadata-group-title">Checksums &amp; dedup</h2>
+    <form method="post" asp-controller="Admin" asp-action="Checksum">
+        <div class="toolbar admin-actions">
+            <select name="mode">
+                <option value="Dedup">Dedup (find duplicates)</option>
+                <option value="Integrity">Integrity (hash everything)</option>
+                <option value="Off">Off</option>
+            </select>
+            <button type="submit">Run checksum pass</button>
+            <a class="toolbar-button" href="@Url.Action("Index", "Duplicates")">View duplicates</a>
+        </div>
+    </form>
+</div>
+
+<div class="metadata-group">
+    <h2 class="metadata-group-title">Unmapped metadata keys (@Model.UnmappedTotal)</h2>
+    @if (Model.UnmappedKeys.Count == 0)
+    {
+        <p class="muted">Every raw metadata key currently has a normalization rule.</p>
+    }
+    else
+    {
+        <p class="muted">Most common raw keys with no canonical mapping — candidates for new rules.</p>
+        <table class="file-listing">
+            <thead>
+                <tr><th>Namespace</th><th>Key</th><th>Count</th><th>Sample value</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var k in Model.UnmappedKeys)
+                {
+                    <tr>
+                        <td>@k.Namespace</td>
+                        <td>@k.Key</td>
+                        <td>@k.Count</td>
+                        <td>@(k.SampleValue?.Length > 80 ? k.SampleValue[..80] + "…" : k.SampleValue)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
