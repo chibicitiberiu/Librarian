@@ -1,0 +1,59 @@
+@using Librarian.Library
+@{
+    // Which place is highlighted (set by the host view). The /uitest browse-clone uses "home".
+    var active = ViewData["WmSidebarActive"] as string ?? "home";
+}
+<div class="wm-sidebar">
+
+    <div class="wm-sidebar-section">
+        <div class="wm-sidebar-heading">Places</div>
+        <ul class="wm-sidebar-list">
+            <li>
+                <a class="wm-sidebar-item @(active == "home" ? "active" : "")" href="@Url.Action("Index", "UiTest", new { path = "" })">
+                    <img src="~/icons/16/places/home.png" alt="" /> Home
+                </a>
+            </li>
+            <li>
+                <a class="wm-sidebar-item" href="@Url.Action("Index", "Search")">
+                    <img src="~/icons/16/places/search.png" alt="" /> Search
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="wm-sidebar-section">
+        <div class="wm-sidebar-heading">Library</div>
+        <ul class="wm-sidebar-list">
+            <li>
+                <a class="wm-sidebar-item" href="@Url.Action("Roots", "Collection")">
+                    <img src="~/icons/16/places/all.png" alt="" /> Collections
+                </a>
+            </li>
+            <li>
+                <a class="wm-sidebar-item" href="@Url.Action("Index", "Duplicates")">
+                    <img src="~/icons/16/places/all.png" alt="" /> Duplicates
+                </a>
+            </li>
+            @foreach (var cat in LibraryCategories.All)
+            {
+                <li>
+                    <a class="wm-sidebar-item" href="@Url.Action("Index", "Library", new { category = cat.Key, view = (string?)null })">
+                        <img src="~/icons/16/places/@cat.Icon" alt="" /> @cat.DisplayName
+                    </a>
+                </li>
+            }
+        </ul>
+    </div>
+
+    <div class="wm-sidebar-section">
+        <div class="wm-sidebar-heading">System</div>
+        <ul class="wm-sidebar-list">
+            <li>
+                <a class="wm-sidebar-item" href="@Url.Action("Index", "Admin")">
+                    <img src="~/icons/16/gnome-searchtool.png" alt="" /> Settings
+                </a>
+            </li>
+        </ul>
+    </div>
+
+</div>

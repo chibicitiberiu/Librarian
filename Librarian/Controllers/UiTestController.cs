@@ -8,6 +8,7 @@ using Librarian.Model;
 using Librarian.Services;
 using Librarian.Utils;
 using Librarian.ViewModels;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MimeMapping;
@@ -24,6 +25,10 @@ namespace Librarian.Controllers
         private static readonly string[] ValidModes = { "details", "list", "tiles", "icons" };
         private static readonly string[] ValidSorts = { "name", "size", "type", "modified" };
 
+        private const string SViewKey = "uitest.view";
+        private const string SZoomKey = "uitest.zoom";
+        private const string SSortKey = "uitest.sort";
+
         private readonly ILogger<UiTestController> logger;
         private readonly FileService fileService;
         private readonly MetadataService metadataService;
@@ -38,7 +43,6 @@ namespace Librarian.Controllers
 
         public async Task<IActionResult> Index(string path, string? view, int? zoom, string? sort)
         {
-            string sortKey = ValidSorts.Contains(sort) ? sort! : "name";
             try
             {
                 string diskPath = fileService.Resolve(path);
@@ -49,6 +53,16 @@ namespace Librarian.Controllers
 
                 if (!Directory.Exists(diskPath))
                     return NotFound("Not found.");
+
+                // View state persists across navigation: an explicit ?view/zoom/sort wins and is
+                // remembered in session; otherwise the last choice (or the default) is used.
+                string mode = ValidModes.Contains(view) ? view! : (HttpContext.Session.GetString(SViewKey) ?? "details");
+                int zoomVal = zoom.HasValue ? Math.Clamp(zoom.Value, 1, 3)
+                    : (int.TryParse(HttpContext.Session.GetString(SZoomKey), out var sz) ? Math.Clamp(sz, 1, 3) : 2);
+                string sortKey = ValidSorts.Contains(sort) ? sort! : (HttpContext.Session.GetString(SSortKey) ?? "name");
+                HttpContext.Session.SetString(SViewKey, mode);
+                HttpContext.Session.SetString(SZoomKey, zoomVal.ToString());
+                HttpContext.Session.SetString(SSortKey, sortKey);
 
                 var directoryInfo = new DirectoryInfo(diskPath);
                 string relPath = fileService.GetRelativePath(diskPath);
@@ -62,8 +76,8 @@ namespace Librarian.Controllers
                         ? fileService.GetRelativePath(directoryInfo.Parent.FullName)
                         : null,
                     Breadcrumbs = BuildBreadcrumbs(relPath).ToList(),
-                    Mode = ValidModes.Contains(view) ? view! : "details",
-                    Zoom = Math.Clamp(zoom ?? 2, 1, 3),
+                    Mode = mode,
+                    Zoom = zoomVal,
                     Sort = sortKey,
                     Columns = new List<WmListColumn>
                     {
@@ -127,6 +141,7 @@ namespace Librarian.Controllers
                     IsContainer = true,
                     Href = Url.Action("Index", "UiTest", new { path = p }),
                     IconUrl = Url.Content(IconMapping.FolderIcon),
+                    LargeIconUrl = BigIcon(Url.Content(IconMapping.FolderIcon)),
                     ContentLine = "Folder",
                     Cells = new List<WmListCell>
                     {
@@ -154,6 +169,7 @@ namespace Librarian.Controllers
                     // action still goes to the full metadata editor.
                     Href = Url.Action("Index", "UiTest", new { path = p }),
                     IconUrl = Url.Content(IconMapping.GetIconUrl(file.Name, mime)),
+                    LargeIconUrl = BigIcon(Url.Content(IconMapping.GetIconUrl(file.Name, mime))),
                     // Real thumbnails are a future job (ImageSharp); for now point image tiles at the file
                     // bytes served by the Browse controller.
                     ThumbnailUrl = isImage ? Url.Action("Index", "Browse", new { path = p }) : null,
@@ -270,6 +286,11 @@ namespace Librarian.Controllers
             };
             return string.IsNullOrEmpty(a.AttributeDefinition.Unit) ? v : $"{v} {a.AttributeDefinition.Unit}";
         }
+
+        // Project icons are sourced from the Bluecurve theme and exist at 16px and 48px under the same
+        // freedesktop name; the 48px set keeps list/tile/icon thumbnails crisp when zoomed.
+        private static string BigIcon(string url16) =>
+            url16.Replace("/icons/16/file-types/", "/icons/48/file-types/");
 
         private static IEnumerable<(string, string)> BuildBreadcrumbs(string path)
         {

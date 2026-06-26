@@ -1,0 +1,30 @@
+@import "theme_colors";
+@import "theme_mixins";
+
+.wm-sidebar {
+    @include common-panel;
+    border-right: 1px solid $color-panel-border-dark;
+}
+
+.wm-sidebar-heading {
+    font-weight: bold;
+    color: #6b6b6b;
+}
+
+.wm-sidebar-item {
+    color: $color-link;
+
+    &:hover {
+        background: $color-panel-highlight;
+    }
+
+    // Bluecurve list selection: solid blue bar with light text.
+    &.active {
+        background: #5b82c2;
+        color: white;
+    }
+
+    &.disabled {
+        color: #9a9a9a;
+    }
+}

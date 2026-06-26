@@ -65,11 +65,20 @@
     column-gap: 1em;
 }
 
+// A list row keeps the checkbox and the icon+name on the same line.
 .wm-filelist-list .wm-filelist-item {
-    display: block;
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    gap: .3em;
     -webkit-column-break-inside: avoid;
     -moz-column-break-inside: avoid;
     break-inside: avoid;
+}
+
+.wm-filelist-list .wm-filelist-link {
+    @include flex-grow(1);
+    min-width: 0;
 }
 
 /* ---- item + selection checkbox ---- */
@@ -177,3 +186,11 @@
 .wm-filelist-zoom-1.wm-filelist-tiles .wm-filelist-thumb { width: 28px; height: 28px; }
 .wm-filelist-zoom-3.wm-filelist-tiles .wm-filelist-item { width: 22em; }
 .wm-filelist-zoom-3.wm-filelist-tiles .wm-filelist-thumb { width: 56px; height: 56px; }
+
+/* zoom (list): grow the row icon + column width */
+.wm-filelist-list .wm-filelist-icon-sm { width: 16px; height: 16px; }
+.wm-filelist-zoom-1.wm-filelist-list { -moz-column-width: 12em; column-width: 12em; }
+.wm-filelist-zoom-2.wm-filelist-list .wm-filelist-icon-sm { width: 24px; height: 24px; }
+.wm-filelist-zoom-3.wm-filelist-list { -moz-column-width: 20em; column-width: 20em; }
+.wm-filelist-zoom-3.wm-filelist-list .wm-filelist-icon-sm { width: 32px; height: 32px; }
+.wm-filelist-zoom-3.wm-filelist-list .wm-filelist-label { font-size: 1.1em; }

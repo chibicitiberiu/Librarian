@@ -24,7 +24,10 @@ namespace Librarian.TagHelpers
             output.TagName = "div";
             output.TagMode = TagMode.StartTagAndEndTag;
             output.AddClass("wm-locationbar");
-            output.PreContent.SetHtmlContent("<div class=\"wm-breadcrumb input\">");
+            // NB: no `input` class here — that theme rule sets display:inline-block and would override
+            // the breadcrumb's flex row (crumbs would stack vertically). The input *look* is applied
+            // directly to .wm-breadcrumb in the theme.
+            output.PreContent.SetHtmlContent("<div class=\"wm-breadcrumb\">");
             output.Content.SetHtmlContent(inner);
             output.PostContent.SetHtmlContent("</div>");
         }

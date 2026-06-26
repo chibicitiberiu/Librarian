@@ -120,12 +120,14 @@ namespace Librarian.TagHelpers
 
                 if (mode == "list")
                 {
-                    sb.Append($"<img class=\"wm-filelist-icon-sm\" src=\"{Enc(it.IconUrl)}\" alt=\"\" />");
+                    var listIcon = string.IsNullOrEmpty(it.LargeIconUrl) ? it.IconUrl : it.LargeIconUrl;
+                    sb.Append($"<img class=\"wm-filelist-icon-sm\" src=\"{Enc(listIcon)}\" alt=\"\" />");
                     sb.Append($"<span class=\"wm-filelist-label\">{Enc(it.Name)}</span>");
                 }
                 else
                 {
-                    var thumb = string.IsNullOrEmpty(it.ThumbnailUrl) ? it.IconUrl : it.ThumbnailUrl;
+                    var thumb = !string.IsNullOrEmpty(it.ThumbnailUrl) ? it.ThumbnailUrl
+                        : (!string.IsNullOrEmpty(it.LargeIconUrl) ? it.LargeIconUrl : it.IconUrl);
                     sb.Append($"<img class=\"wm-filelist-thumb\" src=\"{Enc(thumb)}\" alt=\"\" />");
                     if (mode == "tiles")
                     {

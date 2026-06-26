@@ -42,8 +42,11 @@ namespace Librarian.ViewModels
         /// <summary>Where the item's name links to (navigation). Null for non-navigable rows.</summary>
         public string? Href { get; set; }
 
-        /// <summary>Small (16px) type icon, always available.</summary>
+        /// <summary>Small (16px) type icon, always available — used by the details table.</summary>
         public string IconUrl { get; set; } = "";
+
+        /// <summary>Larger (48px) type icon used by list/tile/icon modes so it stays crisp when zoomed.</summary>
+        public string? LargeIconUrl { get; set; }
 
         /// <summary>Optional larger preview (e.g. the image itself) used by tile/icon modes; falls back to the icon.</summary>
         public string? ThumbnailUrl { get; set; }

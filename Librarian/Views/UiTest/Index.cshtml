@@ -3,10 +3,12 @@
 @{
     Layout = "_WmLayout";
     ViewData["Title"] = Model.DisplayName;
+    ViewData["WmSidebarActive"] = "home";
 
     var isRoot = Model.Path == ".";
     var pathArg = isRoot ? "" : Model.Path;
     var folderProps = isRoot ? null : $"{Url.Action("Index", "Metadata")}/{Model.Path}";
+    var upUrl = Model.ParentPath != null ? Url.Action("Index", "UiTest", new { path = Model.ParentPath }) : null;
 
     // Build a /uitest URL for this folder with selected view-state overrides (Tier-0 mode switching).
     string ListUrl(string? mode = null, int? z = null, string? srt = null) =>
@@ -38,7 +40,7 @@
             <wm-menuitem text="Paste" action="paste" disabled="true" tooltip="Paste into this folder"></wm-menuitem>
             <wm-menuitem text="New folder…" action="newfolder" disabled="true" tooltip="Create a folder (coming soon)"></wm-menuitem>
             <wm-menu-separator></wm-menu-separator>
-            <wm-menuitem text="Properties" href="@folderProps" disabled="@isRoot" tooltip="Folder metadata"></wm-menuitem>
+            <wm-menuitem icon="/icons/32/gnome-stock-insert-table.png" text="Properties" href="@folderProps" disabled="@isRoot" tooltip="Folder metadata"></wm-menuitem>
         </wm-menu>
 
         <wm-menu text="View">
@@ -70,6 +72,8 @@
     </wm-menubar>
 
     <wm-toolbar>
+        <wm-button icon="/icons/24/go-up.png" text="Up" href="@upUrl" disabled="@(Model.ParentPath == null)" tooltip="Up to the parent folder"></wm-button>
+        <wm-separator></wm-separator>
         <wm-button icon="/icons/32/edit-cut.png" text="Cut" tooltip="Cut selection" data-wm-needs-selection></wm-button>
         <wm-button icon="/icons/32/edit-copy.png" text="Copy" tooltip="Copy selection" data-wm-needs-selection></wm-button>
         <wm-button icon="/icons/32/edit-paste.png" text="Paste" tooltip="Paste into this folder" disabled="true"></wm-button>
@@ -98,10 +102,13 @@
         }
     </wm-breadcrumb>
 
-    <wm-content data-wm-contextmenu="uitest-filemenu">
-        <wm-filelist mode="@Model.Mode" zoom="@Model.Zoom" items="Model.Items" columns="Model.Columns"
-                     selectable="true" show-checkboxes="true"></wm-filelist>
-    </wm-content>
+    <div class="wm-window-body">
+        <partial name="_WmSidebar" />
+        <wm-content data-wm-contextmenu="uitest-filemenu" data-wm-contextmenu-empty="uitest-foldermenu">
+            <wm-filelist mode="@Model.Mode" zoom="@Model.Zoom" items="Model.Items" columns="Model.Columns"
+                         selectable="true" show-checkboxes="true"></wm-filelist>
+        </wm-content>
+    </div>
 
     <wm-statusbar>
         <span>@Model.Count item@(Model.Count == 1 ? "" : "s")</span>
@@ -118,6 +125,16 @@
     <wm-menuitem text="Cut" action="cut" disabled="true" tooltip="Cut (coming soon)"></wm-menuitem>
     <wm-menuitem text="Copy" action="copy" disabled="true" tooltip="Copy (coming soon)"></wm-menuitem>
     <wm-menuitem text="Delete" action="delete" disabled="true" tooltip="Delete (coming soon)"></wm-menuitem>
+</wm-contextmenu>
+
+@* Right-click on empty space → folder actions (no item under the cursor). *@
+<wm-contextmenu id="uitest-foldermenu">
+    <wm-menuitem text="Paste" action="paste" disabled="true" tooltip="Paste into this folder"></wm-menuitem>
+    <wm-menuitem text="New folder…" action="newfolder" disabled="true" tooltip="Create a folder (coming soon)"></wm-menuitem>
+    <wm-menu-separator></wm-menu-separator>
+    <wm-menuitem text="Refresh" href="@ListUrl()" tooltip="Reload this folder"></wm-menuitem>
+    <wm-menu-separator></wm-menu-separator>
+    <wm-menuitem icon="/icons/32/gnome-stock-insert-table.png" text="Properties" href="@folderProps" disabled="@isRoot" tooltip="Folder metadata"></wm-menuitem>
 </wm-contextmenu>
 
 @* Help → About — exercises the modal control (dim backdrop, X button, OK action, grayscale title bar on the window behind). *@

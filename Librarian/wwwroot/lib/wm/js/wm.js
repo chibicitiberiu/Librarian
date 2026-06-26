@@ -116,20 +116,26 @@ function wmContextAction(menu, action) {
     }
 }
 
+function wmShowContextMenu(menu, x, y) {
+    menu.classList.add('wm-open');
+    var w = menu.offsetWidth, h = menu.offsetHeight;
+    menu.style.left = Math.max(0, Math.min(x, window.innerWidth - w - 4)) + 'px';
+    menu.style.top = Math.max(0, Math.min(y, window.innerHeight - h - 4)) + 'px';
+}
+
 function wmSetupContextMenus() {
-    document.querySelectorAll('[data-wm-contextmenu]').forEach(function (host) {
-        var menuId = host.getAttribute('data-wm-contextmenu');
+    document.querySelectorAll('[data-wm-contextmenu], [data-wm-contextmenu-empty]').forEach(function (host) {
+        var fileMenu = document.getElementById(host.getAttribute('data-wm-contextmenu') || '');
+        var emptyMenu = document.getElementById(host.getAttribute('data-wm-contextmenu-empty') || '');
 
         host.addEventListener('contextmenu', function (e) {
-            var menu = document.getElementById(menuId);
-            if (!menu) return;
-            e.preventDefault();
+            var item = e.target.closest('.wm-filelist-item');
             wmCloseAllMenus();
 
-            // Right-click selects the item under the cursor (keeping an existing multi-selection if the
-            // item is already part of it) and remembers its target for the Open/Properties actions.
-            var item = e.target.closest('.wm-filelist-item');
-            if (item) {
+            if (item && fileMenu) {
+                // Over an item → file menu. Select it (keeping an existing multi-selection it's part of)
+                // and remember its target for the Open/Properties actions.
+                e.preventDefault();
                 var fl = item.closest('[data-wm-filelist]');
                 if (!item.classList.contains('wm-selected')) {
                     if (fl) wmClearSelection(fl);
@@ -137,25 +143,32 @@ function wmSetupContextMenus() {
                     if (fl) wmUpdateSelectionInfo(fl);
                 }
                 var link = item.querySelector('a');
-                menu.setAttribute('data-context-href', link ? link.href : '');
-                menu.setAttribute('data-context-path', item.getAttribute('data-path') || '');
+                fileMenu.setAttribute('data-context-href', link ? link.href : '');
+                fileMenu.setAttribute('data-context-path', item.getAttribute('data-path') || '');
+                wmShowContextMenu(fileMenu, e.clientX, e.clientY);
+            } else if (emptyMenu) {
+                // Over empty space → folder menu; clear the selection first.
+                e.preventDefault();
+                var fl2 = host.querySelector('[data-wm-filelist]');
+                if (fl2) { wmClearSelection(fl2); wmUpdateSelectionInfo(fl2); }
+                wmShowContextMenu(emptyMenu, e.clientX, e.clientY);
             }
-
-            menu.classList.add('wm-open');
-            var w = menu.offsetWidth, h = menu.offsetHeight;
-            var x = Math.min(e.clientX, window.innerWidth - w - 4);
-            var y = Math.min(e.clientY, window.innerHeight - h - 4);
-            menu.style.left = Math.max(0, x) + 'px';
-            menu.style.top = Math.max(0, y) + 'px';
         });
 
-        // Wire data-action items inside this host's context menu.
-        var menu = document.getElementById(menuId);
-        if (menu) {
-            menu.querySelectorAll('[data-action]').forEach(function (item) {
-                item.addEventListener('click', function () { wmContextAction(menu, item.getAttribute('data-action')); });
+        // Left-click on empty space (not an item, not inside a popup) clears the selection.
+        host.addEventListener('click', function (e) {
+            if (e.target.closest('.wm-filelist-item') || e.target.closest('.wm-menu-popup')) return;
+            var fl = host.querySelector('[data-wm-filelist]');
+            if (fl) { wmClearSelection(fl); wmUpdateSelectionInfo(fl); }
+        });
+
+        // Wire data-action items in both menus.
+        [fileMenu, emptyMenu].forEach(function (menu) {
+            if (!menu) return;
+            menu.querySelectorAll('[data-action]').forEach(function (it) {
+                it.addEventListener('click', function () { wmContextAction(menu, it.getAttribute('data-action')); });
             });
-        }
+        });
     });
 }
 

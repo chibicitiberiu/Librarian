@@ -53,9 +53,19 @@
     flex-shrink: 0;
 }
 
+// Horizontal split below the bars: a fixed sidebar + the growing content area.
+.wm-window-body {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(stretch);
+    @include flex-grow(1);
+    min-height: 0;
+}
+
 .wm-window-content {
     @include flex-grow(1);
     min-height: 0;
+    min-width: 0;
     overflow: auto;
 }
 

@@ -1,0 +1,41 @@
+@import "browser_support";
+
+// Sidebar — the places/library navigation pane down the left of the window body (Nautilus-style).
+.wm-sidebar {
+    @include box-sizing(border-box);
+    width: 13em;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: .25em 0;
+}
+
+.wm-sidebar-section {
+    margin-bottom: .5em;
+}
+
+.wm-sidebar-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.wm-sidebar-heading {
+    padding: .5em .7em .15em;
+    white-space: nowrap;
+}
+
+.wm-sidebar-item {
+    display: block;
+    padding: .25em .7em;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.wm-sidebar-item img {
+    vertical-align: middle;
+    margin-right: .4em;
+    border: 0;
+}
