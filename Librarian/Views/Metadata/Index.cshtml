@@ -1,12 +1,33 @@
-﻿@using Librarian.Utils;
+@using Librarian.Utils;
 @using Librarian.ViewModels;
 @using Librarian.Model;
 @model MetadataViewModel
 @{
-    ViewData["Title"] = Model.DisplayPath;
+    ViewData["Title"] = $"Metadata for {Model.DisplayName}";
     ViewData["CurrentPage"] = "metadata";
 
     string? urlBrowse = Url.Action("Index", "Browse", new { path = Model.IsDirectory ? Model.Path : Model.ParentPath });
+    ViewData["UpUrl"] = urlBrowse;
+
+    // Filesystem-path location bar (same shape as Browse): Home / folder / … / this file.
+    var crumbs = new List<Breadcrumb>
+    {
+        new("", Url.Action("Index", "Browse", new { path = "" }), Url.Content("~/icons/16/go-home.png")),
+    };
+    var segs = (Model.Path ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries);
+    var cumulative = "";
+    for (int i = 0; i < segs.Length; i++)
+    {
+        cumulative = cumulative.Length == 0 ? segs[i] : cumulative + "/" + segs[i];
+        crumbs.Add(i < segs.Length - 1
+            ? new(segs[i], Url.Action("Index", "Browse", new { path = cumulative }))
+            : new(segs[i]));
+    }
+    ViewData["Breadcrumbs"] = crumbs;
+
+    ViewData["FormRoute"] = "Metadata_Save";
+    ViewData["FormId"] = "metadata-form";
+    ViewData["FormHidden"] = new Dictionary<string, string> { ["path"] = Model.Path };
 }
 
 @section Scripts {
@@ -18,185 +39,137 @@
     <script src="~/js/metadata.js" asp-append-version="true"></script>
 }
 
-<div class="window">
-    <div class="window-title">
-        <div class="window-title-inner">
-            <h1>Metadata for @Model.DisplayName</h1>
-        </div>
-    </div>
+@section Toolbar {
+    <button id="btn-save" type="submit" title="Save changes"><img src="~/icons/32/document-save.png" />Save</button>
+    <div class="separator"></div>
+    <button id="btn-add" type="button" title="Add metadata fields"><img src="~/icons/32/edit-add.png" />Add</button>
+    <button id="btn-delete" type="button" title="Delete the selected metadata fields."><img src="~/icons/32/edit-delete.png" />Delete</button>
+}
 
-    <form id="metadata-form" method="post" asp-route="Metadata_Save">
-    <input type="hidden" name="path" value="@Model.Path" />
-
-    <div class="menubar">
-        <ul>
-            <li>
-                File
-                    <ul>
-                        <li>New</li>
-                        <li>Open</li>
-                    </ul>
-            </li>
-            <li>Edit</li>
-            <li>Help
-                <ul>
-                    <li>About...</li>
-                </ul>
-            </li>
-        </ul>
-    </div>
-
-    <hr />
-
-    <div class="toolbar">
-        <button id="btn-save" type="submit" title="Save changes"><img src="~/icons/32/document-save.png" />Save</button>
-        <div class="separator"></div>
-        <button id="btn-add" type="button" title="Add metadata fields"><img src="~/icons/32/edit-add.png" />Add</button>
-        <button id="btn-delete" type="button" title="Delete the selected metadata fields."><img src="~/icons/32/edit-delete.png" />Delete</button>
-    </div>
-
-    <div class="window-body">
-
-    <partial name="_Sidebar" />
-
-    <div class="window-content">
-
-        @if (Model.CollectionCrumbs.Count > 0)
+@if (Model.CollectionCrumbs.Count > 0)
+{
+    <nav class="item-collection-crumbs">
+        <span class="muted">Part of:</span>
+        <a href="@Url.Action("Roots", "Collection")">Collections</a>
+        @foreach (var c in Model.CollectionCrumbs)
         {
-            <nav style="margin:.25em 0 .75em;">
-                <span style="color:#666;">Part of:</span>
-                <a href="@Url.Action("Roots", "Collection")">Collections</a>
-                @foreach (var c in Model.CollectionCrumbs)
-                {
-                    <span> › </span>
-                    <a href="@Url.Action("Index", "Collection", new { id = c.Id })">@c.Name</a>
-                }
-            </nav>
+            <span> › </span>
+            <a href="@Url.Action("Index", "Collection", new { id = c.Id })">@c.Name</a>
+        }
+    </nav>
+}
+
+@if (Model.CoverPath != null || Model.HasItem)
+{
+    <div class="item-header">
+        @if (Model.CoverPath != null)
+        {
+            <a class="item-cover" href="@Url.Action("Index", "Browse", new { path = Model.CoverPath })">
+                <img src="@Url.Action("Index", "Browse", new { path = Model.CoverPath })" alt="Cover preview" />
+            </a>
         }
 
-        @if (Model.CoverPath != null || Model.HasItem)
+        @if (Model.HasItem)
         {
-            <div class="item-header">
-                @if (Model.CoverPath != null)
-                {
-                    <a class="item-cover" href="@Url.Action("Index", "Browse", new { path = Model.CoverPath })">
-                        <img src="@Url.Action("Index", "Browse", new { path = Model.CoverPath })" alt="Cover preview" />
-                    </a>
-                }
+            <div class="item-files">
+                <h2 class="metadata-group-title">Files in this Item</h2>
 
-                @if (Model.HasItem)
-                {
-                    <div class="item-files">
-                        <h2 class="metadata-group-title">Files in this Item</h2>
+                <ul class="item-file-list">
+                    @foreach (var f in Model.Content)
+                    {
+                        <partial name="_ItemFileRow" model="f" />
+                    }
+                    @foreach (var f in Model.Sidecars)
+                    {
+                        <partial name="_ItemFileRow" model="f" />
+                    }
+                </ul>
 
+                @if (Model.Resources.Count > 0)
+                {
+                    <details class="item-resources" open="@(Model.Resources.Count <= 6)">
+                        <summary>Resources (@Model.Resources.Count)</summary>
                         <ul class="item-file-list">
-                            @foreach (var f in Model.Content)
-                            {
-                                <partial name="_ItemFileRow" model="f" />
-                            }
-                            @foreach (var f in Model.Sidecars)
+                            @foreach (var f in Model.Resources)
                             {
                                 <partial name="_ItemFileRow" model="f" />
                             }
                         </ul>
-
-                        @if (Model.Resources.Count > 0)
-                        {
-                            <details class="item-resources" open="@(Model.Resources.Count <= 6)">
-                                <summary>Resources (@Model.Resources.Count)</summary>
-                                <ul class="item-file-list">
-                                    @foreach (var f in Model.Resources)
-                                    {
-                                        <partial name="_ItemFileRow" model="f" />
-                                    }
-                                </ul>
-                            </details>
-                        }
-                    </div>
+                    </details>
                 }
             </div>
         }
+    </div>
+}
 
-        @foreach (var group in Model.Metadata.GroupBy(x => x.AttributeDefinition.Group))
-        {
-            <div class="metadata-group" data-id="@group.Key">
-                <h2 class="metadata-group-title">@group.Key</h2>
+@foreach (var group in Model.Metadata.GroupBy(x => x.AttributeDefinition.Group))
+{
+    <div class="metadata-group" data-id="@group.Key">
+        <h2 class="metadata-group-title">@group.Key</h2>
 
-                <table>
-                    <tbody>
-                        @foreach (var field in group.OrderBy(x => x.AttributeDefinition.Name))
-                        {
-                            var fieldId = $"{field.AttributeDefinition.Group}/{field.AttributeDefinition.Name}";
-                            <tr data-id="@fieldId">
-                                <td><input id="chk-selected" type="checkbox" readonly="@(!field.Editable)" /></td>
-                                <td>@field.AttributeDefinition.Name</td>
-                                <td class="col-input">
-                                    @switch (field.AttributeDefinition.Type)
+        <table>
+            <tbody>
+                @foreach (var field in group.OrderBy(x => x.AttributeDefinition.Name))
+                {
+                    var fieldId = $"{field.AttributeDefinition.Group}/{field.AttributeDefinition.Name}";
+                    <tr data-id="@fieldId">
+                        <td><input id="chk-selected" type="checkbox" readonly="@(!field.Editable)" /></td>
+                        <td>@field.AttributeDefinition.Name</td>
+                        <td class="col-input">
+                            @switch (field.AttributeDefinition.Type)
+                            {
+                                case Librarian.Model.AttributeType.Text:
                                     {
-                                        case Librarian.Model.AttributeType.Text:
-                                            {
-                                                var textMetadata = (TextAttribute)field;
-                                                <input id="@fieldId" name="@fieldId" type="text" value="@textMetadata.Value" readonly="@(!textMetadata.Editable)">
-                                                break;
-                                            }
-                                        case Librarian.Model.AttributeType.BigText:
-                                        case Librarian.Model.AttributeType.FormattedText:
-                                            {
-                                                var textMetadata = (TextAttribute)field;
-                                                <textarea id="@fieldId" name="@fieldId" type="text" readonly="@(!textMetadata.Editable)">@textMetadata.Value</textarea>
-                                                break;
-                                            }
-                                        case Librarian.Model.AttributeType.Integer:
-                                            {
-                                                var intMetadata = (IntegerAttribute)field;
-                                                <input id="@fieldId" name="@fieldId" type="number" value="@intMetadata.Value" readonly="@(!intMetadata.Editable)">
-                                                break;
-                                            }
-                                        case Librarian.Model.AttributeType.Float:
-                                            {
-                                                var floatMetadata = (FloatAttribute)field;
-                                                <input id="@fieldId" name="@fieldId" type="text" value="@floatMetadata.Value" readonly="@(!floatMetadata.Editable)">
-                                                break;
-                                            }
-                                        case Librarian.Model.AttributeType.Date:
-                                            {
-                                                var dateMetadata = (DateAttribute)field;
-                                                <input id="@fieldId" name="@fieldId" type="text" value="@dateMetadata.Value" readonly="@(!dateMetadata.Editable)">
-                                                break;
-                                            }
-                                        case Librarian.Model.AttributeType.TimeSpan:
-                                            {
-                                                var floatMetadata = (FloatAttribute)field;
-                                                var value = TimeSpan.FromSeconds(floatMetadata.Value);
-
-                                                <input id="@fieldId" name="@fieldId" type="text" value="@value" readonly="@(!floatMetadata.Editable)">
-                                                break;
-                                            }
-                                        case Librarian.Model.AttributeType.Blob:
-                                            {
-                                                var blobMetadata = (BlobAttribute)field;
-                                                string value = Convert.ToHexString(blobMetadata.Value);
-                                                <input id="@fieldId" name="@fieldId" type="text" value="@value" readonly="@(!blobMetadata.Editable)">
-                                                break;
-                                            }
+                                        var textMetadata = (TextAttribute)field;
+                                        <input id="@fieldId" name="@fieldId" type="text" value="@textMetadata.Value" readonly="@(!textMetadata.Editable)">
+                                        break;
                                     }
-                                </td>
-                                <td class="fill"></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
+                                case Librarian.Model.AttributeType.BigText:
+                                case Librarian.Model.AttributeType.FormattedText:
+                                    {
+                                        var textMetadata = (TextAttribute)field;
+                                        <textarea id="@fieldId" name="@fieldId" type="text" readonly="@(!textMetadata.Editable)">@textMetadata.Value</textarea>
+                                        break;
+                                    }
+                                case Librarian.Model.AttributeType.Integer:
+                                    {
+                                        var intMetadata = (IntegerAttribute)field;
+                                        <input id="@fieldId" name="@fieldId" type="number" value="@intMetadata.Value" readonly="@(!intMetadata.Editable)">
+                                        break;
+                                    }
+                                case Librarian.Model.AttributeType.Float:
+                                    {
+                                        var floatMetadata = (FloatAttribute)field;
+                                        <input id="@fieldId" name="@fieldId" type="text" value="@floatMetadata.Value" readonly="@(!floatMetadata.Editable)">
+                                        break;
+                                    }
+                                case Librarian.Model.AttributeType.Date:
+                                    {
+                                        var dateMetadata = (DateAttribute)field;
+                                        <input id="@fieldId" name="@fieldId" type="text" value="@dateMetadata.Value" readonly="@(!dateMetadata.Editable)">
+                                        break;
+                                    }
+                                case Librarian.Model.AttributeType.TimeSpan:
+                                    {
+                                        var floatMetadata = (FloatAttribute)field;
+                                        var value = TimeSpan.FromSeconds(floatMetadata.Value);
+
+                                        <input id="@fieldId" name="@fieldId" type="text" value="@value" readonly="@(!floatMetadata.Editable)">
+                                        break;
+                                    }
+                                case Librarian.Model.AttributeType.Blob:
+                                    {
+                                        var blobMetadata = (BlobAttribute)field;
+                                        string value = Convert.ToHexString(blobMetadata.Value);
+                                        <input id="@fieldId" name="@fieldId" type="text" value="@value" readonly="@(!blobMetadata.Editable)">
+                                        break;
+                                    }
+                            }
+                        </td>
+                        <td class="fill"></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
-
-    </div>
-
-    </form>
-
-    <div class="window-statusbar">
-        <div id="window-statusbar-message" class="flex-fill">Ready</div>
-        <div>
-
-    </div>
-</div>
+}

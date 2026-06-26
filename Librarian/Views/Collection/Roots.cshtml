@@ -3,6 +3,11 @@
 @{
     ViewData["Title"] = "Collections";
     ViewData["CurrentPage"] = "collections";
+    ViewData["Status"] = $"{Model.Count} root collection{(Model.Count == 1 ? "" : "s")}";
+    ViewData["Breadcrumbs"] = new List<Breadcrumb>
+    {
+        new("Collections", null, Url.Content("~/icons/16/places/all.png")),
+    };
 
     string KindLabel(CollectionKind k) => k switch
     {
@@ -15,47 +20,22 @@
     };
 }
 
-<div class="window">
-    <div class="window-title">
-        <div class="window-title-inner">
-            <h1>Collections</h1>
-        </div>
-    </div>
-
-    <div class="window-body">
-
-    <partial name="_Sidebar" />
-
-    <div class="window-content">
-
-        <nav style="margin:.25em 0 .75em;">
-            <strong>Collections</strong>
-        </nav>
-
-        @if (Model.Count == 0)
+@if (Model.Count == 0)
+{
+    <p class="muted">No structural collections yet. They are built by the association pass from
+    folders of folders (a show's seasons, an album's discs, …).</p>
+}
+else
+{
+    <ul class="item-file-list">
+        @foreach (var c in Model)
         {
-            <p style="color:#666;">No structural collections yet. They are built by the association pass from
-            folders of folders (a show's seasons, an album's discs, …).</p>
+            <li class="item-file">
+                <img src="~/icons/16/file-types/folder.png" alt="" />
+                <a class="item-file-name" href="@Url.Action("Index", "Collection", new { id = c.Id })">@c.Name</a>
+                <span class="badge-primary">@KindLabel(c.Kind)</span>
+                <span class="muted">@(c.ChildCount > 0 ? $"{c.ChildCount} sub" : "")@(c.ItemCount > 0 ? $" {c.ItemCount} items" : "")</span>
+            </li>
         }
-        else
-        {
-            <ul class="item-file-list">
-                @foreach (var c in Model)
-                {
-                    <li class="item-file">
-                        <img src="~/icons/16/file-types/folder.png" alt="" />
-                        <a class="item-file-name" href="@Url.Action("Index", "Collection", new { id = c.Id })">@c.Name</a>
-                        <span class="badge-primary">@KindLabel(c.Kind)</span>
-                        <span style="color:#666;">@(c.ChildCount > 0 ? $"{c.ChildCount} sub" : "")@(c.ItemCount > 0 ? $" {c.ItemCount} items" : "")</span>
-                    </li>
-                }
-            </ul>
-        }
-    </div>
-
-    </div>
-
-    <div class="window-statusbar">
-        <div id="window-statusbar-message" class="flex-fill">@Model.Count root collections</div>
-    </div>
-</div>
+    </ul>
+}

@@ -413,3 +413,11 @@ td.fill {
 .item-resources summary {
   cursor: pointer;
 }
+
+.muted {
+  color: #666;
+}
+
+.item-collection-crumbs {
+  margin: 0.25em 0 0.75em;
+}

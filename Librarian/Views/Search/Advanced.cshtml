@@ -1,55 +1,50 @@
 @{
     ViewData["Title"] = "Advanced search";
     ViewData["CurrentPage"] = "search";
+    ViewData["Breadcrumbs"] = new List<Breadcrumb>
+    {
+        new("Search", Url.Action("Index", "Search"), Url.Content("~/icons/16/places/search.png")),
+        new("Advanced"),
+    };
 }
 
-<div class="window">
-    <div class="window-title">
-        <div class="window-title-inner">
-            <h1>Advanced search</h1>
-        </div>
-    </div>
+<form asp-controller="Search" asp-action="Index" method="get" class="advanced-search">
+    <table class="metadata-group">
+        <tr>
+            <td><label for="adv-query">Query</label></td>
+            <td class="col-input">
+                <input class="input" type="search" id="adv-query" name="query"
+                       placeholder="Words to look for…" autofocus />
+            </td>
+        </tr>
+        <tr>
+            <td><label for="adv-path">Within folder</label></td>
+            <td class="col-input">
+                <input class="input" type="text" id="adv-path" name="path"
+                       placeholder="e.g. music/albums (optional)" />
+            </td>
+        </tr>
+        <tr>
+            <td>Search in</td>
+            <td class="col-input">
+                <label>
+                    <input type="checkbox" name="include_content" value="true" checked />
+                    content
+                </label>
+                <input type="hidden" name="include_content" value="false" />
 
-    <div class="window-content">
-        <form asp-controller="Search" asp-action="Index" method="get" class="advanced-search">
-            <table class="metadata-group">
-                <tr>
-                    <td><label for="adv-query">Query</label></td>
-                    <td class="col-input">
-                        <input class="input" type="search" id="adv-query" name="query"
-                               placeholder="Words to look for…" autofocus />
-                    </td>
-                </tr>
-                <tr>
-                    <td><label for="adv-path">Within folder</label></td>
-                    <td class="col-input">
-                        <input class="input" type="text" id="adv-path" name="path"
-                               placeholder="e.g. music/albums (optional)" />
-                    </td>
-                </tr>
-                <tr>
-                    <td>Search in</td>
-                    <td class="col-input">
-                        <label>
-                            <input type="checkbox" name="include_content" value="true" checked />
-                            content
-                        </label>
-                        <input type="hidden" name="include_content" value="false" />
-
-                        <label>
-                            <input type="checkbox" name="include_metadata" value="true" checked />
-                            metadata
-                        </label>
-                        <input type="hidden" name="include_metadata" value="false" />
-                    </td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td class="col-input">
-                        <button type="submit"><img src="~/icons/16/gnome-searchtool.png" /> Search</button>
-                    </td>
-                </tr>
-            </table>
-        </form>
-    </div>
-</div>
+                <label>
+                    <input type="checkbox" name="include_metadata" value="true" checked />
+                    metadata
+                </label>
+                <input type="hidden" name="include_metadata" value="false" />
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td class="col-input">
+                <button type="submit"><img src="~/icons/16/gnome-searchtool.png" /> Search</button>
+            </td>
+        </tr>
+    </table>
+</form>

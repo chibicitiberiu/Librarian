@@ -304,3 +304,14 @@ td.fill {
         cursor: pointer;
     }
 }
+
+// Subdued secondary text (counts, hints) — replaces ad-hoc inline color styles.
+.muted {
+    color: #666;
+}
+
+// "Part of: …" collection-membership crumb shown inside the Item Viewer (a different axis from the
+// filesystem location bar in the window chrome).
+.item-collection-crumbs {
+    margin: .25em 0 .75em;
+}

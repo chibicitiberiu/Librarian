@@ -1,6 +1,23 @@
-﻿@using Librarian.Utils;
+@using Librarian.Utils
+@using Librarian.ViewModels
 @{
     string? url_Jobs_GetJobsSummary = Url.Action("GetJobsSummary", "Jobs");
+
+    // Shared window chrome (collection_plan.md §9): the frame, sidebar, location bar and statusbar live
+    // here so every page is consistent. Pages drive it through ViewData + optional sections instead of
+    // hand-rolling their own .window.
+    var breadcrumbs = ViewData["Breadcrumbs"] as IReadOnlyList<Breadcrumb>;
+    var upUrl = ViewData["UpUrl"] as string;
+    var status = ViewData["Status"] as string ?? "Ready";
+    var hasToolbar = IsSectionDefined("Toolbar");
+
+    // A page that posts a form sets FormRoute; the layout wraps the toolbar + body in one <form> so a
+    // Tier-0 (no-JS) submit button in the fixed toolbar still works. Emitted raw so the single form can
+    // span the toolbar and the body without duplicating the body markup.
+    var formRoute = ViewData["FormRoute"] as string;
+    var formId = ViewData["FormId"] as string;
+    var formHidden = ViewData["FormHidden"] as IReadOnlyDictionary<string, string>;
+    var formAction = formRoute != null ? Url.RouteUrl(formRoute) : null;
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -11,7 +28,7 @@
     <meta name="description" content="" />
     <link rel="stylesheet" href="~/css/style.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
-    @await RenderSectionAsync("Styles", required: false);
+    @await RenderSectionAsync("Styles", required: false)
     <link rel="icon" href="~/favicon.ico" asp-append-version="true" />
 </head>
 <body>
@@ -23,7 +40,78 @@
         </div>
     </div>
     <div class="main" role="main">
-        @RenderBody()
+        <div class="window">
+            <div class="window-title">
+                <div class="window-title-inner">
+                    <h1>@ViewData["Title"]</h1>
+                </div>
+            </div>
+
+            @if (formRoute != null)
+            {
+                @Html.Raw($"<form method=\"post\" action=\"{formAction}\"{(formId != null ? $" id=\"{formId}\"" : "")}>")
+                @Html.AntiForgeryToken()
+                if (formHidden != null)
+                {
+                    foreach (var kv in formHidden)
+                    {
+                        <input type="hidden" name="@kv.Key" value="@kv.Value" />
+                    }
+                }
+            }
+
+            @if (hasToolbar)
+            {
+                <hr />
+                <div class="toolbar">
+                    @await RenderSectionAsync("Toolbar", required: false)
+                </div>
+            }
+
+            @if (breadcrumbs != null)
+            {
+                <hr />
+                <div class="toolbar">
+                    @if (upUrl != null)
+                    {
+                        <a class="toolbar-button" href="@upUrl"><img src="~/icons/16/go-up.png" /> Up</a>
+                    }
+                    <div class="input location-bar">
+                        @foreach (var c in breadcrumbs)
+                        {
+                            if (c.Url != null)
+                            {
+                                <a class="toolbar-button" href="@c.Url">@if (c.IconUrl != null) { <img src="@c.IconUrl" /> } @c.Name</a>
+                            }
+                            else
+                            {
+                                <span class="toolbar-button">@if (c.IconUrl != null) { <img src="@c.IconUrl" /> } @c.Name</span>
+                            }
+                            <span>/</span>
+                        }
+                    </div>
+                </div>
+            }
+
+            <hr />
+
+            <div class="window-body">
+                <partial name="_Sidebar" />
+                <div class="window-content">
+                    @RenderBody()
+                </div>
+            </div>
+
+            <div class="window-statusbar">
+                <div id="window-statusbar-message" class="flex-fill">@status</div>
+                @await RenderSectionAsync("StatusbarExtra", required: false)
+            </div>
+
+            @if (formRoute != null)
+            {
+                @Html.Raw("</form>")
+            }
+        </div>
     </div>
     <div class="footer window-statusbar">
         <div id="app-statusbar-message" class="flex-fill">

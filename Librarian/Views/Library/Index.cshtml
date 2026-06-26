@@ -1,118 +1,84 @@
 @using Librarian.Utils;
 @model LibraryViewModel
 @{
-    ViewData["Title"] = Model.Category.DisplayName;
+    ViewData["Title"] = Model.Category.DisplayName + (Model.Selected.Length > 0 ? " ▸ " + Model.DisplayName : "");
     ViewData["CurrentPage"] = "library";
     ViewData["CurrentCategory"] = Model.Category.Key;
 
-    bool upEnabled = Model.ParentUrl != null;
+    if (Model.ParentUrl != null)
+    {
+        ViewData["UpUrl"] = Model.ParentUrl;
+    }
+
+    var crumbs = new List<Breadcrumb>
+    {
+        new(Model.Category.DisplayName,
+            Url.Action("Index", "Library", new { category = Model.Category.Key, view = (string?)null }),
+            Url.Content($"~/icons/16/places/{Model.Category.Icon}")),
+    };
+    foreach (var (name, url) in Model.Breadcrumbs)
+    {
+        crumbs.Add(new(name, url));
+    }
+    ViewData["Breadcrumbs"] = crumbs;
+
+    ViewData["Status"] = Model.IsLeaf
+        ? $"{Model.Files.Count} file{(Model.Files.Count == 1 ? "" : "s")}"
+        : $"{Model.Folders.Count} folder{(Model.Folders.Count == 1 ? "" : "s")}";
+
     // Header for the name column: the level being shown for folders, otherwise plain files.
     string nameHeader = Model.IsLeaf ? "Name" : (Model.LevelLabel ?? "Name");
 }
 
-<div class="window">
-    <div class="window-title">
-        <div class="window-title-inner">
-            <h1>@Model.Category.DisplayName@(Model.Selected.Length > 0 ? " ▸ " + Model.DisplayName : "")</h1>
-        </div>
-    </div>
-
-    <hr />
-
-    <div class="toolbar">
-        <a class="toolbar-button @HtmlUtils.BoolToClass(!upEnabled, "disabled")"
-           href="@(Model.ParentUrl ?? "#")">
-            <img src="~/icons/16/go-up.png" /> Up
-        </a>
-        <div class="input location-bar">
-            <a class="toolbar-button" href="@Url.Action("Index", "Library", new { category = Model.Category.Key, view = (string?)null })">
-                <img src="~/icons/16/places/@Model.Category.Icon" />
-            </a>
-            <span>library://</span>
-            @foreach (var (name, url) in Model.Breadcrumbs)
+<table class="file-listing">
+    <thead>
+        <tr>
+            <th data-col="icon"></th>
+            <th>@nameHeader</th>
+            <th>Size</th>
+            <th>Type</th>
+            <th>Last modified</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.IsLeaf)
+        {
+            @foreach (var folder in Model.Folders)
             {
-                <a class="toolbar-button" href="@url">@name</a>
-                <span>/</span>
-            }
-        </div>
-    </div>
-
-    <hr />
-
-    <div class="window-body">
-
-    <partial name="_Sidebar" />
-
-    <div class="window-content">
-
-        <table class="file-listing">
-            <thead>
-                <tr>
-                    <th data-col="icon"></th>
-                    <th>@nameHeader</th>
-                    <th>Size</th>
-                    <th>Type</th>
-                    <th>Last modified</th>
-                    <th>Actions</th>
+                <tr class="file-entry">
+                    <td><img src="@folder.IconUrl" /></td>
+                    <td><a href="@folder.Url">@folder.Name</a></td>
+                    <td></td>
+                    <td>@folder.Count item@(folder.Count == 1 ? "" : "s")</td>
+                    <td></td>
+                    <td></td>
                 </tr>
-            </thead>
-            <tbody>
-                @if (!Model.IsLeaf)
-                {
-                    @foreach (var folder in Model.Folders)
-                    {
-                        <tr class="file-entry">
-                            <td><img src="@folder.IconUrl" /></td>
-                            <td><a href="@folder.Url">@folder.Name</a></td>
-                            <td></td>
-                            <td>@folder.Count item@(folder.Count == 1 ? "" : "s")</td>
-                            <td></td>
-                            <td></td>
-                        </tr>
-                    }
-                }
-                else
-                {
-                    @foreach (var file in Model.Files)
-                    {
-                        <tr class="file-entry" data-id="@file.Name">
-                            <td><img src="@file.IconUrl" /></td>
-                            <td><a href="@Url.Action("Index", "Browse", new { path = file.Path })">@file.Name</a></td>
-                            <td data-sort="@file.Size">@file.DisplaySize</td>
-                            <td>@file.MimeType</td>
-                            <td>@file.LastModified.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
-                            <td>
-                                <a href="@(Url.Action("Index", "Metadata"))/@file.Path">Properties</a>
-                            </td>
-                        </tr>
-                    }
-                }
-
-                @if ((!Model.IsLeaf && Model.Folders.Count == 0) || (Model.IsLeaf && Model.Files.Count == 0))
-                {
-                    <tr>
-                        <td></td>
-                        <td colspan="5"><em>Nothing here yet — no indexed files match this category.</em></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-
-    </div>
-
-    </div>
-
-    <div class="window-statusbar">
-        <div id="window-statusbar-message" class="flex-fill">
-            @if (Model.IsLeaf)
-            {
-                @($"{Model.Files.Count} file{(Model.Files.Count == 1 ? "" : "s")}")
             }
-            else
+        }
+        else
+        {
+            @foreach (var file in Model.Files)
             {
-                @($"{Model.Folders.Count} folder{(Model.Folders.Count == 1 ? "" : "s")}")
+                <tr class="file-entry" data-id="@file.Name">
+                    <td><img src="@file.IconUrl" /></td>
+                    <td><a href="@Url.Action("Index", "Browse", new { path = file.Path })">@file.Name</a></td>
+                    <td data-sort="@file.Size">@file.DisplaySize</td>
+                    <td>@file.MimeType</td>
+                    <td>@file.LastModified.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>
+                        <a href="@(Url.Action("Index", "Metadata"))/@file.Path">Properties</a>
+                    </td>
+                </tr>
             }
-        </div>
-    </div>
+        }
 
-</div>
+        @if ((!Model.IsLeaf && Model.Folders.Count == 0) || (Model.IsLeaf && Model.Files.Count == 0))
+        {
+            <tr>
+                <td></td>
+                <td colspan="5"><em>Nothing here yet — no indexed files match this category.</em></td>
+            </tr>
+        }
+    </tbody>
+</table>
