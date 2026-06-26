@@ -126,14 +126,19 @@ function wmSetupContextMenus() {
             e.preventDefault();
             wmCloseAllMenus();
 
-            // Right-click auto-selects the row under the cursor and remembers its target.
-            var row = e.target.closest('[data-wm-selectable], .wm-filelist-row');
-            if (row) {
-                host.querySelectorAll('.wm-selected').forEach(function (r) { r.classList.remove('wm-selected'); });
-                row.classList.add('wm-selected');
-                var link = row.querySelector('a');
+            // Right-click selects the item under the cursor (keeping an existing multi-selection if the
+            // item is already part of it) and remembers its target for the Open/Properties actions.
+            var item = e.target.closest('.wm-filelist-item');
+            if (item) {
+                var fl = item.closest('[data-wm-filelist]');
+                if (!item.classList.contains('wm-selected')) {
+                    if (fl) wmClearSelection(fl);
+                    wmSetItemSelected(item, true);
+                    if (fl) wmUpdateSelectionInfo(fl);
+                }
+                var link = item.querySelector('a');
                 menu.setAttribute('data-context-href', link ? link.href : '');
-                menu.setAttribute('data-context-path', row.getAttribute('data-path') || '');
+                menu.setAttribute('data-context-path', item.getAttribute('data-path') || '');
             }
 
             menu.classList.add('wm-open');
@@ -226,12 +231,122 @@ function wmSetupModals() {
 }
 
 /********************************
+ * FileListView selection       *
+ ********************************/
+function wmItemCheckbox(item) {
+    return item.querySelector('.wm-filelist-check');
+}
+
+function wmSetItemSelected(item, on) {
+    if (on) item.classList.add('wm-selected');
+    else item.classList.remove('wm-selected');
+    var cb = wmItemCheckbox(item);
+    if (cb) cb.checked = on;
+}
+
+function wmClearSelection(container) {
+    container.querySelectorAll('.wm-filelist-item.wm-selected').forEach(function (it) {
+        wmSetItemSelected(it, false);
+    });
+}
+
+function wmUpdateSelectionInfo(container) {
+    var n = container.querySelectorAll('.wm-filelist-item.wm-selected').length;
+    document.querySelectorAll('[data-wm-selection-count]').forEach(function (el) {
+        el.textContent = n ? (n + ' selected') : '';
+    });
+    document.querySelectorAll('[data-wm-needs-selection]').forEach(function (el) {
+        if (n) { el.classList.remove('disabled'); if ('disabled' in el) el.disabled = false; }
+        else { el.classList.add('disabled'); if ('disabled' in el) el.disabled = true; }
+    });
+}
+
+function wmSetupFileLists() {
+    document.querySelectorAll('[data-wm-filelist]').forEach(function (container) {
+        if (!container.classList.contains('wm-filelist-selectable')) return;
+        var items = function () { return Array.prototype.slice.call(container.querySelectorAll('.wm-filelist-item')); };
+        var lastIndex = -1;
+
+        // Per-row checkbox.
+        container.querySelectorAll('.wm-filelist-check').forEach(function (cb) {
+            cb.addEventListener('click', function (e) { e.stopPropagation(); });
+            cb.addEventListener('change', function () {
+                var item = cb.closest('.wm-filelist-item');
+                if (!item) return;
+                wmSetItemSelected(item, cb.checked);
+                lastIndex = items().indexOf(item);
+                wmUpdateSelectionInfo(container);
+            });
+        });
+
+        // Select-all (details header).
+        var all = container.querySelector('.wm-filelist-all');
+        if (all) {
+            all.addEventListener('click', function (e) { e.stopPropagation(); });
+            all.addEventListener('change', function () {
+                items().forEach(function (it) { wmSetItemSelected(it, all.checked); });
+                wmUpdateSelectionInfo(container);
+            });
+        }
+
+        // Ctrl/Shift click on an item's name modifies selection instead of navigating.
+        container.querySelectorAll('.wm-filelist-item a').forEach(function (link) {
+            link.addEventListener('click', function (e) {
+                var item = link.closest('.wm-filelist-item');
+                if (!item) return;
+                var list = items();
+                var idx = list.indexOf(item);
+                if (e.shiftKey) {
+                    e.preventDefault();
+                    var from = lastIndex < 0 ? idx : lastIndex;
+                    var lo = Math.min(from, idx), hi = Math.max(from, idx);
+                    wmClearSelection(container);
+                    for (var i = lo; i <= hi; i++) wmSetItemSelected(list[i], true);
+                    wmUpdateSelectionInfo(container);
+                } else if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    wmSetItemSelected(item, !item.classList.contains('wm-selected'));
+                    lastIndex = idx;
+                    wmUpdateSelectionInfo(container);
+                }
+                // plain click: let the link navigate.
+            });
+        });
+
+        // Type-to-jump: focus the list, type a name prefix.
+        var buffer = '', bufferTimer = null;
+        container.addEventListener('keydown', function (e) {
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.key && e.key.length === 1 && /\S/.test(e.key)) {
+                buffer += e.key.toLowerCase();
+                if (bufferTimer) clearTimeout(bufferTimer);
+                bufferTimer = setTimeout(function () { buffer = ''; }, 800);
+                var match = items().filter(function (it) {
+                    return (it.getAttribute('data-name') || '').toLowerCase().indexOf(buffer) === 0;
+                })[0];
+                if (match) {
+                    wmClearSelection(container);
+                    wmSetItemSelected(match, true);
+                    lastIndex = items().indexOf(match);
+                    wmUpdateSelectionInfo(container);
+                    if (match.scrollIntoView) match.scrollIntoView({ block: 'nearest' });
+                }
+            }
+        });
+
+        // Reflect the initial (empty) selection so selection-dependent controls start disabled.
+        wmUpdateSelectionInfo(container);
+    });
+}
+
+/********************************
  * Initialization               *
  ********************************/
 function wm_setup() {
     wm_fix_layout();
     setupSortableTables();
     wmSetupMenubar();
+    wmSetupFileLists();
     wmSetupContextMenus();
     wmSetupModals();
     wmSetupGlobalClose();

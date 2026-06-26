@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Librarian.Models;
 using Librarian.Services;
 using Librarian.Utils;
+using Librarian.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MimeMapping;
@@ -19,6 +19,9 @@ namespace Librarian.Controllers
     /// </summary>
     public class UiTestController : Controller
     {
+        private static readonly string[] ValidModes = { "details", "list", "tiles", "icons" };
+        private static readonly string[] ValidSorts = { "name", "size", "type", "modified" };
+
         private readonly ILogger<UiTestController> logger;
         private readonly FileService fileService;
 
@@ -28,8 +31,9 @@ namespace Librarian.Controllers
             this.fileService = fileService;
         }
 
-        public IActionResult Index(string path)
+        public IActionResult Index(string path, string? view, int? zoom, string? sort)
         {
+            string sortKey = ValidSorts.Contains(sort) ? sort! : "name";
             try
             {
                 string diskPath = fileService.Resolve(path);
@@ -40,25 +44,29 @@ namespace Librarian.Controllers
                     return NotFound("Not a directory.");
 
                 var directoryInfo = new DirectoryInfo(diskPath);
-                var vm = new BrowseViewModel
+                string relPath = fileService.GetRelativePath(diskPath);
+                bool isRoot = fileService.IsRoot(diskPath);
+
+                var vm = new UiTestViewModel
                 {
-                    DisplayName = directoryInfo.Name,
-                    DisplayPath = fileService.GetRelativePath(diskPath),
-                    ParentPath = (directoryInfo.Parent != null && !fileService.IsRoot(diskPath))
+                    DisplayName = isRoot ? "Home" : directoryInfo.Name,
+                    Path = relPath,
+                    ParentPath = (directoryInfo.Parent != null && !isRoot)
                         ? fileService.GetRelativePath(directoryInfo.Parent.FullName)
                         : null,
-                    Path = fileService.GetRelativePath(diskPath),
-                    Files = GetFiles(diskPath).ToList(),
-                    Clipboard = null
+                    Breadcrumbs = BuildBreadcrumbs(relPath).ToList(),
+                    Mode = ValidModes.Contains(view) ? view! : "details",
+                    Zoom = Math.Clamp(zoom ?? 2, 1, 3),
+                    Sort = sortKey,
+                    Columns = new List<WmListColumn>
+                    {
+                        new("Size", numeric: true),
+                        new("Type"),
+                        new("Modified"),
+                    },
+                    Items = BuildItems(diskPath, sortKey).ToList(),
                 };
 
-                if (vm.DisplayPath == ".")
-                {
-                    vm.DisplayName = "Home";
-                    vm.DisplayPath = "Home";
-                }
-
-                vm.Breadcrumbs = BuildBreadcrumbs(vm.Path).ToList();
                 return View(vm);
             }
             catch (ArgumentException ex)
@@ -73,40 +81,80 @@ namespace Librarian.Controllers
             }
         }
 
-        private IEnumerable<BrowseFileViewModel> GetFiles(string dirPath)
+        private IEnumerable<WmListItem> BuildItems(string dirPath, string sort)
         {
             var dirInfo = new DirectoryInfo(dirPath);
+            var nat = new NaturalComparer();
 
-            foreach (var dir in dirInfo.EnumerateDirectories().OrderBy(x => x.Name, new NaturalComparer()))
+            // Folders always sort before files; within each group the chosen key applies.
+            IEnumerable<DirectoryInfo> dirs = dirInfo.EnumerateDirectories();
+            IEnumerable<FileInfo> files = dirInfo.EnumerateFiles();
+            switch (sort)
             {
-                yield return new BrowseFileViewModel
+                case "size":
+                    dirs = dirs.OrderBy(d => d.Name, nat);
+                    files = files.OrderBy(f => f.Length);
+                    break;
+                case "type":
+                    dirs = dirs.OrderBy(d => d.Name, nat);
+                    files = files.OrderBy(f => MimeUtility.GetMimeMapping(f.Name), StringComparer.OrdinalIgnoreCase)
+                                 .ThenBy(f => f.Name, nat);
+                    break;
+                case "modified":
+                    dirs = dirs.OrderBy(d => d.LastWriteTimeUtc);
+                    files = files.OrderBy(f => f.LastWriteTimeUtc);
+                    break;
+                default:
+                    dirs = dirs.OrderBy(d => d.Name, nat);
+                    files = files.OrderBy(f => f.Name, nat);
+                    break;
+            }
+
+            foreach (var dir in dirs)
+            {
+                string p = fileService.GetRelativePath(dir.FullName);
+                yield return new WmListItem
                 {
                     Name = dir.Name,
-                    Path = fileService.GetRelativePath(dir.FullName),
-                    Size = null,
-                    DisplaySize = null,
-                    LastModified = dir.LastWriteTimeUtc,
-                    IsDirectory = true,
-                    MimeType = null,
-                    IconUrl = Url.Content(IconMapping.FolderIcon)
+                    Path = p,
+                    IsContainer = true,
+                    Href = Url.Action("Index", "UiTest", new { path = p }),
+                    IconUrl = Url.Content(IconMapping.FolderIcon),
+                    ContentLine = "Folder",
+                    Cells = new List<WmListCell>
+                    {
+                        new("", "-1"),
+                        new("Folder", "Folder"),
+                        new(dir.LastWriteTime.ToString("yyyy-MM-dd HH:mm"), dir.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss")),
+                    },
                 };
             }
 
-            foreach (var file in dirInfo.EnumerateFiles().OrderBy(x => x.Name, new NaturalComparer()))
+            foreach (var file in files)
             {
-                string fileName = file.Name;
-                string mime = MimeUtility.GetMimeMapping(fileName);
+                string p = fileService.GetRelativePath(file.FullName);
+                string mime = MimeUtility.GetMimeMapping(file.Name);
+                string size = HumanizeUtils.HumanizeSize(file.Length);
+                string ext = Path.GetExtension(file.Name).TrimStart('.').ToUpperInvariant();
+                bool isImage = mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
 
-                yield return new BrowseFileViewModel
+                yield return new WmListItem
                 {
-                    Name = fileName,
-                    Path = fileService.GetRelativePath(file.FullName),
-                    Size = file.Length,
-                    DisplaySize = HumanizeUtils.HumanizeSize(file.Length),
-                    LastModified = file.LastWriteTimeUtc,
-                    IsDirectory = false,
-                    MimeType = mime,
-                    IconUrl = Url.Content(IconMapping.GetIconUrl(fileName, mime))
+                    Name = file.Name,
+                    Path = p,
+                    IsContainer = false,
+                    Href = $"{Url.Action("Index", "Metadata")}/{p}",
+                    IconUrl = Url.Content(IconMapping.GetIconUrl(file.Name, mime)),
+                    // Real thumbnails are a future job (ImageSharp); for now point image tiles at the file
+                    // bytes served by the Browse controller.
+                    ThumbnailUrl = isImage ? Url.Action("Index", "Browse", new { path = p }) : null,
+                    ContentLine = string.IsNullOrEmpty(ext) ? size : $"{size} · {ext}",
+                    Cells = new List<WmListCell>
+                    {
+                        new(size, file.Length.ToString("D12")),
+                        new(mime, mime),
+                        new(file.LastWriteTime.ToString("yyyy-MM-dd HH:mm"), file.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss")),
+                    },
                 };
             }
         }

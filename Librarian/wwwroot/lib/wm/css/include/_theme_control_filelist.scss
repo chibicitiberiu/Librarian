@@ -1,16 +1,40 @@
 @import "theme_colors";
 
-.wm-filelist th {
+.wm-filelist-details th {
     border-bottom: 1px solid $color-panel-border-dark;
     color: #555;
     font-weight: bold;
 }
 
-.wm-filelist tbody tr:hover {
+.wm-filelist a,
+.wm-filelist-link {
+    color: $color-link;
+    text-decoration: none;
+}
+
+.wm-filelist-content {
+    color: #666;
+}
+
+// Hover affordance (no select-on-hover — just a light highlight).
+.wm-filelist-details tbody tr:hover,
+.wm-filelist-icons .wm-filelist-item:hover,
+.wm-filelist-tiles .wm-filelist-item:hover,
+.wm-filelist-list .wm-filelist-item:hover {
     background: $color-panel-highlight;
 }
 
-.wm-filelist a {
-    color: $color-link;
-    text-decoration: none;
+// Bluecurve list selection — solid blue with light text. !important keeps it above the hover rule
+// regardless of source order / specificity.
+.wm-filelist-item.wm-selected,
+.wm-filelist-row.wm-selected {
+    background: #5B82C2 !important;
+    color: white !important;
+}
+
+.wm-filelist-item.wm-selected a,
+.wm-filelist-item.wm-selected .wm-filelist-link,
+.wm-filelist-item.wm-selected .wm-filelist-content,
+.wm-filelist-row.wm-selected a {
+    color: white !important;
 }

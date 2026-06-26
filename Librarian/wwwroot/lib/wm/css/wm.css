@@ -359,25 +359,247 @@ body.wm-desktop {
 }
 
 .wm-filelist {
+  outline: none;
+}
+
+.wm-filelist-empty {
+  padding: 1em;
+}
+
+/* ---- details: sortable table ---- */
+.wm-filelist-details {
   width: 100%;
   border-collapse: collapse;
 }
 
-.wm-filelist th,
-.wm-filelist td {
+.wm-filelist-details th,
+.wm-filelist-details td {
   text-align: left;
   padding: 2px 8px 2px 0;
   white-space: nowrap;
   vertical-align: middle;
 }
 
-.wm-filelist td img {
+.wm-filelist-details td img {
   border: 0;
   vertical-align: middle;
 }
 
-.wm-filelist th {
+.wm-filelist-details th {
   cursor: pointer;
+}
+
+.wm-col-check,
+.wm-col-icon {
+  width: 1px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.wm-col-num {
+  text-align: right;
+}
+
+/* ---- grid container (icons / tiles) ---- */
+.wm-filelist-icons,
+.wm-filelist-tiles {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -moz-box;
+  display: flex;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: row;
+  -moz-box-orient: horizontal;
+  -moz-box-direction: normal;
+  -ms-flex-direction: row;
+  flex-direction: row;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
+  -webkit-box-align: start;
+  -ms-flex-align: start;
+  align-items: flex-start;
+  -ms-flex-line-pack: start;
+  align-content: flex-start;
+}
+
+/* ---- list: multi-column flow (top-to-bottom, then wrap) ---- */
+.wm-filelist-list {
+  -moz-column-width: 15em;
+  column-width: 15em;
+  -moz-column-gap: 1em;
+  column-gap: 1em;
+}
+
+.wm-filelist-list .wm-filelist-item {
+  display: block;
+  -webkit-column-break-inside: avoid;
+  -moz-column-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* ---- item + selection checkbox ---- */
+.wm-filelist-item {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.wm-filelist:not(.wm-filelist-checkboxes) .wm-filelist-check {
+  display: none;
+}
+
+.wm-filelist-checkboxes.wm-filelist-icons .wm-filelist-check,
+.wm-filelist-checkboxes.wm-filelist-tiles .wm-filelist-check {
+  position: absolute;
+  top: 0.2em;
+  left: 0.2em;
+  z-index: 1;
+}
+
+.wm-filelist-link {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -moz-box;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  -moz-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.wm-filelist-thumb {
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+  border: 0;
+  object-fit: contain;
+}
+
+.wm-filelist-icon-sm {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+}
+
+.wm-filelist-label {
+  word-break: break-word;
+}
+
+/* icons mode */
+.wm-filelist-icons .wm-filelist-item {
+  width: 7em;
+  padding: 0.35em;
+  text-align: center;
+}
+
+.wm-filelist-icons .wm-filelist-link {
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: column;
+  -moz-box-orient: vertical;
+  -moz-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+
+.wm-filelist-icons .wm-filelist-thumb {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 0.25em;
+}
+
+/* tiles mode */
+.wm-filelist-tiles .wm-filelist-item {
+  width: 16em;
+  padding: 0.35em;
+}
+
+.wm-filelist-tiles .wm-filelist-link {
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: row;
+  -moz-box-orient: horizontal;
+  -moz-box-direction: normal;
+  -ms-flex-direction: row;
+  flex-direction: row;
+  gap: 0.5em;
+}
+
+.wm-filelist-tiles .wm-filelist-thumb {
+  width: 40px;
+  height: 40px;
+}
+
+.wm-filelist-tiles .wm-filelist-tiletext {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -moz-box;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: column;
+  -moz-box-orient: vertical;
+  -moz-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wm-filelist-tiles .wm-filelist-content {
+  font-size: 0.85em;
+}
+
+/* list mode */
+.wm-filelist-list .wm-filelist-link {
+  gap: 0.4em;
+  padding: 1px 0.25em;
+}
+
+/* zoom (icons) */
+.wm-filelist-zoom-1.wm-filelist-icons .wm-filelist-item {
+  width: 5.5em;
+}
+
+.wm-filelist-zoom-1.wm-filelist-icons .wm-filelist-thumb {
+  width: 32px;
+  height: 32px;
+}
+
+.wm-filelist-zoom-3.wm-filelist-icons .wm-filelist-item {
+  width: 9.5em;
+}
+
+.wm-filelist-zoom-3.wm-filelist-icons .wm-filelist-thumb {
+  width: 80px;
+  height: 80px;
+}
+
+/* zoom (tiles) */
+.wm-filelist-zoom-1.wm-filelist-tiles .wm-filelist-item {
+  width: 12em;
+}
+
+.wm-filelist-zoom-1.wm-filelist-tiles .wm-filelist-thumb {
+  width: 28px;
+  height: 28px;
+}
+
+.wm-filelist-zoom-3.wm-filelist-tiles .wm-filelist-item {
+  width: 22em;
+}
+
+.wm-filelist-zoom-3.wm-filelist-tiles .wm-filelist-thumb {
+  width: 56px;
+  height: 56px;
 }
 
 .wm-menubar {
