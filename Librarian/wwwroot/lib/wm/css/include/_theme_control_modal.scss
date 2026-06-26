@@ -1,0 +1,41 @@
+@import "theme_colors";
+@import "theme_mixins";
+
+.wm-modal-backdrop {
+    background: rgba(0, 0, 0, .45);
+}
+
+.wm-modal {
+    @include common-panel;
+    outline: 1px solid $color-outer-border-highlight;
+    border-radius: .25em;
+    box-shadow: 2px 2px 8px black;
+}
+
+.wm-modal-body {
+    background: $color-content;
+    color: $color-foreground;
+    border-top: 1px solid $color-inner-border-light;
+    border-left: 1px solid $color-inner-border-light;
+    border-bottom: 1px solid $color-inner-border-dark;
+    border-right: 1px solid $color-inner-border-dark;
+    padding: .75em;
+}
+
+.wm-modal-actions {
+    padding: .5em;
+}
+
+.wm-titlebar-close {
+    color: $color-title;
+
+    &:hover {
+        @include common-button-highlight;
+        color: $color-foreground;
+    }
+}
+
+// The primary/confirm action stands out a touch.
+.wm-button-default {
+    font-weight: bold;
+}

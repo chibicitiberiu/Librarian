@@ -51,7 +51,7 @@
         </wm-menu>
 
         <wm-menu text="Help">
-            <wm-menuitem icon="/icons/16/gnome-searchtool.png" text="About Librarian…" action="wm-about" tooltip="About this application"></wm-menuitem>
+            <wm-menuitem icon="/icons/16/gnome-searchtool.png" text="About Librarian…" action="about" data-wm-open-modal="modal-about" tooltip="About this application"></wm-menuitem>
         </wm-menu>
     </wm-menubar>
 
@@ -117,3 +117,12 @@
     <wm-menuitem text="Copy" action="copy" disabled="true" tooltip="Copy (coming soon)"></wm-menuitem>
     <wm-menuitem text="Delete" action="delete" disabled="true" tooltip="Delete (coming soon)"></wm-menuitem>
 </wm-contextmenu>
+
+@* Help → About — exercises the modal control (dim backdrop, X button, OK action, grayscale title bar on the window behind). *@
+<wm-modal id="modal-about" title="About Librarian" icon="/icons/16/file-manager.png" ok-text="OK">
+    <p style="margin-top:0;"><strong>Librarian</strong> — a retro-styled media library browser.</p>
+    <p>This page (<code>/uitest</code>) is a live sandbox for the new <em>window-manager</em> control
+        library: window chrome, menus, toolbar, breadcrumb and this modal, all rendered server-side
+        (Tier-0) and enhanced with a little JavaScript.</p>
+    <p class="muted" style="margin-bottom:0;">Built with Razor tag helpers over the <code>lib/wm</code> Bluecurve theme.</p>
+</wm-modal>

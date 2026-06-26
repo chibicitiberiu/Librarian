@@ -1,0 +1,75 @@
+@import "browser_support";
+
+// Modal — a dialog drawn over the desktop on a dimming backdrop. Hidden until JS adds `.wm-open`.
+// Reuses the window title-bar look; adds a body and a right-aligned action row.
+.wm-modal-backdrop {
+    @include box-sizing(border-box);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    display: none;
+}
+
+.wm-modal-backdrop.wm-open {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    // Centre the dialog (with old -moz/-ms/-webkit box fallbacks).
+    -webkit-box-pack: center;
+    -moz-box-pack: center;
+    -ms-flex-pack: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+}
+
+.wm-modal {
+    @include box-sizing(border-box);
+    @include display-flex;
+    @include flex-direction-column;
+    @include align-items(stretch);
+    min-width: 18em;
+    max-width: 90%;
+    max-height: 90%;
+    margin: 3em auto; // fallback centring when flexbox is unavailable
+}
+
+.wm-modal > .wm-titlebar {
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+}
+
+.wm-titlebar-close {
+    @include box-sizing(border-box);
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    margin-right: .25em;
+    padding: 0 .35em;
+    font: inherit;
+    line-height: 1.2;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: default;
+}
+
+.wm-modal-body {
+    @include flex-grow(1);
+    min-height: 0;
+    overflow: auto;
+}
+
+.wm-modal-actions {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    -webkit-box-pack: end;
+    -moz-box-pack: end;
+    -ms-flex-pack: end;
+    -webkit-justify-content: flex-end;
+    justify-content: flex-end;
+    gap: .4em;
+}

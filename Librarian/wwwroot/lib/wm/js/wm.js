@@ -157,9 +157,72 @@ function wmSetupContextMenus() {
 function wmSetupGlobalClose() {
     document.addEventListener('click', function () { wmCloseAllMenus(); });
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' || e.keyCode === 27) wmCloseAllMenus();
+        if (e.key === 'Escape' || e.keyCode === 27) {
+            wmCloseAllMenus();
+            // Esc also cancels the top-most open modal.
+            document.querySelectorAll('.wm-modal-backdrop.wm-open').forEach(function (bd) {
+                wmCloseModal(bd, 'cancel');
+            });
+        }
     });
     window.addEventListener('blur', function () { wmCloseAllMenus(); });
+}
+
+/********************************
+ * Modals                       *
+ ********************************/
+function wmSetMainWindowInactive(inactive) {
+    // The single maximised window dims its title bar while a modal is on top.
+    var win = document.querySelector('.wm-window');
+    if (win) {
+        if (inactive) win.classList.add('wm-window-inactive');
+        else win.classList.remove('wm-window-inactive');
+    }
+}
+
+function wmOpenModal(id) {
+    var bd = document.getElementById(id);
+    if (!bd || !bd.classList.contains('wm-modal-backdrop')) return;
+    bd.classList.add('wm-open');
+    bd.setAttribute('aria-hidden', 'false');
+    wmSetMainWindowInactive(true);
+    var focusTarget = bd.querySelector('.wm-modal-actions .wm-button, [data-wm-close]');
+    if (focusTarget) focusTarget.focus();
+}
+
+function wmCloseModal(bd, result) {
+    bd.classList.remove('wm-open');
+    bd.setAttribute('aria-hidden', 'true');
+    if (!document.querySelector('.wm-modal-backdrop.wm-open')) {
+        wmSetMainWindowInactive(false);
+    }
+    try {
+        bd.dispatchEvent(new CustomEvent('wm:modalresult', {
+            bubbles: true,
+            detail: { id: bd.id, result: result }
+        }));
+    } catch (e) { /* CustomEvent unsupported — result event simply not emitted */ }
+}
+
+function wmSetupModals() {
+    document.querySelectorAll('[data-wm-open-modal]').forEach(function (trigger) {
+        trigger.addEventListener('click', function () {
+            wmOpenModal(trigger.getAttribute('data-wm-open-modal'));
+        });
+    });
+
+    document.querySelectorAll('.wm-modal-backdrop').forEach(function (bd) {
+        bd.querySelectorAll('[data-wm-result]').forEach(function (btn) {
+            btn.addEventListener('click', function () { wmCloseModal(bd, btn.getAttribute('data-wm-result')); });
+        });
+        bd.querySelectorAll('[data-wm-close]').forEach(function (btn) {
+            btn.addEventListener('click', function () { wmCloseModal(bd, 'cancel'); });
+        });
+        // Click on the backdrop itself (outside the dialog) cancels.
+        bd.addEventListener('click', function (e) {
+            if (e.target === bd) wmCloseModal(bd, 'cancel');
+        });
+    });
 }
 
 /********************************
@@ -170,6 +233,7 @@ function wm_setup() {
     setupSortableTables();
     wmSetupMenubar();
     wmSetupContextMenus();
+    wmSetupModals();
     wmSetupGlobalClose();
 }
 

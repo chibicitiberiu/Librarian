@@ -295,6 +295,49 @@
   border-bottom: 1px solid white;
 }
 
+.wm-modal-backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.wm-modal {
+  color: black;
+  background: #E6E6E6;
+  outline: 1px solid #000000;
+  border-radius: 0.25em;
+  box-shadow: 2px 2px 8px black;
+}
+
+.wm-modal-body {
+  background: white;
+  color: black;
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  border-bottom: 1px solid #CECECE;
+  border-right: 1px solid #CECECE;
+  padding: 0.75em;
+}
+
+.wm-modal-actions {
+  padding: 0.5em;
+}
+
+.wm-titlebar-close {
+  color: white;
+}
+.wm-titlebar-close:hover {
+  background: #F5F5F5;
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+  border-bottom: 1px solid #CECECE;
+  border-right: 1px solid #CECECE;
+  outline-color: #000000;
+  color: black;
+}
+
+.wm-button-default {
+  font-weight: bold;
+}
+
 .wm-progress {
   background: gray;
 }
@@ -370,4 +413,8 @@ input, .input {
 
 .disabled {
   opacity: 0.5;
+}
+
+.muted {
+  color: #666;
 }
