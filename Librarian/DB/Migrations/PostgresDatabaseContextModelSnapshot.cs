@@ -2253,6 +2253,9 @@ namespace Librarian.DB.Migrations
                     b.Property<int?>("ItemId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("MimeType")
+                        .HasColumnType("text");
+
                     b.Property<DateTimeOffset>("Modified")
                         .HasColumnType("timestamp with time zone");
 

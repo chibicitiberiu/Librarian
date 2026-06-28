@@ -13,8 +13,8 @@ using NpgsqlTypes;
 namespace Librarian.DB.Migrations
 {
     [DbContext(typeof(PostgresDatabaseContext))]
-    [Migration("20260625212332_RetireEmbeddedFileSubResources")]
-    partial class RetireEmbeddedFileSubResources
+    [Migration("20260628195014_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -2255,6 +2255,9 @@ namespace Librarian.DB.Migrations
 
                     b.Property<int?>("ItemId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("MimeType")
+                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("Modified")
                         .HasColumnType("timestamp with time zone");

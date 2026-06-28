@@ -10,11 +10,16 @@ using NpgsqlTypes;
 namespace Librarian.DB.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialModel : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // unaccent powers accent-insensitive search (used by the search queries at runtime). It's a
+            // trusted extension, so the database owner can create it. Folded in from the old
+            // AddUnaccentExtension migration when the history was collapsed.
+            migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS unaccent;");
+
             migrationBuilder.CreateTable(
                 name: "AttributeDefinitions",
                 columns: table => new
@@ -34,22 +39,25 @@ namespace Librarian.DB.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "IndexedFiles",
+                name: "Collections",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Path = table.Column<string>(type: "character varying(4096)", maxLength: 4096, nullable: false),
-                    Exists = table.Column<bool>(type: "boolean", nullable: false),
-                    NeedsUpdating = table.Column<bool>(type: "boolean", nullable: false),
-                    IndexLastUpdated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    Size = table.Column<long>(type: "bigint", nullable: true),
-                    Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    Modified = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    ParentCollectionId = table.Column<int>(type: "integer", nullable: true),
+                    Kind = table.Column<int>(type: "integer", nullable: false),
+                    RoleSource = table.Column<int>(type: "integer", nullable: false),
+                    SourcePath = table.Column<string>(type: "character varying(4096)", maxLength: 4096, nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_IndexedFiles", x => x.Id);
+                    table.PrimaryKey("PK_Collections", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Collections_Collections_ParentCollectionId",
+                        column: x => x.ParentCollectionId,
+                        principalTable: "Collections",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -70,6 +78,73 @@ namespace Librarian.DB.Migrations
                         column: x => x.AttributeDefinitionId,
                         principalTable: "AttributeDefinitions",
                         principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Items",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    RoleSource = table.Column<int>(type: "integer", nullable: false),
+                    ParentCollectionId = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Items", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Items_Collections_ParentCollectionId",
+                        column: x => x.ParentCollectionId,
+                        principalTable: "Collections",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "IndexedFiles",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Path = table.Column<string>(type: "character varying(4096)", maxLength: 4096, nullable: false),
+                    Exists = table.Column<bool>(type: "boolean", nullable: false),
+                    Source = table.Column<int>(type: "integer", nullable: false),
+                    ParentFileId = table.Column<int>(type: "integer", nullable: true),
+                    InternalPath = table.Column<string>(type: "character varying(4096)", maxLength: 4096, nullable: true),
+                    Role = table.Column<int>(type: "integer", nullable: false),
+                    RoleSource = table.Column<int>(type: "integer", nullable: false),
+                    ItemId = table.Column<int>(type: "integer", nullable: true),
+                    CollectionId = table.Column<int>(type: "integer", nullable: true),
+                    NeedsUpdating = table.Column<bool>(type: "boolean", nullable: false),
+                    IndexLastUpdated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    ExtractionIncomplete = table.Column<bool>(type: "boolean", nullable: false),
+                    Size = table.Column<long>(type: "bigint", nullable: true),
+                    Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    Modified = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    MimeType = table.Column<string>(type: "text", nullable: true),
+                    PrefixHash = table.Column<byte[]>(type: "bytea", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_IndexedFiles", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_IndexedFiles_Collections_CollectionId",
+                        column: x => x.CollectionId,
+                        principalTable: "Collections",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_IndexedFiles_IndexedFiles_ParentFileId",
+                        column: x => x.ParentFileId,
+                        principalTable: "IndexedFiles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_IndexedFiles_Items_ItemId",
+                        column: x => x.ItemId,
+                        principalTable: "Items",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -120,8 +195,9 @@ namespace Librarian.DB.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Value = table.Column<byte[]>(type: "bytea", nullable: false),
-                    FileId = table.Column<int>(type: "integer", nullable: false),
+                    FileId = table.Column<int>(type: "integer", nullable: true),
                     SubResourceId = table.Column<int>(type: "integer", nullable: true),
+                    CollectionId = table.Column<int>(type: "integer", nullable: true),
                     AttributeDefinitionId = table.Column<int>(type: "integer", nullable: false),
                     Editable = table.Column<bool>(type: "boolean", nullable: false),
                     DateUpdated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -131,10 +207,17 @@ namespace Librarian.DB.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_BlobAttributes", x => x.Id);
+                    table.CheckConstraint("CK_BlobAttributes_Owner", "num_nonnulls(\"FileId\", \"CollectionId\") = 1");
                     table.ForeignKey(
                         name: "FK_BlobAttributes_AttributeDefinitions_AttributeDefinitionId",
                         column: x => x.AttributeDefinitionId,
                         principalTable: "AttributeDefinitions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_BlobAttributes_Collections_CollectionId",
+                        column: x => x.CollectionId,
+                        principalTable: "Collections",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -157,8 +240,9 @@ namespace Librarian.DB.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    FileId = table.Column<int>(type: "integer", nullable: false),
+                    FileId = table.Column<int>(type: "integer", nullable: true),
                     SubResourceId = table.Column<int>(type: "integer", nullable: true),
+                    CollectionId = table.Column<int>(type: "integer", nullable: true),
                     AttributeDefinitionId = table.Column<int>(type: "integer", nullable: false),
                     Editable = table.Column<bool>(type: "boolean", nullable: false),
                     DateUpdated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -168,10 +252,17 @@ namespace Librarian.DB.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_DateAttributes", x => x.Id);
+                    table.CheckConstraint("CK_DateAttributes_Owner", "num_nonnulls(\"FileId\", \"CollectionId\") = 1");
                     table.ForeignKey(
                         name: "FK_DateAttributes_AttributeDefinitions_AttributeDefinitionId",
                         column: x => x.AttributeDefinitionId,
                         principalTable: "AttributeDefinitions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_DateAttributes_Collections_CollectionId",
+                        column: x => x.CollectionId,
+                        principalTable: "Collections",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -194,8 +285,9 @@ namespace Librarian.DB.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Value = table.Column<double>(type: "double precision", nullable: false),
-                    FileId = table.Column<int>(type: "integer", nullable: false),
+                    FileId = table.Column<int>(type: "integer", nullable: true),
                     SubResourceId = table.Column<int>(type: "integer", nullable: true),
+                    CollectionId = table.Column<int>(type: "integer", nullable: true),
                     AttributeDefinitionId = table.Column<int>(type: "integer", nullable: false),
                     Editable = table.Column<bool>(type: "boolean", nullable: false),
                     DateUpdated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -205,10 +297,17 @@ namespace Librarian.DB.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_FloatAttributes", x => x.Id);
+                    table.CheckConstraint("CK_FloatAttributes_Owner", "num_nonnulls(\"FileId\", \"CollectionId\") = 1");
                     table.ForeignKey(
                         name: "FK_FloatAttributes_AttributeDefinitions_AttributeDefinitionId",
                         column: x => x.AttributeDefinitionId,
                         principalTable: "AttributeDefinitions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_FloatAttributes_Collections_CollectionId",
+                        column: x => x.CollectionId,
+                        principalTable: "Collections",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -231,8 +330,9 @@ namespace Librarian.DB.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Value = table.Column<long>(type: "bigint", nullable: false),
-                    FileId = table.Column<int>(type: "integer", nullable: false),
+                    FileId = table.Column<int>(type: "integer", nullable: true),
                     SubResourceId = table.Column<int>(type: "integer", nullable: true),
+                    CollectionId = table.Column<int>(type: "integer", nullable: true),
                     AttributeDefinitionId = table.Column<int>(type: "integer", nullable: false),
                     Editable = table.Column<bool>(type: "boolean", nullable: false),
                     DateUpdated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -242,10 +342,17 @@ namespace Librarian.DB.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_IntegerAttributes", x => x.Id);
+                    table.CheckConstraint("CK_IntegerAttributes_Owner", "num_nonnulls(\"FileId\", \"CollectionId\") = 1");
                     table.ForeignKey(
                         name: "FK_IntegerAttributes_AttributeDefinitions_AttributeDefinitionId",
                         column: x => x.AttributeDefinitionId,
                         principalTable: "AttributeDefinitions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_IntegerAttributes_Collections_CollectionId",
+                        column: x => x.CollectionId,
+                        principalTable: "Collections",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -262,6 +369,36 @@ namespace Librarian.DB.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "RawMetadataAttributes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    FileId = table.Column<int>(type: "integer", nullable: false),
+                    SubResourceId = table.Column<int>(type: "integer", nullable: true),
+                    Namespace = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    Key = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: false),
+                    Value = table.Column<string>(type: "text", nullable: false),
+                    ProviderId = table.Column<string>(type: "text", nullable: false),
+                    DateUpdated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RawMetadataAttributes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RawMetadataAttributes_IndexedFiles_FileId",
+                        column: x => x.FileId,
+                        principalTable: "IndexedFiles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_RawMetadataAttributes_SubResources_SubResourceId",
+                        column: x => x.SubResourceId,
+                        principalTable: "SubResources",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "TextAttributes",
                 columns: table => new
                 {
@@ -269,8 +406,9 @@ namespace Librarian.DB.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Value = table.Column<string>(type: "text", nullable: false),
                     ValueSearch = table.Column<NpgsqlTsVector>(type: "tsvector", nullable: true),
-                    FileId = table.Column<int>(type: "integer", nullable: false),
+                    FileId = table.Column<int>(type: "integer", nullable: true),
                     SubResourceId = table.Column<int>(type: "integer", nullable: true),
+                    CollectionId = table.Column<int>(type: "integer", nullable: true),
                     AttributeDefinitionId = table.Column<int>(type: "integer", nullable: false),
                     Editable = table.Column<bool>(type: "boolean", nullable: false),
                     DateUpdated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -280,10 +418,17 @@ namespace Librarian.DB.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_TextAttributes", x => x.Id);
+                    table.CheckConstraint("CK_TextAttributes_Owner", "num_nonnulls(\"FileId\", \"CollectionId\") = 1");
                     table.ForeignKey(
                         name: "FK_TextAttributes_AttributeDefinitions_AttributeDefinitionId",
                         column: x => x.AttributeDefinitionId,
                         principalTable: "AttributeDefinitions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_TextAttributes_Collections_CollectionId",
+                        column: x => x.CollectionId,
+                        principalTable: "Collections",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -302,7 +447,11 @@ namespace Librarian.DB.Migrations
             migrationBuilder.InsertData(
                 table: "AttributeAliases",
                 columns: new[] { "Id", "Alias", "AttributeDefinitionId", "Role" },
-                values: new object[] { 105, "filename", null, 1 });
+                values: new object[,]
+                {
+                    { 85, "tlen", null, 1 },
+                    { 105, "filename", null, 1 }
+                });
 
             migrationBuilder.InsertData(
                 table: "AttributeDefinitions",
@@ -315,32 +464,32 @@ namespace Librarian.DB.Migrations
                     { 4, "", "Audio", false, "Album artist (sort)", 0, "" },
                     { 5, "The ideal listening gain for an entire album", "Audio", false, "Album gain", 4, "" },
                     { 6, "Peak album amplitude, used to predict whether the required replay gain adjustment will cause clipping during playback", "Audio", false, "Album peak", 4, "dB" },
-                    { 7, "", "Audio", false, "Artist", 0, "dB" },
+                    { 7, "", "Audio", false, "Artist", 0, "" },
                     { 8, "", "Audio", false, "Artist (sort)", 0, "" },
-                    { 9, "", "Audio", false, "Beats per minute", 3, "" },
-                    { 10, "", "Audio", false, "Bits per sample", 3, "" },
-                    { 11, "", "Audio", false, "Channels", 3, "" },
+                    { 9, "", "Audio", false, "Beats per minute", 3, "bpm" },
+                    { 10, "", "Audio", true, "Bits per sample", 3, "" },
+                    { 11, "", "Audio", true, "Channels", 3, "" },
                     { 12, "", "Audio", false, "Composer", 0, "" },
                     { 13, "", "Audio", false, "Engineer", 0, "" },
-                    { 14, "", "Audio", false, "Initial key", 0, "bpm" },
-                    { 15, "", "Audio", false, "Lyrics", 1, "bps" },
+                    { 14, "", "Audio", false, "Initial key", 0, "" },
+                    { 15, "", "Audio", false, "Lyrics", 1, "" },
                     { 16, "", "Audio", false, "Original album", 0, "" },
                     { 17, "", "Audio", false, "Reference loudness", 4, "" },
-                    { 18, "", "Audio", false, "Sample rate", 3, "" },
-                    { 19, "", "Audio", false, "Total tracks", 3, "" },
+                    { 18, "", "Audio", true, "Sample rate", 3, "Hz" },
+                    { 19, "", "Audio", true, "Total tracks", 3, "" },
                     { 20, "", "Audio", false, "Track ", 3, "" },
                     { 21, "", "Audio", false, "Track artist", 0, "" },
                     { 22, "", "Audio", false, "Track gain", 4, "" },
                     { 23, "", "Audio", false, "Track peak", 4, "" },
-                    { 24, "Date and time when the file was created on disk.", "File attributes", false, "Date created", 5, "" },
-                    { 25, "Date and time when the file was last modified.", "File attributes", false, "Date modified", 5, "" },
-                    { 26, "The file extension.", "File attributes", false, "File extension", 0, "" },
+                    { 24, "Date and time when the file was created on disk.", "File attributes", true, "Date created", 5, "" },
+                    { 25, "Date and time when the file was last modified.", "File attributes", true, "Date modified", 5, "" },
+                    { 26, "The file extension.", "File attributes", true, "File extension", 0, "" },
                     { 27, "The file name as it appears on disk.", "File attributes", false, "File name", 0, "" },
-                    { 28, "File type as detected by the 'file' command.", "File attributes", false, "File type", 0, "" },
-                    { 29, "The full file system path to the file.", "File attributes", false, "Full path", 0, "" },
-                    { 30, "Number of items (files or folders) in the directory.", "File attributes", false, "Item count", 3, "" },
-                    { 31, "The detected mime type of the file.", "File attributes", false, "Mime type", 0, "" },
-                    { 32, "The size of the file in bytes.", "File attributes", false, "Size", 3, "" },
+                    { 28, "File type as detected by the 'file' command.", "File attributes", true, "File type", 0, "" },
+                    { 29, "The full file system path to the file.", "File attributes", true, "Full path", 0, "" },
+                    { 30, "Number of items (files or folders) in the directory.", "File attributes", true, "Item count", 3, "" },
+                    { 31, "The detected mime type of the file.", "File attributes", true, "Mime type", 0, "" },
+                    { 32, "The size of the file in bytes.", "File attributes", true, "Size", 3, "bytes" },
                     { 33, "Product identifier used by the Amazon store", "General", false, "Amazon Standard Identification Number (ASIN)", 0, "" },
                     { 34, "", "General", false, "Bar code", 0, "" },
                     { 35, "", "General", false, "Catalog number", 0, "" },
@@ -360,8 +509,8 @@ namespace Librarian.DB.Migrations
                     { 49, "", "General", false, "Encoded by", 0, "" },
                     { 50, "", "General", false, "Encoder", 0, "" },
                     { 51, "", "General", false, "Encoder settings", 0, "" },
-                    { 52, "", "General", false, "Id", 0, "" },
-                    { 53, "", "General", false, "Index", 3, "" },
+                    { 52, "", "General", true, "Id", 0, "" },
+                    { 53, "", "General", true, "Index", 3, "" },
                     { 54, "", "General", false, "Language", 0, "" },
                     { 55, "", "General", false, "Location", 0, "" },
                     { 56, "", "General", false, "Minor version", 0, "" },
@@ -387,17 +536,17 @@ namespace Librarian.DB.Migrations
                     { 76, "", "General", false, "Written by", 0, "" },
                     { 77, "", "General", false, "Year", 3, "" },
                     { 78, "", "General", false, "Year created", 3, "" },
-                    { 79, "Ratio obtained by dividing the width by the height.", "Image", false, "Aspect ratio", 4, "" },
-                    { 80, "Image height in pixels.", "Image", false, "Height", 3, "" },
-                    { 81, "Total number of pixels in this image.", "Image", false, "Pixels", 3, "" },
-                    { 82, "Image width in pixels.", "Image", false, "Width", 3, "" },
-                    { 83, "", "Media", false, "Actor", 0, "dB" },
-                    { 84, "", "Media", false, "Bit rate", 3, "" },
-                    { 85, "", "Media", false, "Codec", 0, "" },
+                    { 79, "Ratio obtained by dividing the width by the height.", "Image", true, "Aspect ratio", 4, "" },
+                    { 80, "Image height in pixels.", "Image", true, "Height", 3, "" },
+                    { 81, "Total number of pixels in this image.", "Image", true, "Pixels", 3, "" },
+                    { 82, "Image width in pixels.", "Image", true, "Width", 3, "" },
+                    { 83, "", "Media", false, "Actor", 0, "" },
+                    { 84, "", "Media", true, "Bit rate", 3, "bps" },
+                    { 85, "", "Media", true, "Codec", 0, "" },
                     { 86, "", "Media", false, "Date recorded", 5, "" },
                     { 87, "", "Media", false, "Disc", 3, "" },
-                    { 88, "Media duration.", "Media", false, "Duration", 6, "" },
-                    { 89, "", "Media", false, "End time", 6, "" },
+                    { 88, "Media duration.", "Media", true, "Duration", 6, "" },
+                    { 89, "", "Media", true, "End time", 6, "" },
                     { 90, "", "Media", false, "Episode ID", 0, "" },
                     { 91, "", "Media", false, "Episode number", 3, "" },
                     { 92, "", "Media", false, "Genre", 0, "" },
@@ -413,13 +562,13 @@ namespace Librarian.DB.Migrations
                     { 102, "", "Media", false, "Producer", 0, "" },
                     { 103, "", "Media", false, "Screenplay by", 0, "" },
                     { 104, "", "Media", false, "Season number", 3, "" },
-                    { 105, "", "Media", false, "Start time", 6, "" },
-                    { 106, "", "Media", false, "Stream type", 0, "" },
+                    { 105, "", "Media", true, "Start time", 6, "" },
+                    { 106, "", "Media", true, "Stream type", 0, "" },
                     { 107, "", "Media", false, "Studio", 0, "" },
                     { 108, "", "Media", false, "Total discs", 3, "" },
                     { 109, "Version of this package.", "Package", false, "Version", 0, "" },
-                    { 110, "System architecture for which this software was compiled", "Software", false, "Architecture", 0, "dB" },
-                    { 111, "", "Software", false, "End of life date", 5, "dB" },
+                    { 110, "System architecture for which this software was compiled", "Software", false, "Architecture", 0, "" },
+                    { 111, "", "Software", false, "End of life date", 5, "" },
                     { 112, "", "Software", false, "Installation instructions", 2, "" },
                     { 113, "", "Software", false, "Minimum CPU", 0, "" },
                     { 114, "", "Software", false, "Minimum disk space", 3, "" },
@@ -427,8 +576,9 @@ namespace Librarian.DB.Migrations
                     { 116, "", "Software", false, "Platform", 0, "" },
                     { 117, "", "Software", false, "Serial key", 0, "" },
                     { 118, "", "Software", false, "User interface", 0, "" },
-                    { 119, "", "Video", false, "Frame rate", 4, "" },
-                    { 120, "", "Video", false, "Frames", 3, "" }
+                    { 119, "", "Video", true, "Frame rate", 4, "fps" },
+                    { 120, "", "Video", true, "Frames", 3, "" },
+                    { 121, "SHA-256 content hash (hex).", "File attributes", true, "Checksum", 0, "" }
                 });
 
             migrationBuilder.InsertData(
@@ -520,7 +670,6 @@ namespace Librarian.DB.Migrations
                     { 82, "disc", 87, 0 },
                     { 83, "duration", 88, 0 },
                     { 84, "duration-eng", 88, 0 },
-                    { 85, "tlen", 88, 0 },
                     { 86, "episodeid", 90, 0 },
                     { 87, "episodenumber", 91, 0 },
                     { 88, "episode_sort", 91, 0 },
@@ -565,6 +714,11 @@ namespace Librarian.DB.Migrations
                 column: "AttributeDefinitionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_BlobAttributes_CollectionId",
+                table: "BlobAttributes",
+                column: "CollectionId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_BlobAttributes_FileId",
                 table: "BlobAttributes",
                 column: "FileId");
@@ -575,9 +729,24 @@ namespace Librarian.DB.Migrations
                 column: "SubResourceId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Collections_ParentCollectionId",
+                table: "Collections",
+                column: "ParentCollectionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Collections_SourcePath",
+                table: "Collections",
+                column: "SourcePath");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_DateAttributes_AttributeDefinitionId",
                 table: "DateAttributes",
                 column: "AttributeDefinitionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DateAttributes_CollectionId",
+                table: "DateAttributes",
+                column: "CollectionId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_DateAttributes_FileId",
@@ -595,6 +764,11 @@ namespace Librarian.DB.Migrations
                 column: "AttributeDefinitionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_FloatAttributes_CollectionId",
+                table: "FloatAttributes",
+                column: "CollectionId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_FloatAttributes_FileId",
                 table: "FloatAttributes",
                 column: "FileId");
@@ -603,6 +777,28 @@ namespace Librarian.DB.Migrations
                 name: "IX_FloatAttributes_SubResourceId",
                 table: "FloatAttributes",
                 column: "SubResourceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_IndexedFileContents_ContentSearch",
+                table: "IndexedFileContents",
+                column: "ContentSearch")
+                .Annotation("Npgsql:IndexMethod", "gin");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_IndexedFiles_CollectionId",
+                table: "IndexedFiles",
+                column: "CollectionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_IndexedFiles_ItemId",
+                table: "IndexedFiles",
+                column: "ItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_IndexedFiles_ParentFileId_InternalPath",
+                table: "IndexedFiles",
+                columns: new[] { "ParentFileId", "InternalPath" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_IndexedFiles_Path",
@@ -616,6 +812,11 @@ namespace Librarian.DB.Migrations
                 column: "AttributeDefinitionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_IntegerAttributes_CollectionId",
+                table: "IntegerAttributes",
+                column: "CollectionId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_IntegerAttributes_FileId",
                 table: "IntegerAttributes",
                 column: "FileId");
@@ -623,6 +824,26 @@ namespace Librarian.DB.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_IntegerAttributes_SubResourceId",
                 table: "IntegerAttributes",
+                column: "SubResourceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Items_ParentCollectionId",
+                table: "Items",
+                column: "ParentCollectionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RawMetadataAttributes_FileId",
+                table: "RawMetadataAttributes",
+                column: "FileId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RawMetadataAttributes_Namespace_Key",
+                table: "RawMetadataAttributes",
+                columns: new[] { "Namespace", "Key" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RawMetadataAttributes_SubResourceId",
+                table: "RawMetadataAttributes",
                 column: "SubResourceId");
 
             migrationBuilder.CreateIndex(
@@ -636,6 +857,11 @@ namespace Librarian.DB.Migrations
                 column: "AttributeDefinitionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_TextAttributes_CollectionId",
+                table: "TextAttributes",
+                column: "CollectionId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TextAttributes_FileId",
                 table: "TextAttributes",
                 column: "FileId");
@@ -644,6 +870,17 @@ namespace Librarian.DB.Migrations
                 name: "IX_TextAttributes_SubResourceId",
                 table: "TextAttributes",
                 column: "SubResourceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TextAttributes_ValueSearch",
+                table: "TextAttributes",
+                column: "ValueSearch")
+                .Annotation("Npgsql:IndexMethod", "gin");
+
+            // Reserve the curated-id space (folded in from the old ReserveCurationIdSpace migration): seed
+            // AttributeDefinitions occupy ids 1..N (well under the base), while "Other" definitions created
+            // on demand during indexing start at 1,000,000 — so the two ranges never collide.
+            migrationBuilder.Sql("ALTER TABLE \"AttributeDefinitions\" ALTER COLUMN \"Id\" RESTART WITH 1000000;");
         }
 
         /// <inheritdoc />
@@ -668,6 +905,9 @@ namespace Librarian.DB.Migrations
                 name: "IntegerAttributes");
 
             migrationBuilder.DropTable(
+                name: "RawMetadataAttributes");
+
+            migrationBuilder.DropTable(
                 name: "TextAttributes");
 
             migrationBuilder.DropTable(
@@ -678,6 +918,12 @@ namespace Librarian.DB.Migrations
 
             migrationBuilder.DropTable(
                 name: "IndexedFiles");
+
+            migrationBuilder.DropTable(
+                name: "Items");
+
+            migrationBuilder.DropTable(
+                name: "Collections");
         }
     }
 }
