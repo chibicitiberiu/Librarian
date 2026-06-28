@@ -115,6 +115,45 @@ namespace Librarian.Metadata.Normalization
             RegisterAudioTagRules("id3", includeGenre: false); // exiftool -n makes the ID3 genre numeric
             RegisterDocumentRules();
             RegisterSoftwareRules();
+            RegisterVideoTagRules();
+            RegisterExternalIdRules();
+        }
+
+        // Video container tags (Matroska / QuickTime) surfaced by the exiftool provider. The technical
+        // atoms stay in the raw layer (we never filter raw); these promote the human-meaningful tags a
+        // video actually carries so the Video facets aren't empty for tagged files.
+        private void RegisterVideoTagRules()
+        {
+            Text("matroska", "title", General.Title);
+            Text("quicktime", "title", General.Title);
+            TextMulti("matroska", "genre", Media.Genre);
+            Text("matroska", "comment", General.Comment);
+            Text("quicktime", "comment", General.Comment);
+            Text("matroska", "description", General.Description);
+            Text("matroska", "synopsis", General.Synopsis);
+            Text("matroska", "summary", General.Summary);
+            Text("matroska", "show", General.Collection);
+            Integer("matroska", "season_number", Media.SeasonNumber);
+            Integer("matroska", "episode_sort", Media.EpisodeNumber);
+        }
+
+        // External-database identifiers — captured wherever a provider exposes them (container tags,
+        // ID3/Vorbis, sidecars) so we can later fetch richer metadata from those services. MusicBrainz /
+        // AcoustID IDs are mapped under the audio rules; these add the film/TV databases.
+        private void RegisterExternalIdRules()
+        {
+            foreach (var ns in new[] { "tika", "matroska", "id3", "vorbis", "xmpdm", "quicktime" })
+            {
+                Text(ns, "imdb_id", Media.IMDbID);
+                Text(ns, "imdbid", Media.IMDbID);
+                Text(ns, "imdb", Media.IMDbID);
+                Text(ns, "tmdb_id", Media.TMDbID);
+                Text(ns, "tmdbid", Media.TMDbID);
+                Text(ns, "themoviedb", Media.TMDbID);
+                Text(ns, "tvdb_id", Media.TVDBID);
+                Text(ns, "tvdbid", Media.TVDBID);
+                Text(ns, "thetvdb", Media.TVDBID);
+            }
         }
 
         // Image dimensions surfaced by the exiftool provider (and Tika). exiftool with -G0 reports
@@ -381,7 +420,18 @@ namespace Librarian.Metadata.Normalization
 
         private void Date(string ns, string key, int definitionId, ValueCoercer.Coercer? coercer = null)
             => Add(ns, key, definitionId, coercer ?? ValueCoercer.IsoDate,
-                   (id, v) => new DateAttribute { AttributeDefinitionId = id, Value = (DateTimeOffset)v });
+                   (id, v) => new DateAttribute { AttributeDefinitionId = id, Value = (DateTimeOffset)v }, filter: IsRealDate);
+
+        // Reject placeholder dates that aren't real: exiftool's all-zero date, and the Unix (1970) /
+        // QuickTime (1904) epoch zeros containers emit when no date was set — they otherwise pollute
+        // canonical Date fields. The raw value is untouched (kept in the raw layer); only promotion is skipped.
+        private static bool IsRealDate(string raw)
+        {
+            string v = raw.TrimStart();
+            return !(v.StartsWith("0000")
+                  || v.StartsWith("1904-01-01") || v.StartsWith("1904:01:01")
+                  || v.StartsWith("1970-01-01") || v.StartsWith("1970:01:01"));
+        }
 
         /// <summary>A duration (TimeSpan) field stored as total seconds (a <see cref="FloatAttribute"/>,
         /// matching how the factory persists TimeSpan); accepts seconds, HH:MM:SS, M:SS.ms, etc.</summary>

@@ -115,6 +115,12 @@ namespace Librarian.Metadata.Providers.MetadataCli
                         result.Add(metadataFactory.Create(Media.Disc, match.Groups[1].Value, providerId, providerAttributeId: key, editable: true));
                         result.Add(metadataFactory.Create(Media.TotalDiscs, match.Groups[2].Value, providerId, providerAttributeId: "disctotal", editable: true));
                     }
+                    else if (pair.Value?.ToString() is { } sv && IsEpochPlaceholderDate(sv))
+                    {
+                        // Skip placeholder dates: mp4 'creation_time' is frequently the 1970 / 1904 epoch
+                        // zero, which would pollute a canonical Date field. Raw providers still capture the
+                        // value untouched in the raw layer.
+                    }
                     else
                     {
                         result.Add(metadataFactory.Create(key, pair.Value, ProviderId, providerAttributeId: key, editable: true));
@@ -306,6 +312,16 @@ namespace Librarian.Metadata.Providers.MetadataCli
                 result.Add(metadataFactory.Create(Media.EndTime, chapter.End, ProviderId, editable: false, subResource: chapterResource));
             if (chapter.Start != null && chapter.End != null)
                 result.Add(metadataFactory.Create(Media.Duration, chapter.End - chapter.Start, ProviderId, editable: false, subResource: chapterResource));
+        }
+
+        /// <summary>True for placeholder dates that aren't real: the all-zero date and the Unix (1970) /
+        /// QuickTime (1904) epoch zeros that containers emit when no date was set.</summary>
+        private static bool IsEpochPlaceholderDate(string value)
+        {
+            string v = value.TrimStart();
+            return v.StartsWith("0000")
+                || v.StartsWith("1904-01-01") || v.StartsWith("1904:01:01")
+                || v.StartsWith("1970-01-01") || v.StartsWith("1970:01:01");
         }
 
         /// <summary>Parses a libav duration that may carry more fractional digits than TimeSpan accepts
