@@ -1,14 +1,17 @@
 ﻿using System;
+using System.Threading;
 
 namespace Librarian.Jobs
 {
     public class JobToken
     {
+        private int done;
+
         public Guid JobId { get; }
 
         public int TotalUnits { get; set; }
 
-        public int Done { get; private set; }
+        public int Done => done;
 
         public event EventHandler<JobProgressEventArgs>? Progressed;
 
@@ -18,13 +21,17 @@ namespace Librarian.Jobs
         {
             JobId = jobId;
             TotalUnits = totalUnits;
-            Done = 0;
+            done = 0;
         }
 
+        // Indexing advances this from multiple threads (files are extracted in parallel), so the counter
+        // is updated atomically.
         public void AdvanceProgress(int amount, string? message)
         {
-            Done += amount;
-            Progressed?.Invoke(this, new JobProgressEventArgs(JobId, Convert.ToSingle(Done) / Convert.ToSingle(TotalUnits), message));
+            int now = Interlocked.Add(ref done, amount);
+            int total = TotalUnits;
+            float fraction = total > 0 ? (float)now / total : 0f;
+            Progressed?.Invoke(this, new JobProgressEventArgs(JobId, fraction, message));
         }
 
         public void Finish()

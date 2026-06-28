@@ -13,17 +13,28 @@ namespace Librarian.Services
 
         public FileService(IConfiguration config)
         {
-            BasePath = PathUtils.GetCanonicalPath(config["BaseDirectory"]!);
-            AppDataPath = PathUtils.GetCanonicalPath(config["AppDataDirectory"]!);
+            // Store the roots without a trailing separator so containment checks and GetRelativePath
+            // behave consistently (a trailing slash made the root's own relative path resolve to "..",
+            // which tripped the traversal guard below and aborted indexing).
+            BasePath = NormalizeRoot(PathUtils.GetCanonicalPath(config["BaseDirectory"]!));
+            AppDataPath = NormalizeRoot(PathUtils.GetCanonicalPath(config["AppDataDirectory"]!));
         }
+
+        private static string NormalizeRoot(string path) =>
+            path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
         public string Resolve(string relativePath)
         {
-            string absPath = PathUtils.GetCanonicalPath(Path.Combine(BasePath, relativePath ?? string.Empty));
+            // Combine then normalize lexically (resolves any "." / ".." without touching the filesystem).
+            string absPath = Path.GetFullPath(Path.Combine(BasePath, relativePath ?? string.Empty))
+                                 .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-            // avoid path traversal
-            if (!absPath.StartsWith(BasePath))
-                throw new ArgumentException("Path traversal!");
+            // Boundary-correct containment: the path must be the root itself or live under it (with a
+            // separator). A plain StartsWith would both miss "/lib/.." escapes and falsely reject a
+            // sibling like "/library-backup" that shares the root's textual prefix.
+            if (absPath != BasePath &&
+                !absPath.StartsWith(BasePath + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+                throw new ArgumentException($"Path traversal! (resolved '{relativePath}' to '{absPath}', outside '{BasePath}')");
 
             return absPath;
         }

@@ -235,6 +235,9 @@ namespace Librarian.Services
             serviceProvider.GetRequiredService<ProviderExecutor>().Reset();
 
             var jobToken = jobTracker.StartJob(Strings.IndexingAll);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            logger.LogInformation("Index ({mode}) started at {root}",
+                force ? "full re-extract" : "incremental", fileService.BasePath);
 
             await IndexDirectoryInternal(new DirectoryInfo(fileService.BasePath), recurse: true, force: force, jobToken: jobToken);
 
@@ -242,6 +245,8 @@ namespace Librarian.Services
                 await PruneMissing(GetScopedServices(scope));
 
             jobToken.Finish();
+            logger.LogInformation("Index finished in {elapsed}: {count} items walked.",
+                sw.Elapsed, jobToken.Done);
         }
 
         /// <summary>Re-indexes only the files whose last extraction was flagged incomplete (a transient
@@ -350,41 +355,73 @@ namespace Librarian.Services
             }
 
             logger.LogTrace("Indexing directory {folderName}", directory.FullName);
-            using (var scope = serviceProvider.CreateScope())
-                await UpdateIndex(directory, force, GetScopedServices(scope));
+            await IndexOneDirectory(directory, force);
 
-            if (recurse)
+            if (!recurse)
+                return;
+
+            // Walk the subtree first (cheap): index each subdirectory entry and collect every file. The
+            // expensive per-file metadata extraction (meta-cli / exiftool processes) is then run with
+            // bounded parallelism, which is the main indexing speed-up — the walk alone is I/O-light.
+            var files = new List<FileInfo>();
+            var dirQueue = new Queue<DirectoryInfo>();
+            dirQueue.Enqueue(directory);
+            var opts = new EnumerationOptions() { IgnoreInaccessible = true, ReturnSpecialDirectories = false };
+
+            while (dirQueue.Count > 0)
             {
-                Queue<FileSystemInfo> queue = new();
-                queue.Enqueue(directory);
-
-                while (queue.Count > 0)
+                var dir = dirQueue.Dequeue();
+                try
                 {
-                    var item = queue.Dequeue();
-                    jobToken.AdvanceProgress(1, fileService.GetRelativePath(item.FullName));
+                    foreach (var sub in dir.EnumerateDirectories("*", opts))
+                    {
+                        if (ShouldIgnoreDirectory(sub))
+                            continue;
+                        await IndexOneDirectory(sub, force);
+                        dirQueue.Enqueue(sub);
+                    }
+                    files.AddRange(dir.EnumerateFiles("*", opts));
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Enumerating directory {path} failed.", dir.FullName);
+                }
+            }
 
+            jobToken.TotalUnits = files.Count;
+
+            // Each file is extracted in its own DI scope / DbContext and is otherwise independent (the one
+            // shared write — on-demand AttributeDefinition creation — is locked in MetadataFactory). A
+            // degree near the core count keeps the external metadata processes busy without oversubscribing.
+            int degree = Math.Max(2, Environment.ProcessorCount);
+            await Parallel.ForEachAsync(files,
+                new ParallelOptions { MaxDegreeOfParallelism = degree },
+                async (file, _) =>
+                {
+                    jobToken.AdvanceProgress(1, fileService.GetRelativePath(file.FullName));
                     try
                     {
-                        if (item is FileInfo file)
-                        {
-                            await IndexFileInternal(file, force);
-                        }
-                        else if (item is DirectoryInfo dir)
-                        {
-                            await IndexDirectoryInternal(dir, false, force, jobToken);
-
-                            var opts = new EnumerationOptions() { IgnoreInaccessible = true, ReturnSpecialDirectories = false };
-                            queue.EnqueueRange(dir.EnumerateDirectories("*", opts));
-                            queue.EnqueueRange(dir.EnumerateFiles("*", opts));
-
-                            jobToken.TotalUnits = jobToken.Done + queue.Count;
-                        }
+                        await IndexFileInternal(file, force);
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex, "Indexing item {path} failed.", item.FullName);
+                        logger.LogError(ex, "Indexing item {path} failed.", file.FullName);
                     }
-                }
+                });
+        }
+
+        /// <summary>Indexes a single directory entry in its own scope, isolating failures so one bad folder
+        /// can't abort the whole run.</summary>
+        private async Task IndexOneDirectory(DirectoryInfo dir, bool force)
+        {
+            try
+            {
+                using var scope = serviceProvider.CreateScope();
+                await UpdateIndex(dir, force, GetScopedServices(scope));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Indexing directory {path} failed; skipping it and continuing.", dir.FullName);
             }
         }
 
