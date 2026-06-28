@@ -29,10 +29,43 @@ namespace Test
         [InlineData("setup.inf", SidecarKind.CompanionResource)]
         [InlineData("config.ini", SidecarKind.CompanionResource)]
         [InlineData("libfoo.so", SidecarKind.CompanionResource)]
+        // Subtitles fold into their video — never standalone items (and so they don't block promotion).
+        [InlineData("Madagascar (2005)-rum.srt", SidecarKind.CompanionResource)]
+        [InlineData("movie.sub", SidecarKind.CompanionResource)]
+        [InlineData("movie.idx", SidecarKind.CompanionResource)]
+        [InlineData("movie.ass", SidecarKind.CompanionResource)]
+        [InlineData("movie.vtt", SidecarKind.CompanionResource)]
         public void Classifies_by_name(string fileName, SidecarKind expected)
         {
             Assert.Equal(expected, Sidecars.Classify(fileName));
         }
+
+        [Theory]
+        [InlineData("movie.mkv", true, true)]    // video → primary media
+        [InlineData("clip.AVI", true, true)]
+        [InlineData("song.flac", false, true)]   // audio → primary media (not video)
+        [InlineData("game.exe", false, true)]    // executable → primary media
+        [InlineData("cover.jpg", false, false)]
+        [InlineData("subtitle.srt", false, false)]
+        [InlineData("notes.txt", false, false)]
+        public void Video_and_primary_media_predicates(string name, bool video, bool primaryMedia)
+        {
+            Assert.Equal(video, Sidecars.IsVideo(name));
+            Assert.Equal(primaryMedia, Sidecars.IsPrimaryMedia(name));
+        }
+
+        // The whole point of detecting content MIME: it overrides a lying extension. A video with a .txt
+        // name is still a video; a real text file with a video extension is not.
+        [Theory]
+        [InlineData("movie.txt", "video/mp4", true)]
+        [InlineData("data.bin", "audio/x-flac", true)]
+        [InlineData("clip.mkv", "text/plain", false)]   // MIME says text → not primary media
+        public void Content_mime_overrides_extension(string name, string mime, bool primaryMedia)
+            => Assert.Equal(primaryMedia, Sidecars.IsPrimaryMedia(name, mime));
+
+        [Fact]
+        public void Image_mime_with_art_stem_is_companion_art_even_with_wrong_extension()
+            => Assert.Equal(SidecarKind.CompanionArt, Sidecars.Classify("cover.dat", "image/png"));
 
         [Theory]
         [InlineData("OP2_ART.BMP", true, false, false)]
