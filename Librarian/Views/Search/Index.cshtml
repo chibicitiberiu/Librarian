@@ -1,15 +1,9 @@
 @model Librarian.ViewModels.SearchViewModel
 @{
+    Layout = "_WmLayout";
     ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Query) ? "Search" : $"Search: {Model.Query}";
-    ViewData["CurrentPage"] = "search";
-    ViewData["Breadcrumbs"] = new List<Breadcrumb>
-    {
-        new("Search", Url.Action("Index", "Search"), Url.Content("~/icons/16/places/search.png")),
-    };
-    if (Model.Results is not null)
-    {
-        ViewData["Status"] = $"{Model.Results.TotalCount} match{(Model.Results.TotalCount == 1 ? "" : "es")}";
-    }
+    ViewData["TaskbarActive"] = "search";
+    ViewData["WmSidebarActive"] = "search";
 
     string? ParentPath(string path)
     {
@@ -27,102 +21,131 @@
     })!;
 }
 
-<form asp-controller="Search" asp-action="Index" method="get">
-    <div class="toolbar search-bar">
-        <input class="input flex-fill" type="search" name="query" value="@Model.Query"
-               placeholder="Search content and metadata…" autofocus />
-        <button type="submit"><img src="~/icons/16/gnome-searchtool.png" /> Search</button>
+<wm-window title="Search" icon="/icons/16/places/search.png">
+
+    <wm-toolbar>
+        <form method="get" asp-controller="Search" asp-action="Index">
+            <span class="wm-toolbar-field">
+                <input type="search" name="query" value="@Model.Query"
+                       placeholder="Search content and metadata…" autofocus />
+            </span>
+
+            @if (!string.IsNullOrWhiteSpace(Model.PathPrefix))
+            {
+                <input type="hidden" name="path" value="@Model.PathPrefix" />
+            }
+
+            @* Checkbox first, hidden "false" companion after, so an unchecked box binds to false. *@
+            <label class="wm-field-inline">
+                <input type="checkbox" name="include_content" value="true" checked="@Model.IncludeContent" />
+                in content
+            </label>
+            <input type="hidden" name="include_content" value="false" />
+
+            <label class="wm-field-inline">
+                <input type="checkbox" name="include_metadata" value="true" checked="@Model.IncludeMetadata" />
+                in metadata
+            </label>
+            <input type="hidden" name="include_metadata" value="false" />
+
+            <wm-button type="submit" icon="/icons/32/gnome-searchtool.png" text="Search"></wm-button>
+            <wm-button href="@Url.Action("Advanced", "Search")" text="Advanced"></wm-button>
+        </form>
+    </wm-toolbar>
+
+    <div class="wm-locationbar-row">
+        <wm-breadcrumb>
+            <wm-crumb href="@Url.Action("Index", "Browse", new { path = "" })" icon="/icons/16/go-home.png" text="Home"></wm-crumb>
+            <wm-crumb icon="/icons/16/places/search.png" text="Search"></wm-crumb>
+        </wm-breadcrumb>
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(Model.PathPrefix))
-    {
-        <input type="hidden" name="path" value="@Model.PathPrefix" />
-    }
+    <div class="wm-window-body">
+        <partial name="_WmSidebar" />
+        <wm-content>
+            <div class="wm-page">
 
-    <div class="toolbar search-options">
-        @* Checkbox first, hidden "false" companion after, so an unchecked box binds to false. *@
-        <label>
-            <input type="checkbox" name="include_content" value="true" checked="@Model.IncludeContent" />
-            in content
-        </label>
-        <input type="hidden" name="include_content" value="false" />
-
-        <label>
-            <input type="checkbox" name="include_metadata" value="true" checked="@Model.IncludeMetadata" />
-            in metadata
-        </label>
-        <input type="hidden" name="include_metadata" value="false" />
-
-        <span class="separator"></span>
-        <a asp-controller="Search" asp-action="Advanced">Advanced search</a>
-    </div>
-</form>
-
-<hr />
-
-@if (Model.Results is null)
-{
-    <p class="search-hint">Enter a query to search file contents and metadata.</p>
-}
-else if (Model.Results.TotalCount == 0)
-{
-    <p class="search-hint">No results for <strong>@Model.Query</strong>.</p>
-}
-else
-{
-    <p class="search-summary">
-        @Model.Results.TotalCount result@(Model.Results.TotalCount == 1 ? "" : "s")
-        — page @Model.Results.Page of @Model.Results.TotalPages
-    </p>
-
-    <ol class="search-results">
-        @foreach (var result in Model.Results.Results)
-        {
-            var parent = ParentPath(result.Path);
-            <li class="search-result">
-                <div class="search-result-title">
-                    @* Url.Action routes through the {**path} catch-all, which URL-encodes
-                       special characters (#, ?, %, spaces) while preserving slashes. *@
-                    <a href="@Url.Action("Index", "Metadata", new { path = result.Path })">@result.Name</a>
-                    @if (result.InContent)
-                    {
-                        <span class="badge badge-content">content</span>
-                    }
-                    @if (result.InMetadata)
-                    {
-                        <span class="badge badge-metadata">metadata</span>
-                    }
-                </div>
-                <div class="search-result-path">
-                    @if (parent is not null)
-                    {
-                        <a href="@Url.Action("Index", "Browse", new { path = parent })">@parent/</a>
-                    }
-                    else
-                    {
-                        <a href="@Url.Action("Index", "Browse", new { path = "" })">/</a>
-                    }
-                </div>
-                @if (!string.IsNullOrEmpty(result.Snippet))
+                @if (Model.Results is null)
                 {
-                    <div class="search-result-snippet">@Html.Raw(result.Snippet)</div>
+                    <p class="wm-hint">Enter a query to search file contents and metadata.</p>
                 }
-            </li>
-        }
-    </ol>
+                else if (Model.Results.TotalCount == 0)
+                {
+                    <p class="wm-hint">No results for <strong>@Model.Query</strong>.</p>
+                }
+                else
+                {
+                    <p class="muted">
+                        @Model.Results.TotalCount result@(Model.Results.TotalCount == 1 ? "" : "s")
+                        — page @Model.Results.Page of @Model.Results.TotalPages
+                    </p>
 
-    @if (Model.Results.TotalPages > 1)
-    {
-        <div class="toolbar search-pager">
-            @if (Model.Results.HasPrevious)
-            {
-                <a class="toolbar-button" href="@PageUrl(Model.Results.Page - 1)">&laquo; Previous</a>
-            }
-            <span class="flex-fill"></span>
-            @if (Model.Results.HasNext)
-            {
-                <a class="toolbar-button" href="@PageUrl(Model.Results.Page + 1)">Next &raquo;</a>
-            }
-        </div>
-    }
-}
+                    @foreach (var result in Model.Results.Results)
+                    {
+                        var parent = ParentPath(result.Path);
+                        <div class="wm-result">
+                            <div class="wm-result-title">
+                                @* Url.Action routes through the {**path} catch-all, which URL-encodes
+                                   special characters (#, ?, %, spaces) while preserving slashes. *@
+                                <a href="@Url.Action("Index", "Metadata", new { path = result.Path })">@result.Name</a>
+                                @if (result.InContent)
+                                {
+                                    <span class="wm-badge">content</span>
+                                }
+                                @if (result.InMetadata)
+                                {
+                                    <span class="wm-badge">metadata</span>
+                                }
+                            </div>
+                            <div class="wm-result-path">
+                                @if (parent is not null)
+                                {
+                                    <a href="@Url.Action("Index", "Browse", new { path = parent })">@parent/</a>
+                                }
+                                else
+                                {
+                                    <a href="@Url.Action("Index", "Browse", new { path = "" })">/</a>
+                                }
+                            </div>
+                            @if (!string.IsNullOrEmpty(result.Snippet))
+                            {
+                                <div class="wm-result-snippet">@Html.Raw(result.Snippet)</div>
+                            }
+                        </div>
+                    }
+
+                    @if (Model.Results.TotalPages > 1)
+                    {
+                        <div class="wm-pager">
+                            @if (Model.Results.HasPrevious)
+                            {
+                                <wm-button href="@PageUrl(Model.Results.Page - 1)" text="« Previous"></wm-button>
+                            }
+                            <span class="wm-layout-fill"></span>
+                            @if (Model.Results.HasNext)
+                            {
+                                <wm-button href="@PageUrl(Model.Results.Page + 1)" text="Next »"></wm-button>
+                            }
+                        </div>
+                    }
+                }
+
+            </div>
+        </wm-content>
+    </div>
+
+    <wm-statusbar>
+        @if (Model.Results is null)
+        {
+            <span class="muted">Enter a query to search.</span>
+        }
+        else if (Model.Results.TotalCount == 0)
+        {
+            <span>No matches</span>
+        }
+        else
+        {
+            <span>@Model.Results.TotalCount match@(Model.Results.TotalCount == 1 ? "" : "es") · page @Model.Results.Page of @Model.Results.TotalPages</span>
+        }
+    </wm-statusbar>
+</wm-window>

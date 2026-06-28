@@ -1,12 +1,16 @@
 using Librarian.DB;
 using Librarian.Metadata.Normalization;
 using Librarian.Services;
+using Librarian.Utils;
 using Librarian.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Librarian.Controllers
@@ -24,6 +28,8 @@ namespace Librarian.Controllers
         private readonly DatabaseContext db;
         private readonly MetadataNormalizer normalizer;
         private readonly IConfiguration config;
+        private readonly FileService fileService;
+        private readonly Librarian.Jobs.JobTracker jobTracker;
 
         public AdminController(RenormalizationService renormalizationService,
                                SearchVectorService searchVectors,
@@ -32,7 +38,9 @@ namespace Librarian.Controllers
                                ChecksumService checksumService,
                                DatabaseContext db,
                                MetadataNormalizer normalizer,
-                               IConfiguration config)
+                               IConfiguration config,
+                               FileService fileService,
+                               Librarian.Jobs.JobTracker jobTracker)
         {
             this.renormalizationService = renormalizationService;
             this.searchVectors = searchVectors;
@@ -42,6 +50,8 @@ namespace Librarian.Controllers
             this.db = db;
             this.normalizer = normalizer;
             this.config = config;
+            this.fileService = fileService;
+            this.jobTracker = jobTracker;
         }
 
         public async Task<IActionResult> Index()
@@ -65,6 +75,11 @@ namespace Librarian.Controllers
                 Collections = await db.Collections.CountAsync(),
                 DuplicateSets = (await checksumService.GetDuplicatesAsync()).Count,
                 ChecksumMode = config["Checksum:Mode"] ?? "Off",
+                LibraryDirectory = config["BaseDirectory"],
+                LibraryDirectoryResolved = fileService.BasePath,
+                LastIndexed = await db.IndexedFiles.MaxAsync(f => (DateTimeOffset?)f.IndexLastUpdated),
+                JobRunning = !jobTracker.Jobs.IsEmpty,
+                RunningJob = jobTracker.Jobs.Values.FirstOrDefault()?.Name,
                 UnmappedTotal = unmapped.Count,
                 UnmappedKeys = unmapped.Take(15)
                     .Select(g => new UnmappedKey(g.Namespace, g.Key, g.Count, g.Sample))
@@ -82,6 +97,24 @@ namespace Librarian.Controllers
             var r = await itemAssociation.AssociateAllAsync();
             TempData["AdminMessage"] = $"Reindex complete ({(force ? "forced" : "incremental")}): "
                 + $"{r.Items} items, {r.Sidecars} sidecars, {r.Companions} companions, {r.Promotions} promotions.";
+            return RedirectToAction("Index");
+        }
+
+        /// <summary>Complete rebuild of all derived data: force-re-extract every file (idempotently
+        /// replacing its metadata), prune files no longer on disk, then re-associate items/collections,
+        /// renormalize, and rebuild search. The system of record (files + sidecars) is untouched.</summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RebuildAll()
+        {
+            await indexingService.IndexAll(force: true);     // force re-extract + prune missing
+            var r = await itemAssociation.AssociateAllAsync();
+            int collections = await db.Collections.CountAsync();
+            int renorm = await renormalizationService.RenormalizeAllAsync();
+            int vectors = await searchVectors.RebuildAllAsync();
+            TempData["AdminMessage"] = $"Full rebuild complete: re-extracted every file, "
+                + $"{r.Items} items, {collections} collections, {renorm} attributes renormalized, "
+                + $"{vectors} search vectors.";
             return RedirectToAction("Index");
         }
 
@@ -130,6 +163,82 @@ namespace Librarian.Controllers
             TempData["AdminMessage"] = $"Checksum ({r.Mode}): scanned {r.Scanned}, prefix-hashed {r.PrefixHashed}, "
                 + $"full-hashed {r.FullHashed}; {r.DuplicateSets} duplicate set(s), {r.DuplicateFiles} file(s).";
             return RedirectToAction("Index");
+        }
+
+        /// <summary>Persists the library root to the user settings file. Validated against the filesystem
+        /// first: an invalid root would fail startup verification (the app exits), so a non-existent path is
+        /// never saved. Takes effect on the next restart (the root is read once when the app starts).</summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult SaveLibraryDirectory(string? libraryDirectory)
+        {
+            string? value = libraryDirectory?.Trim();
+            if (string.IsNullOrEmpty(value))
+            {
+                TempData["AdminMessage"] = "Library directory cannot be empty.";
+                return RedirectToAction("Index");
+            }
+
+            string resolved;
+            try
+            {
+                resolved = PathUtils.GetCanonicalPath(value);
+            }
+            catch (Exception ex)
+            {
+                TempData["AdminMessage"] = $"Invalid library directory: {ex.Message}";
+                return RedirectToAction("Index");
+            }
+
+            if (!Directory.Exists(resolved))
+            {
+                TempData["AdminMessage"] = $"Library directory does not exist: {resolved}";
+                return RedirectToAction("Index");
+            }
+
+            try
+            {
+                PersistSetting("BaseDirectory", value);
+            }
+            catch (Exception ex)
+            {
+                TempData["AdminMessage"] = $"Could not save settings: {ex.Message}";
+                return RedirectToAction("Index");
+            }
+
+            bool changed = !string.Equals(resolved, fileService.BasePath, StringComparison.Ordinal);
+            TempData["AdminMessage"] = changed
+                ? $"Library directory saved. Restart Librarian to use: {resolved}"
+                : $"Library directory saved ({resolved}).";
+            return RedirectToAction("Index");
+        }
+
+        /// <summary>Merges one key into the writable settings file (AppDataDirectory/settings.json), which
+        /// is loaded as the highest-precedence configuration source at startup.</summary>
+        private void PersistSetting(string key, string value)
+        {
+            string dir = fileService.AppDataPath;
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, "settings.json");
+
+            var settings = new Dictionary<string, string>();
+            if (System.IO.File.Exists(path))
+            {
+                try
+                {
+                    var existing = JsonSerializer.Deserialize<Dictionary<string, string>>(System.IO.File.ReadAllText(path));
+                    if (existing != null)
+                        settings = existing;
+                }
+                catch
+                {
+                    // Corrupt or unexpected shape — start fresh rather than fail the save.
+                }
+            }
+
+            settings[key] = value;
+            System.IO.File.WriteAllText(path,
+                JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
         }
     }
 }

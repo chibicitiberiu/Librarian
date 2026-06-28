@@ -3,22 +3,9 @@
 @using MimeMapping
 @model Librarian.Services.CollectionDetails
 @{
+    Layout = "_WmLayout";
     ViewData["Title"] = Model.Name;
-    ViewData["CurrentPage"] = "collections";
-    ViewData["Status"] = $"{Model.Items.Count} items · {Model.Children.Count} sub-collections";
-    ViewData["FormRoute"] = "Collection_Save";
-    ViewData["FormHidden"] = new Dictionary<string, string> { ["id"] = Model.Id.ToString() };
-
-    var crumbs = new List<Breadcrumb>
-    {
-        new("Collections", Url.Action("Roots", "Collection"), Url.Content("~/icons/16/places/all.png")),
-    };
-    foreach (var a in Model.Ancestors)
-    {
-        crumbs.Add(new(a.Name, Url.Action("Index", "Collection", new { id = a.Id })));
-    }
-    crumbs.Add(new(Model.Name));
-    ViewData["Breadcrumbs"] = crumbs;
+    ViewData["TaskbarActive"] = "browse";
 
     string KindLabel(CollectionKind k) => k switch
     {
@@ -29,170 +16,198 @@
         CollectionKind.AppBundle => "App",
         _ => "Collection",
     };
-}
 
-@section Toolbar {
-    <button type="submit" title="Save collection metadata"><img src="~/icons/32/document-save.png" />Save</button>
-}
-
-<p><span class="badge-primary" title="Collection kind">@KindLabel(Model.Kind)</span></p>
-
-<div class="item-header">
-    @if (Model.CoverPath != null)
-    {
-        <a class="item-cover" href="@Url.Action("Index", "Browse", new { path = Model.CoverPath })">
-            <img src="@Url.Action("Index", "Browse", new { path = Model.CoverPath })" alt="Cover preview" />
-        </a>
-    }
-
-    <div class="item-files">
-        @if (Model.Children.Count > 0)
-        {
-            <h2 class="metadata-group-title">Collections (@Model.Children.Count)</h2>
-            <ul class="item-file-list">
-                @foreach (var c in Model.Children)
-                {
-                    <li class="item-file">
-                        <img src="~/icons/16/file-types/folder.png" alt="" />
-                        <a class="item-file-name" href="@Url.Action("Index", "Collection", new { id = c.Id })">@c.Name</a>
-                        <span class="badge-primary">@KindLabel(c.Kind)</span>
-                        <span class="muted">@(c.ChildCount > 0 ? $"{c.ChildCount} sub" : "")@(c.ItemCount > 0 ? $" {c.ItemCount} items" : "")</span>
-                    </li>
-                }
-            </ul>
-        }
-
-        @if (Model.Items.Count > 0)
-        {
-            <h2 class="metadata-group-title">Items (@Model.Items.Count)</h2>
-            <ul class="item-file-list">
-                @foreach (var i in Model.Items)
-                {
-                    string mime = i.PrimaryPath != null ? MimeUtility.GetMimeMapping(i.Name) : "application/octet-stream";
-                    <li class="item-file">
-                        <img src="@Url.Content(IconMapping.GetIconUrl(i.Name, mime))" alt="" />
-                        @if (i.PrimaryPath != null)
-                        {
-                            <a class="item-file-name" href="@Url.Action("Index", "Metadata", new { path = i.PrimaryPath })">@i.Name</a>
-                            <a class="item-file-open" href="@Url.Action("Index", "Browse", new { path = i.PrimaryPath })" title="Open file">↗</a>
-                        }
-                        else
-                        {
-                            <span class="item-file-name">@i.Name</span>
-                        }
-                    </li>
-                }
-            </ul>
-        }
-
-        @if (Model.Children.Count == 0 && Model.Items.Count == 0)
-        {
-            <p class="muted">This collection is empty.</p>
-        }
-
-        @if (Model.Files.Count > 0)
-        {
-            <details class="item-resources" open="@(Model.Files.Count <= 6)">
-                <summary>Collection files (@Model.Files.Count)</summary>
-                <ul class="item-file-list">
-                    @foreach (var f in Model.Files)
-                    {
-                        <li class="item-file">
-                            <img src="@Url.Content(IconMapping.GetIconUrl(f.Name, MimeUtility.GetMimeMapping(f.Name)))" alt="" />
-                            <a class="item-file-name" href="@Url.Action("Index", "Metadata", new { path = f.Path })">@f.Name</a>
-                            <a class="item-file-open" href="@Url.Action("Index", "Browse", new { path = f.Path })" title="Open file">↗</a>
-                        </li>
-                    }
-                </ul>
-            </details>
-        }
-    </div>
-</div>
-
-@{
-    // Existing collection text values, keyed by "Group/Name", so the curated edit fields below are
-    // pre-filled when the value already exists (and we don't duplicate them).
+    // Existing collection text values, keyed by "Group/Name", so the curated edit fields are pre-filled.
     var existingText = Model.Metadata
         .OfType<TextAttribute>()
         .GroupBy(a => $"{a.AttributeDefinition.Group}/{a.AttributeDefinition.Name}")
         .ToDictionary(g => g.Key, g => g.First().Value);
-
     string Val(string key) => existingText.TryGetValue(key, out var v) ? v : "";
 }
 
-<div class="metadata-group">
-    <h2 class="metadata-group-title">Collection metadata</h2>
-    <table>
-        <tbody>
-            <tr>
-                <td>Title</td>
-                <td class="col-input"><input type="text" name="General/Title" value="@Val("General/Title")" /></td>
-                <td class="fill"></td>
-            </tr>
-            <tr>
-                <td>Description</td>
-                <td class="col-input"><textarea name="General/Description">@Val("General/Description")</textarea></td>
-                <td class="fill"></td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+<wm-window title="@Model.Name" icon="/icons/16/places/all.png">
 
-@foreach (var group in Model.Metadata
-            .Where(x => x.AttributeDefinition.Group != "General"
-                     || (x.AttributeDefinition.Name != "Title" && x.AttributeDefinition.Name != "Description"))
-            .GroupBy(x => x.AttributeDefinition.Group))
-{
-    <div class="metadata-group">
-        <h2 class="metadata-group-title">@group.Key</h2>
-        <table>
-            <tbody>
-                @foreach (var field in group.OrderBy(x => x.AttributeDefinition.Name))
-                {
-                    var fieldName = $"{field.AttributeDefinition.Group}/{field.AttributeDefinition.Name}";
-                    <tr>
-                        <td>@field.AttributeDefinition.Name</td>
-                        <td class="col-input">
-                            @if (!field.AttributeDefinition.IsReadOnly && field is not BlobAttribute)
-                            {
-                                if (field is TextAttribute t
-                                    && field.AttributeDefinition.Type is AttributeType.BigText or AttributeType.FormattedText)
-                                {
-                                    <textarea name="@fieldName">@t.Value</textarea>
-                                }
-                                else if (field is TextAttribute tx)
-                                {
-                                    <input type="text" name="@fieldName" value="@tx.Value" />
-                                }
-                                else if (field is IntegerAttribute n)
-                                {
-                                    <input type="number" name="@fieldName" value="@n.Value" />
-                                }
-                                else if (field is FloatAttribute fl)
-                                {
-                                    <input type="text" name="@fieldName" value="@fl.Value" />
-                                }
-                                else if (field is DateAttribute d)
-                                {
-                                    <input type="text" name="@fieldName" value="@d.Value" />
-                                }
-                            }
-                            else
-                            {
-                                @switch (field)
-                                {
-                                    case TextAttribute t: <span>@t.Value</span> break;
-                                    case IntegerAttribute n: <span>@n.Value</span> break;
-                                    case FloatAttribute fl: <span>@fl.Value</span> break;
-                                    case DateAttribute d: <span>@d.Value</span> break;
-                                    case BlobAttribute b: <span>@(b.Value.Length) bytes</span> break;
-                                }
-                            }
-                        </td>
-                        <td class="fill"></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    <wm-toolbar>
+        <wm-button id="btn-save" type="submit" form="collection-form" icon="/icons/32/document-save.png" text="Save" tooltip="Save collection metadata"></wm-button>
+    </wm-toolbar>
+
+    <div class="wm-locationbar-row">
+        <wm-button class="wm-locationbar-up" icon="/icons/16/go-up.png" text="Up"
+                   href="@(Model.Ancestors.Count > 0 ? Url.Action("Index", "Collection", new { id = Model.Ancestors[Model.Ancestors.Count - 1].Id }) : Url.Action("Roots", "Collection"))"
+                   tooltip="Up one level"></wm-button>
+        <wm-breadcrumb>
+            <wm-crumb href="@Url.Action("Roots", "Collection")" icon="/icons/16/places/all.png" text="Collections"></wm-crumb>
+            @foreach (var a in Model.Ancestors)
+            {
+                <wm-crumb href="@Url.Action("Index", "Collection", new { id = a.Id })" text="@a.Name"></wm-crumb>
+            }
+            <wm-crumb text="@Model.Name"></wm-crumb>
+        </wm-breadcrumb>
     </div>
-}
+
+    <div class="wm-window-body">
+        <partial name="_WmSidebar" />
+        <wm-content>
+            <div class="wm-page">
+                <p><span class="wm-badge wm-badge-primary" title="Collection kind">@KindLabel(Model.Kind)</span></p>
+
+                <div class="wm-section" style="display:flex; gap:16px; align-items:flex-start;">
+                    @if (Model.CoverPath != null)
+                    {
+                        <a href="@Url.Action("Index", "Browse", new { path = Model.CoverPath })">
+                            <img class="wm-cover" src="@Url.Action("Index", "Browse", new { path = Model.CoverPath })" alt="Cover preview" />
+                        </a>
+                    }
+
+                    <div style="flex:1; min-width:0;">
+                        @if (Model.Children.Count > 0)
+                        {
+                            <div class="wm-section-heading">Collections (@Model.Children.Count)</div>
+                            <ul class="wm-list">
+                                @foreach (var c in Model.Children)
+                                {
+                                    <li>
+                                        <img src="~/icons/16/file-types/folder.png" alt="" />
+                                        <a href="@Url.Action("Index", "Collection", new { id = c.Id })">@c.Name</a>
+                                        <span class="wm-badge">@KindLabel(c.Kind)</span>
+                                        <span class="wm-list-sub">@(c.ChildCount > 0 ? $"{c.ChildCount} sub" : "")@(c.ItemCount > 0 ? $" {c.ItemCount} items" : "")</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+
+                        @if (Model.Items.Count > 0)
+                        {
+                            <div class="wm-section-heading">Items (@Model.Items.Count)</div>
+                            <ul class="wm-list">
+                                @foreach (var i in Model.Items)
+                                {
+                                    string mime = i.PrimaryPath != null ? MimeUtility.GetMimeMapping(i.Name) : "application/octet-stream";
+                                    <li>
+                                        <img src="@Url.Content(IconMapping.GetIconUrl(i.Name, mime))" alt="" />
+                                        @if (i.PrimaryPath != null)
+                                        {
+                                            <a href="@Url.Action("Index", "Metadata", new { path = i.PrimaryPath })">@i.Name</a>
+                                            <span class="wm-layout-fill"></span>
+                                            <a href="@Url.Action("Index", "Browse", new { path = i.PrimaryPath })" title="Open file">↗</a>
+                                        }
+                                        else
+                                        {
+                                            <span>@i.Name</span>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+
+                        @if (Model.Children.Count == 0 && Model.Items.Count == 0)
+                        {
+                            <p class="muted">This collection is empty.</p>
+                        }
+
+                        @if (Model.Files.Count > 0)
+                        {
+                            <details open="@(Model.Files.Count <= 6)">
+                                <summary>Collection files (@Model.Files.Count)</summary>
+                                <ul class="wm-list">
+                                    @foreach (var f in Model.Files)
+                                    {
+                                        <li>
+                                            <img src="@Url.Content(IconMapping.GetIconUrl(f.Name, MimeUtility.GetMimeMapping(f.Name)))" alt="" />
+                                            <a href="@Url.Action("Index", "Metadata", new { path = f.Path })">@f.Name</a>
+                                            <span class="wm-layout-fill"></span>
+                                            <a href="@Url.Action("Index", "Browse", new { path = f.Path })" title="Open file">↗</a>
+                                        </li>
+                                    }
+                                </ul>
+                            </details>
+                        }
+                    </div>
+                </div>
+
+                <form id="collection-form" method="post" action="@Url.RouteUrl("Collection_Save")">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+
+                    <div class="wm-section">
+                        <div class="wm-section-heading">Collection metadata</div>
+                        <table class="wm-data-table">
+                            <tbody>
+                                <tr>
+                                    <td style="width:160px;">Title</td>
+                                    <td class="col-input"><input type="text" name="General/Title" value="@Val("General/Title")" /></td>
+                                </tr>
+                                <tr>
+                                    <td>Description</td>
+                                    <td class="col-input"><textarea name="General/Description">@Val("General/Description")</textarea></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @foreach (var group in Model.Metadata
+                                .Where(x => x.AttributeDefinition.Group != "General"
+                                         || (x.AttributeDefinition.Name != "Title" && x.AttributeDefinition.Name != "Description"))
+                                .GroupBy(x => x.AttributeDefinition.Group))
+                    {
+                        <div class="wm-section">
+                            <div class="wm-section-heading">@group.Key</div>
+                            <table class="wm-data-table">
+                                <tbody>
+                                    @foreach (var field in group.OrderBy(x => x.AttributeDefinition.Name))
+                                    {
+                                        var fieldName = $"{field.AttributeDefinition.Group}/{field.AttributeDefinition.Name}";
+                                        <tr>
+                                            <td style="width:160px;">@field.AttributeDefinition.Name</td>
+                                            <td class="col-input">
+                                                @if (!field.AttributeDefinition.IsReadOnly && field is not BlobAttribute)
+                                                {
+                                                    if (field is TextAttribute t
+                                                        && field.AttributeDefinition.Type is AttributeType.BigText or AttributeType.FormattedText)
+                                                    {
+                                                        <textarea name="@fieldName">@t.Value</textarea>
+                                                    }
+                                                    else if (field is TextAttribute tx)
+                                                    {
+                                                        <input type="text" name="@fieldName" value="@tx.Value" />
+                                                    }
+                                                    else if (field is IntegerAttribute n)
+                                                    {
+                                                        <input type="number" name="@fieldName" value="@n.Value" />
+                                                    }
+                                                    else if (field is FloatAttribute fl)
+                                                    {
+                                                        <input type="text" name="@fieldName" value="@fl.Value" />
+                                                    }
+                                                    else if (field is DateAttribute d)
+                                                    {
+                                                        <input type="text" name="@fieldName" value="@d.Value" />
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    @switch (field)
+                                                    {
+                                                        case TextAttribute t: <span>@t.Value</span> break;
+                                                        case IntegerAttribute n: <span>@n.Value</span> break;
+                                                        case FloatAttribute fl: <span>@fl.Value</span> break;
+                                                        case DateAttribute d: <span>@d.Value</span> break;
+                                                        case BlobAttribute b: <span>@(b.Value.Length) bytes</span> break;
+                                                    }
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </form>
+            </div>
+        </wm-content>
+    </div>
+
+    <wm-statusbar>
+        <span>@Model.Items.Count items · @Model.Children.Count sub-collections</span>
+    </wm-statusbar>
+</wm-window>

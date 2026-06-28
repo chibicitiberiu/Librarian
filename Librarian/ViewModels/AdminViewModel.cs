@@ -14,6 +14,19 @@ namespace Librarian.ViewModels
         public int DuplicateSets { get; set; }
         public string ChecksumMode { get; set; } = "Off";
 
+        /// <summary>The configured library root (the raw "BaseDirectory" value the user edits).</summary>
+        public string? LibraryDirectory { get; set; }
+
+        /// <summary>The canonical path the library root currently resolves to (in effect this run).</summary>
+        public string LibraryDirectoryResolved { get; set; } = "";
+
+        /// <summary>When any file was last (re)indexed — the freshest IndexLastUpdated, or null if empty.</summary>
+        public System.DateTimeOffset? LastIndexed { get; set; }
+
+        /// <summary>True while an indexing/maintenance job is running right now.</summary>
+        public bool JobRunning { get; set; }
+        public string? RunningJob { get; set; }
+
         /// <summary>Most common raw (namespace, key) pairs that have no normalization rule yet.</summary>
         public IReadOnlyList<UnmappedKey> UnmappedKeys { get; set; } = new List<UnmappedKey>();
         public int UnmappedTotal { get; set; }

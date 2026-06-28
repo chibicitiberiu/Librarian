@@ -4,6 +4,8 @@
 
 (function () {
     function setStatus(message) {
+        var els = document.querySelectorAll("[data-wm-status]");
+        if (els.length) { els.forEach(function (el) { el.textContent = message; }); return; }
         var el = document.getElementById("window-statusbar-message");
         if (el) el.innerText = message;
     }

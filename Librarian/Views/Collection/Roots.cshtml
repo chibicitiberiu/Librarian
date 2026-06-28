@@ -1,13 +1,10 @@
 @using Librarian.Model
 @model IReadOnlyList<Librarian.Services.CollectionChild>
 @{
+    Layout = "_WmLayout";
     ViewData["Title"] = "Collections";
-    ViewData["CurrentPage"] = "collections";
-    ViewData["Status"] = $"{Model.Count} root collection{(Model.Count == 1 ? "" : "s")}";
-    ViewData["Breadcrumbs"] = new List<Breadcrumb>
-    {
-        new("Collections", null, Url.Content("~/icons/16/places/all.png")),
-    };
+    ViewData["TaskbarActive"] = "browse";
+    ViewData["WmSidebarActive"] = "collections";
 
     string KindLabel(CollectionKind k) => k switch
     {
@@ -20,22 +17,43 @@
     };
 }
 
-@if (Model.Count == 0)
-{
-    <p class="muted">No structural collections yet. They are built by the association pass from
-    folders of folders (a show's seasons, an album's discs, …).</p>
-}
-else
-{
-    <ul class="item-file-list">
-        @foreach (var c in Model)
-        {
-            <li class="item-file">
-                <img src="~/icons/16/file-types/folder.png" alt="" />
-                <a class="item-file-name" href="@Url.Action("Index", "Collection", new { id = c.Id })">@c.Name</a>
-                <span class="badge-primary">@KindLabel(c.Kind)</span>
-                <span class="muted">@(c.ChildCount > 0 ? $"{c.ChildCount} sub" : "")@(c.ItemCount > 0 ? $" {c.ItemCount} items" : "")</span>
-            </li>
-        }
-    </ul>
-}
+<wm-window title="Collections" icon="/icons/16/places/all.png">
+
+    <div class="wm-locationbar-row">
+        <wm-breadcrumb>
+            <wm-crumb href="@Url.Action("Index", "Browse", new { path = "" })" icon="/icons/16/go-home.png" text="Home"></wm-crumb>
+            <wm-crumb icon="/icons/16/places/all.png" text="Collections"></wm-crumb>
+        </wm-breadcrumb>
+    </div>
+
+    <div class="wm-window-body">
+        <partial name="_WmSidebar" />
+        <wm-content>
+            <div class="wm-page">
+                @if (Model.Count == 0)
+                {
+                    <p class="muted">No structural collections yet. They are built by the association pass from
+                        folders of folders (a show's seasons, an album's discs, …).</p>
+                }
+                else
+                {
+                    <ul class="wm-list">
+                        @foreach (var c in Model)
+                        {
+                            <li>
+                                <img src="~/icons/16/file-types/folder.png" alt="" />
+                                <a href="@Url.Action("Index", "Collection", new { id = c.Id })">@c.Name</a>
+                                <span class="wm-badge">@KindLabel(c.Kind)</span>
+                                <span class="wm-list-sub">@(c.ChildCount > 0 ? $"{c.ChildCount} sub" : "")@(c.ItemCount > 0 ? $" {c.ItemCount} items" : "")</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </wm-content>
+    </div>
+
+    <wm-statusbar>
+        <span>@Model.Count root collection@(Model.Count == 1 ? "" : "s")</span>
+    </wm-statusbar>
+</wm-window>

@@ -1,0 +1,147 @@
+/*
+ * Application-level styling on top of the wm control library (lib/wm). The wm theme styles the chrome
+ * (windows, menus, toolbar, file list, inputs); this sheet adds the page-content patterns the migrated
+ * Librarian pages need — forms, data tables, badges, search results — keyed to the Bluecurve palette.
+ */
+
+/* ---- Browse clipboard markers ---------------------------------------------------------------- */
+.wm-filelist-item.wm-cut { opacity: 0.45; }
+.wm-filelist-item.wm-copied { background: rgba(84, 118, 195, 0.12); }
+
+/* ---- Generic padded content page ------------------------------------------------------------- */
+/* Pages that render prose / forms / tables (rather than a flush file list) wrap their body in
+   .wm-page so it gets comfortable padding inside the scrolling window content. */
+.wm-page { padding: 12px 16px; max-width: 1100px; }
+.wm-page h2 { margin: 0 0 4px; font-size: 15px; }
+.wm-page h3 { margin: 18px 0 6px; font-size: 13px; }
+.wm-page p { margin: 6px 0; }
+.wm-page .wm-section { margin-bottom: 22px; }
+.wm-page .wm-section:last-child { margin-bottom: 4px; }
+
+.wm-section-heading {
+  font-weight: bold;
+  border-bottom: 1px solid #A1A1A1;
+  padding-bottom: 3px;
+  margin: 18px 0 8px;
+}
+.wm-section-heading:first-child { margin-top: 0; }
+
+.wm-hint { color: #666; font-size: 12px; margin: 4px 0 10px; }
+
+/* ---- Form fields ----------------------------------------------------------------------------- */
+.wm-field { display: block; margin: 8px 0; }
+.wm-field-label { display: block; font-weight: bold; margin-bottom: 3px; }
+.wm-field-inline { display: inline-flex; align-items: center; gap: 6px; margin: 4px 12px 4px 0; }
+
+.wm-input, .wm-page input[type=text], .wm-page input[type=number],
+.wm-page input[type=search], .wm-page input[type=date], .wm-page textarea, .wm-page select {
+  background: white;
+  border-top: 1px solid #DEDEDE;
+  border-left: 1px solid #DEDEDE;
+  border-bottom: 1px solid white;
+  border-right: 1px solid white;
+  outline: 1px solid #999999;
+  padding: 2px 4px;
+  font: inherit;
+  box-sizing: border-box;
+}
+.wm-input:focus, .wm-page input:focus, .wm-page textarea:focus, .wm-page select:focus {
+  outline: 1px solid #5476C3;
+}
+.wm-input { min-width: 220px; }
+.wm-input-wide { width: 100%; }
+.wm-page textarea { width: 100%; min-height: 56px; resize: vertical; }
+
+/* ---- Data tables (stats, metadata, key/value) ------------------------------------------------ */
+.wm-data-table { border-collapse: collapse; width: 100%; margin: 4px 0; }
+.wm-data-table th, .wm-data-table td {
+  text-align: left;
+  padding: 3px 8px;
+  border-bottom: 1px solid #D9D9D9;
+  vertical-align: top;
+}
+.wm-data-table th { font-weight: bold; }
+.wm-data-table tr:hover td { background: rgba(84, 118, 195, 0.07); }
+.wm-data-table td.col-input { width: 55%; }
+.wm-data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.wm-data-table input[type=text], .wm-data-table input[type=number],
+.wm-data-table input[type=date], .wm-data-table textarea, .wm-data-table select { width: 100%; }
+
+/* ---- Badges ---------------------------------------------------------------------------------- */
+.wm-badge {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 0 6px;
+  margin-left: 6px;
+  border: 1px solid #A1A1A1;
+  border-radius: 8px;
+  background: #F5F5F5;
+  color: #333;
+  vertical-align: middle;
+}
+.wm-badge-primary { background: #5476C3; border-color: #3C4D71; color: white; }
+.wm-badge-warn { background: #f6e6a8; border-color: #b89b32; color: #5a4a00; }
+
+/* ---- Plain link/entry lists (collections, duplicates, items, search) ------------------------- */
+.wm-list { list-style: none; margin: 4px 0; padding: 0; }
+.wm-list > li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px;
+  border-bottom: 1px solid #E2E2E2;
+}
+.wm-list > li:hover { background: rgba(84, 118, 195, 0.07); }
+.wm-list img { width: 16px; height: 16px; flex-shrink: 0; }
+.wm-list .wm-list-sub { color: #666; font-size: 12px; }
+.wm-list .wm-layout-fill { flex: 1; }
+.wm-list > li.wm-current { background: rgba(84, 118, 195, 0.15); }
+.wm-page details > summary { cursor: pointer; margin: 6px 0; color: #0a1539; }
+
+/* ---- Search results -------------------------------------------------------------------------- */
+.wm-result { padding: 8px 6px; border-bottom: 1px solid #E2E2E2; }
+.wm-result-title { font-weight: bold; }
+.wm-result-path { font-size: 12px; color: #666; margin: 2px 0; }
+.wm-result-snippet { font-size: 12px; margin-top: 3px; }
+.wm-result-snippet mark { background: #f6e6a8; }
+
+/* ---- Pagination ------------------------------------------------------------------------------ */
+.wm-pager { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+
+/* ---- Action rows (admin maintenance forms) --------------------------------------------------- */
+.wm-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+.wm-actions form { margin: 0; }
+.wm-banner {
+  background: #eaf2d6;
+  border: 1px solid #b6c98a;
+  color: #38470f;
+  padding: 6px 10px;
+  margin: 0 0 12px;
+}
+
+/* ---- Toolbar search field -------------------------------------------------------------------- */
+.wm-toolbar-field { display: inline-flex; align-items: center; gap: 5px; margin: 0 4px; }
+.wm-toolbar-field input[type=search], .wm-toolbar-field input[type=text] {
+  background: white;
+  border-top: 1px solid #DEDEDE;
+  border-left: 1px solid #DEDEDE;
+  border-bottom: 1px solid white;
+  border-right: 1px solid white;
+  outline: 1px solid #999999;
+  padding: 2px 4px;
+  font: inherit;
+  min-width: 220px;
+}
+
+/* ---- Error page ------------------------------------------------------------------------------ */
+.wm-error-code {
+  font-size: 56px;
+  font-weight: bold;
+  line-height: 1;
+  color: #A1A1A1;
+  margin-bottom: 6px;
+}
+
+/* ---- Cover art ------------------------------------------------------------------------------- */
+.wm-cover { max-width: 180px; max-height: 240px; border: 1px solid #A1A1A1; background: white; }

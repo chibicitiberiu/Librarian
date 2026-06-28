@@ -1,84 +1,91 @@
-@using Librarian.Utils;
 @model LibraryViewModel
 @{
-    ViewData["Title"] = Model.Category.DisplayName + (Model.Selected.Length > 0 ? " ▸ " + Model.DisplayName : "");
-    ViewData["CurrentPage"] = "library";
-    ViewData["CurrentCategory"] = Model.Category.Key;
+    Layout = "_WmLayout";
 
-    if (Model.ParentUrl != null)
-    {
-        ViewData["UpUrl"] = Model.ParentUrl;
-    }
+    // Window/document title: category, plus the current drill value once we've descended into a view.
+    var title = Model.Category.DisplayName + (Model.Selected.Length > 0 ? " ▸ " + Model.DisplayName : "");
+    ViewData["Title"] = title;
+    ViewData["TaskbarActive"] = "browse";
+    ViewData["WmSidebarActive"] = "library:" + Model.Category.Key;
 
-    var crumbs = new List<Breadcrumb>
-    {
-        new(Model.Category.DisplayName,
-            Url.Action("Index", "Library", new { category = Model.Category.Key, view = (string?)null }),
-            Url.Content($"~/icons/16/places/{Model.Category.Icon}")),
-    };
-    foreach (var (name, url) in Model.Breadcrumbs)
-    {
-        crumbs.Add(new(name, url));
-    }
-    ViewData["Breadcrumbs"] = crumbs;
+    var upUrl = Model.ParentUrl;
+    var windowIcon = Url.Content($"~/icons/16/places/{Model.Category.Icon}");
 
-    ViewData["Status"] = Model.IsLeaf
+    // Controller-built trail: Category → (View, when multi-view) → each chosen drill value, every crumb
+    // carrying its own rebuilt URL (trailing drill values dropped). The current (last) crumb is text-only.
+    var crumbs = Model.Breadcrumbs;
+
+    bool isEmpty = Model.IsLeaf ? Model.Files.Count == 0 : Model.Folders.Count == 0;
+    string status = Model.IsLeaf
         ? $"{Model.Files.Count} file{(Model.Files.Count == 1 ? "" : "s")}"
         : $"{Model.Folders.Count} folder{(Model.Folders.Count == 1 ? "" : "s")}";
-
-    // Header for the name column: the level being shown for folders, otherwise plain files.
-    string nameHeader = Model.IsLeaf ? "Name" : (Model.LevelLabel ?? "Name");
 }
 
-<table class="file-listing">
-    <thead>
-        <tr>
-            <th data-col="icon"></th>
-            <th>@nameHeader</th>
-            <th>Size</th>
-            <th>Type</th>
-            <th>Last modified</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @if (!Model.IsLeaf)
-        {
-            @foreach (var folder in Model.Folders)
-            {
-                <tr class="file-entry">
-                    <td><img src="@folder.IconUrl" /></td>
-                    <td><a href="@folder.Url">@folder.Name</a></td>
-                    <td></td>
-                    <td>@folder.Count item@(folder.Count == 1 ? "" : "s")</td>
-                    <td></td>
-                    <td></td>
-                </tr>
-            }
-        }
-        else
-        {
-            @foreach (var file in Model.Files)
-            {
-                <tr class="file-entry" data-id="@file.Name">
-                    <td><img src="@file.IconUrl" /></td>
-                    <td><a href="@Url.Action("Index", "Browse", new { path = file.Path })">@file.Name</a></td>
-                    <td data-sort="@file.Size">@file.DisplaySize</td>
-                    <td>@file.MimeType</td>
-                    <td>@file.LastModified.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
-                    <td>
-                        <a href="@(Url.Action("Index", "Metadata"))/@file.Path">Properties</a>
-                    </td>
-                </tr>
-            }
-        }
+<wm-window title="@title" icon="@windowIcon">
 
-        @if ((!Model.IsLeaf && Model.Folders.Count == 0) || (Model.IsLeaf && Model.Files.Count == 0))
-        {
-            <tr>
-                <td></td>
-                <td colspan="5"><em>Nothing here yet — no indexed files match this category.</em></td>
-            </tr>
-        }
-    </tbody>
-</table>
+    <div class="wm-locationbar-row">
+        <wm-button class="wm-locationbar-up" icon="/icons/16/go-up.png" text="Up" href="@upUrl" disabled="@(upUrl == null)" tooltip="Up"></wm-button>
+        <wm-breadcrumb>
+            <wm-crumb href="@Url.Action("Index", "Browse", new { path = "" })" icon="/icons/16/go-home.png" text="Home"></wm-crumb>
+            @for (int i = 0; i < crumbs.Count; i++)
+            {
+                var (name, url) = crumbs[i];
+                var isLast = i == crumbs.Count - 1;
+                var icon = i == 0 ? windowIcon : null;
+                <wm-crumb href="@(isLast ? null : url)" icon="@icon" text="@name"></wm-crumb>
+            }
+        </wm-breadcrumb>
+    </div>
+
+    <div class="wm-window-body">
+        <partial name="_WmSidebar" />
+        <wm-content>
+            <div class="wm-page">
+                @if (isEmpty)
+                {
+                    <p class="muted">Nothing here yet — no indexed files match this category.</p>
+                }
+                else if (!Model.IsLeaf)
+                {
+                    @* Facet "folders": one virtual folder per distinct value at this drill level. *@
+                    @if (!string.IsNullOrEmpty(Model.LevelLabel))
+                    {
+                        <div class="wm-section-heading">@Model.LevelLabel</div>
+                    }
+                    <ul class="wm-list">
+                        @foreach (var folder in Model.Folders)
+                        {
+                            <li>
+                                <img src="@folder.IconUrl" alt="" />
+                                <a href="@folder.Url">@folder.Name</a>
+                                <span class="wm-list-sub">@folder.Count item@(folder.Count == 1 ? "" : "s")</span>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    @* Leaf files: the name opens the Browse viewer; "Properties" opens the metadata page. *@
+                    <ul class="wm-list">
+                        @foreach (var file in Model.Files)
+                        {
+                            var parts = new List<string>();
+                            if (!string.IsNullOrEmpty(file.DisplaySize)) { parts.Add(file.DisplaySize!); }
+                            if (!string.IsNullOrEmpty(file.MimeType)) { parts.Add(file.MimeType!); }
+                            parts.Add(file.LastModified.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"));
+                            <li>
+                                <img src="@file.IconUrl" alt="" />
+                                <a href="@Url.Action("Index", "Browse", new { path = file.Path })">@file.Name</a>
+                                <span class="wm-list-sub">@string.Join(" · ", parts)</span>
+                                <span class="wm-layout-fill"></span>
+                                <a href="@(Url.Action("Index", "Metadata"))/@file.Path">Properties</a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </wm-content>
+    </div>
+
+    <wm-statusbar><span>@status</span></wm-statusbar>
+</wm-window>

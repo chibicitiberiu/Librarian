@@ -1,14 +1,15 @@
 @model Librarian.ViewModels.ItemFileRow
-<li class="item-file @(Model.IsCurrent ? "current" : "")">
+<li class="@(Model.IsCurrent ? "wm-current" : "")">
     <img src="@Model.IconUrl" alt="" />
-    <a class="item-file-name" href="@Url.Action("Index", "Metadata", new { path = Model.Path })">@Model.Name</a>
+    <a href="@Url.Action("Index", "Metadata", new { path = Model.Path })">@Model.Name</a>
     @if (Model.IsPrimary)
     {
-        <span class="badge-primary" title="The Item's primary content file">primary</span>
+        <span class="wm-badge wm-badge-primary" title="The Item's primary content file">primary</span>
     }
     @if (Model.InArchive)
     {
-        <span class="badge-archive" title="This file lives inside an archive">in archive</span>
+        <span class="wm-badge wm-badge-warn" title="This file lives inside an archive">in archive</span>
     }
-    <a class="item-file-open" href="@Url.Action("Index", "Browse", new { path = Model.Path })" title="Open file">↗</a>
+    <span class="wm-layout-fill"></span>
+    <a href="@Url.Action("Index", "Browse", new { path = Model.Path })" title="Open file">↗</a>
 </li>

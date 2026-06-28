@@ -9,12 +9,12 @@
         <div class="wm-sidebar-heading">Places</div>
         <ul class="wm-sidebar-list">
             <li>
-                <a class="wm-sidebar-item @(active == "home" ? "active" : "")" href="@Url.Action("Index", "UiTest", new { path = "" })">
+                <a class="wm-sidebar-item @(active == "home" ? "active" : "")" href="@Url.Action("Index", "Browse", new { path = "" })">
                     <img src="~/icons/16/places/home.png" alt="" /> Home
                 </a>
             </li>
             <li>
-                <a class="wm-sidebar-item" href="@Url.Action("Index", "Search")">
+                <a class="wm-sidebar-item @(active == "search" ? "active" : "")" href="@Url.Action("Index", "Search")">
                     <img src="~/icons/16/places/search.png" alt="" /> Search
                 </a>
             </li>
@@ -25,19 +25,14 @@
         <div class="wm-sidebar-heading">Library</div>
         <ul class="wm-sidebar-list">
             <li>
-                <a class="wm-sidebar-item" href="@Url.Action("Roots", "Collection")">
+                <a class="wm-sidebar-item @(active == "collections" ? "active" : "")" href="@Url.Action("Roots", "Collection")">
                     <img src="~/icons/16/places/all.png" alt="" /> Collections
-                </a>
-            </li>
-            <li>
-                <a class="wm-sidebar-item" href="@Url.Action("Index", "Duplicates")">
-                    <img src="~/icons/16/places/all.png" alt="" /> Duplicates
                 </a>
             </li>
             @foreach (var cat in LibraryCategories.All)
             {
                 <li>
-                    <a class="wm-sidebar-item" href="@Url.Action("Index", "Library", new { category = cat.Key, view = (string?)null })">
+                    <a class="wm-sidebar-item @(active == "library:" + cat.Key ? "active" : "")" href="@Url.Action("Index", "Library", new { category = cat.Key, view = (string?)null })">
                         <img src="~/icons/16/places/@cat.Icon" alt="" /> @cat.DisplayName
                     </a>
                 </li>
@@ -49,7 +44,7 @@
         <div class="wm-sidebar-heading">System</div>
         <ul class="wm-sidebar-list">
             <li>
-                <a class="wm-sidebar-item" href="@Url.Action("Index", "Admin")">
+                <a class="wm-sidebar-item @(active == "settings" ? "active" : "")" href="@Url.Action("Index", "Admin")">
                     <img src="~/icons/16/gnome-searchtool.png" alt="" /> Settings
                 </a>
             </li>

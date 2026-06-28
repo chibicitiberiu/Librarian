@@ -1,7 +1,6 @@
-﻿using Librarian.DB;
+using Librarian.DB;
 using Librarian.Metadata.Archives;
 using Librarian.Model;
-using Librarian.Models;
 using Librarian.Services;
 using Librarian.Utils;
 using Librarian.ViewModels;
@@ -17,112 +16,118 @@ using System.Linq;
 using System.Security;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Librarian.Controllers
 {
+    /// <summary>
+    /// The file browser — the application's primary surface. Directories render through the wm
+    /// FileListView (details/list/tiles/icons), files open the in-window viewer, and the raw bytes are
+    /// still served from <see cref="Index"/> so previews and thumbnails have a stable URL. File
+    /// operations (cut/copy/paste/rename/delete) post here too.
+    /// </summary>
     public class BrowseController : Controller
     {
+        private static readonly string[] ValidModes = { "details", "list", "tiles", "icons" };
+        private static readonly string[] ValidSorts = { "name", "size", "type", "modified" };
+
+        // View state persists in cookies (survives browser restarts and keeps the URL clean) rather than
+        // query parameters: a click carries one explicit param, which is saved and then redirected away.
+        private const string CView = "browse_view";
+        private const string CZoom = "browse_zoom";
+        private const string CSort = "browse_sort";
+        private const string CHidden = "browse_hidden";
+
         private readonly ILogger<BrowseController> logger;
         readonly FileService fileService;
+        readonly MetadataService metadataService;
         readonly DatabaseContext db;
         readonly ArchiveByteReader archiveBytes;
 
         const string BrowseClipboardKey = "browseClipboard";
 
         public BrowseController(ILogger<BrowseController> logger, FileService fileService,
-                                DatabaseContext db, ArchiveByteReader archiveBytes)
+                                MetadataService metadataService, DatabaseContext db,
+                                ArchiveByteReader archiveBytes)
         {
             this.logger = logger;
             this.fileService = fileService;
+            this.metadataService = metadataService;
             this.db = db;
             this.archiveBytes = archiveBytes;
         }
 
-        private IEnumerable<BrowseFileViewModel> GetFiles(string dirPath)
-        {
-            DirectoryInfo dirInfo = new(dirPath);
+        private string? GetCookie(string key) =>
+            Request.Cookies.TryGetValue(key, out var v) ? v : null;
 
-            var directories = dirInfo.EnumerateDirectories()
-                .OrderBy(x => x.Name, new NaturalComparer());
-
-            foreach (var dir in directories)
+        private void SetCookie(string key, string value) =>
+            Response.Cookies.Append(key, value, new CookieOptions
             {
-                yield return new BrowseFileViewModel()
-                {
-                    Name = dir.Name,
-                    Path = fileService.GetRelativePath(dir.FullName),
-                    Size = null,
-                    DisplaySize = null,
-                    LastModified = dir.LastWriteTimeUtc,
-                    IsDirectory = true,
-                    MimeType = null,
-                    IconUrl = Url.Content(IconMapping.FolderIcon)
-                };
-            }
+                Expires = DateTimeOffset.UtcNow.AddYears(1),
+                SameSite = SameSiteMode.Lax,
+                IsEssential = true,
+                Path = "/",
+            });
 
-            var files = dirInfo.EnumerateFiles()
-                .OrderBy(x => x.Name, new NaturalComparer());
-
-            foreach (var file in files)
-            {
-                string fileName = file.Name;
-                string mime = MimeUtility.GetMimeMapping(fileName);
-
-                yield return new BrowseFileViewModel()
-                {
-                    Name = fileName,
-                    Path = fileService.GetRelativePath(file.FullName),
-                    Size = file.Length,
-                    DisplaySize = HumanizeUtils.HumanizeSize(file.Length),
-                    LastModified = file.LastWriteTimeUtc,
-                    IsDirectory = false,
-                    MimeType = mime,
-                    IconUrl = Url.Content(IconMapping.GetIconUrl(fileName, mime))
-                };
-            }
-        }
-
-        public IActionResult Index(string path)
+        /// <summary>Directory → the wm file listing. File → its raw bytes served inline (the stable URL
+        /// used by the viewer's preview and by image thumbnails). Anything else may be a virtual archive
+        /// entry whose bytes live inside a parent archive.</summary>
+        public IActionResult Index(string path, string? view, int? zoom, string? sort, bool? hidden)
         {
             try
             {
                 string diskPath = fileService.Resolve(path);
 
                 if (System.IO.File.Exists(diskPath))
-                {
                     return this.InlineFileFromDisk(diskPath);
-                }
-                else if (Directory.Exists(diskPath))
-                {
-                    DirectoryInfo directoryInfo = new(diskPath);
 
-                    var vm = new BrowseViewModel
-                    {
-                        DisplayName = directoryInfo.Name,
-                        DisplayPath = fileService.GetRelativePath(diskPath),
-                        ParentPath = (directoryInfo.Parent != null && !fileService.IsRoot(diskPath))
-                            ? fileService.GetRelativePath(directoryInfo.Parent.FullName)
-                            : null,
-                        Path = fileService.GetRelativePath(diskPath),
-                        Files = GetFiles(diskPath),
-                        Clipboard = GetClipboard()
-                    };
-
-                    if (vm.DisplayPath == ".")
-                    {
-                        vm.DisplayName = "Home";
-                        vm.DisplayPath = "Home";
-                    }
-
-                    vm.Breadcrumbs = BuildBreadcrumbs(vm.Path);
-                    return View(vm);
-                }
-                else
-                {
-                    // Not a real file or directory — it may be a virtual archive entry (collection_plan.md
-                    // §3.1) whose bytes live inside an archive. Serve them straight from the parent archive.
+                if (!Directory.Exists(diskPath))
                     return ServeArchiveEntry(path);
+
+                // A click that changes view state arrives with one explicit param: persist it to a cookie
+                // and redirect to the clean URL so the address bar stays free of view-state noise.
+                if (view != null || zoom != null || sort != null || hidden != null)
+                {
+                    if (ValidModes.Contains(view)) SetCookie(CView, view!);
+                    if (zoom.HasValue) SetCookie(CZoom, Math.Clamp(zoom.Value, 1, 3).ToString());
+                    if (ValidSorts.Contains(sort)) SetCookie(CSort, sort!);
+                    if (hidden.HasValue) SetCookie(CHidden, hidden.Value ? "1" : "0");
+                    return RedirectToAction(nameof(Index), new { path });
                 }
+
+                // Otherwise render from the persisted cookies (falling back to defaults).
+                string mode = ValidModes.Contains(GetCookie(CView)) ? GetCookie(CView)! : "details";
+                int zoomVal = int.TryParse(GetCookie(CZoom), out var sz) ? Math.Clamp(sz, 1, 3) : 2;
+                string sortKey = ValidSorts.Contains(GetCookie(CSort)) ? GetCookie(CSort)! : "name";
+                bool showHidden = GetCookie(CHidden) == "1";
+
+                var directoryInfo = new DirectoryInfo(diskPath);
+                string relPath = fileService.GetRelativePath(diskPath);
+                bool isRoot = fileService.IsRoot(diskPath);
+
+                var vm = new BrowseViewModel
+                {
+                    DisplayName = isRoot ? "Home" : directoryInfo.Name,
+                    Path = relPath,
+                    ParentPath = (directoryInfo.Parent != null && !isRoot)
+                        ? fileService.GetRelativePath(directoryInfo.Parent.FullName)
+                        : null,
+                    Breadcrumbs = BuildBreadcrumbs(relPath).ToList(),
+                    Mode = mode,
+                    Zoom = zoomVal,
+                    Sort = sortKey,
+                    ShowHidden = showHidden,
+                    HasClipboard = GetClipboard() != null,
+                    Columns = new List<WmListColumn>
+                    {
+                        new("Size", numeric: true),
+                        new("Type"),
+                        new("Modified"),
+                    },
+                    Items = BuildItems(diskPath, sortKey, showHidden).ToList(),
+                };
+
+                return View(vm);
             }
             catch (ArgumentException ex)
             {
@@ -135,6 +140,246 @@ namespace Librarian.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+
+        /// <summary>The in-window file viewer (preview + live metadata). Only real on-disk files have a
+        /// viewer; a directory or unknown path falls back to <see cref="Index"/>.</summary>
+        public async Task<IActionResult> Viewer(string path)
+        {
+            try
+            {
+                string diskPath = fileService.Resolve(path);
+                if (System.IO.File.Exists(diskPath))
+                    return View(await BuildViewerAsync(diskPath));
+
+                return RedirectToAction(nameof(Index), new { path });
+            }
+            catch (ArgumentException ex)
+            {
+                logger.LogError(ex, "Bad request!");
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error handling request!");
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        private List<WmListItem> BuildItems(string dirPath, string sort, bool showHidden)
+        {
+            var result = new List<WmListItem>();
+            var dirInfo = new DirectoryInfo(dirPath);
+            var nat = new NaturalComparer();
+
+            // Folders always sort before files; within each group the chosen key applies.
+            IEnumerable<DirectoryInfo> dirs = dirInfo.EnumerateDirectories();
+            IEnumerable<FileInfo> files = dirInfo.EnumerateFiles();
+
+            // Hidden files (dotfiles or the Hidden attribute) are filtered unless "Show hidden" is on.
+            if (!showHidden)
+            {
+                dirs = dirs.Where(d => !IsHidden(d));
+                files = files.Where(f => !IsHidden(f));
+            }
+
+            switch (sort)
+            {
+                case "size":
+                    dirs = dirs.OrderBy(d => d.Name, nat);
+                    files = files.OrderBy(f => f.Length);
+                    break;
+                case "type":
+                    dirs = dirs.OrderBy(d => d.Name, nat);
+                    files = files.OrderBy(f => MimeUtility.GetMimeMapping(f.Name), StringComparer.OrdinalIgnoreCase)
+                                 .ThenBy(f => f.Name, nat);
+                    break;
+                case "modified":
+                    dirs = dirs.OrderBy(d => d.LastWriteTimeUtc);
+                    files = files.OrderBy(f => f.LastWriteTimeUtc);
+                    break;
+                default:
+                    dirs = dirs.OrderBy(d => d.Name, nat);
+                    files = files.OrderBy(f => f.Name, nat);
+                    break;
+            }
+
+            foreach (var dir in dirs)
+                result.Add(FolderItem(dir));
+
+            // Home is a plain filesystem view: one row per file. The catalogue's item/collection grouping
+            // lives in the Collections view, not here.
+            foreach (var file in files)
+                result.Add(FileItem(file));
+
+            return result;
+        }
+
+        private static bool IsHidden(FileSystemInfo info) =>
+            info.Name.StartsWith(".") || (info.Attributes & FileAttributes.Hidden) != 0;
+
+        private WmListItem FolderItem(DirectoryInfo dir)
+        {
+            string p = fileService.GetRelativePath(dir.FullName);
+            return new WmListItem
+            {
+                Name = dir.Name,
+                Path = p,
+                IsContainer = true,
+                Href = Url.Action("Index", "Browse", new { path = p }),
+                IconUrl = Url.Content(IconMapping.FolderIcon),
+                LargeIconUrl = BigIcon(Url.Content(IconMapping.FolderIcon)),
+                ContentLine = "Folder",
+                Cells = new List<WmListCell>
+                {
+                    new("", "-1"),
+                    new("Folder", "Folder"),
+                    new(dir.LastWriteTime.ToString("yyyy-MM-dd HH:mm"), dir.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss")),
+                },
+            };
+        }
+
+        private WmListItem FileItem(FileInfo file)
+        {
+            string p = fileService.GetRelativePath(file.FullName);
+            string mime = MimeUtility.GetMimeMapping(file.Name);
+            string size = HumanizeUtils.HumanizeSize(file.Length);
+            string ext = Path.GetExtension(file.Name).TrimStart('.').ToUpperInvariant();
+            bool isImage = mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+
+            string contentLine = string.IsNullOrEmpty(ext) ? size : $"{size} · {ext}";
+
+            return new WmListItem
+            {
+                Name = file.Name,
+                Path = p,
+                IsContainer = false,
+                // Clicking a file opens the in-window viewer; the context menu's Properties action still
+                // goes to the full metadata editor.
+                Href = Url.Action("Viewer", "Browse", new { path = p }),
+                IconUrl = Url.Content(IconMapping.GetIconUrl(file.Name, mime)),
+                LargeIconUrl = BigIcon(Url.Content(IconMapping.GetIconUrl(file.Name, mime))),
+                // Real thumbnails are a future job (ImageSharp); for now point image tiles at the file
+                // bytes served inline by this controller's Index.
+                ThumbnailUrl = isImage ? Url.Action("Index", "Browse", new { path = p }) : null,
+                ContentLine = contentLine,
+                Cells = new List<WmListCell>
+                {
+                    new(size, file.Length.ToString("D12")),
+                    new(mime, mime),
+                    new(file.LastWriteTime.ToString("yyyy-MM-dd HH:mm"), file.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss")),
+                },
+            };
+        }
+
+
+        private static readonly string[] TextExtensions =
+        {
+            "txt", "md", "markdown", "json", "xml", "csv", "tsv", "log", "yml", "yaml", "ini", "cfg",
+            "srt", "vtt", "sub", "nfo", "cs", "js", "ts", "css", "scss", "html", "htm", "sh", "py", "sql",
+        };
+
+        private async Task<WmViewerViewModel> BuildViewerAsync(string diskPath)
+        {
+            var fi = new FileInfo(diskPath);
+            string relPath = fileService.GetRelativePath(diskPath);
+            string mime = MimeUtility.GetMimeMapping(fi.Name);
+            string kind = PreviewKind(mime, fi.Name);
+
+            // Live file-level metadata (same extraction the metadata page uses), grouped for display.
+            var attrs = new List<AttributeBase>();
+            try
+            {
+                await foreach (var a in metadataService.CollectMetadataAsync(diskPath))
+                    if (a.SubResource == null)
+                        attrs.Add(a);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Metadata collection failed for {}", diskPath);
+            }
+
+            var groups = attrs
+                .Where(a => a.AttributeDefinition != null)
+                .GroupBy(a => a.AttributeDefinition.Group)
+                .OrderBy(g => g.Key)
+                .Select(g => new WmPropGroup(
+                    g.Key,
+                    g.OrderBy(x => x.AttributeDefinition.Name)
+                     .Select(x => (x.AttributeDefinition.Name, AttrValue(x)))
+                     .Where(t => !string.IsNullOrEmpty(t.Item2))
+                     // Tika and ExifTool often both report the same field (e.g. Width/Height) — collapse exact dupes.
+                     .Distinct()
+                     .ToList()))
+                .Where(g => g.Items.Count > 0)
+                .ToList();
+
+            string? textPreview = null;
+            if (kind == "text")
+            {
+                try
+                {
+                    using var fs = fi.OpenRead();
+                    var buf = new byte[64 * 1024];
+                    int read = fs.Read(buf, 0, buf.Length);
+                    textPreview = Encoding.UTF8.GetString(buf, 0, read);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Text preview read failed for {}", diskPath);
+                    kind = "none";
+                }
+            }
+
+            return new WmViewerViewModel
+            {
+                DisplayName = fi.Name,
+                Path = relPath,
+                ParentPath = fi.Directory != null ? fileService.GetRelativePath(fi.Directory.FullName) : null,
+                Breadcrumbs = BuildBreadcrumbs(relPath).ToList(),
+                PreviewKind = kind,
+                PreviewUrl = Url.Action("Index", "Browse", new { path = relPath })!,
+                DownloadUrl = Url.Action("Download", "Browse", new { path = relPath })!,
+                TextPreview = textPreview,
+                MimeType = mime,
+                DisplaySize = HumanizeUtils.HumanizeSize(fi.Length),
+                Modified = fi.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                IconUrl = Url.Content(IconMapping.GetIconUrl(fi.Name, mime)),
+                FullMetadataUrl = $"{Url.Action("Index", "Metadata")}/{relPath}",
+                Properties = groups,
+            };
+        }
+
+        private static string PreviewKind(string mime, string name)
+        {
+            if (mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) return "image";
+            if (mime.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)) return "audio";
+            if (mime.StartsWith("video/", StringComparison.OrdinalIgnoreCase)) return "video";
+            if (mime.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)) return "pdf";
+            if (mime.StartsWith("text/", StringComparison.OrdinalIgnoreCase)) return "text";
+
+            string ext = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
+            return TextExtensions.Contains(ext) ? "text" : "none";
+        }
+
+        private static string AttrValue(AttributeBase a)
+        {
+            string v = a switch
+            {
+                TextAttribute t => t.Value,
+                IntegerAttribute n => n.Value.ToString(),
+                FloatAttribute f when a.AttributeDefinition.Type == AttributeType.TimeSpan => TimeSpan.FromSeconds(f.Value).ToString(),
+                FloatAttribute f => f.Value.ToString(),
+                DateAttribute d => d.Value.ToString(),
+                BlobAttribute b => $"{b.Value.Length} bytes",
+                _ => "",
+            };
+            return string.IsNullOrEmpty(a.AttributeDefinition.Unit) ? v : $"{v} {a.AttributeDefinition.Unit}";
+        }
+
+        // Project icons are sourced from the Bluecurve theme and exist at 16px and 48px under the same
+        // freedesktop name; the 48px set keeps list/tile/icon thumbnails crisp when zoomed.
+        private static string BigIcon(string url16) =>
+            url16.Replace("/icons/16/file-types/", "/icons/48/file-types/");
 
         /// <summary>Serves a file as a download (Content-Disposition: attachment) so the browser saves it
         /// rather than rendering it inline. Used by the viewer's "Download" button; "View Raw" still hits
@@ -208,17 +453,14 @@ namespace Librarian.Controllers
 
         private static IEnumerable<(string, string)> BuildBreadcrumbs(string path)
         {
-            StringBuilder sb = new();
             if (path == ".")
-            {
                 yield break;
-            }
 
+            var sb = new StringBuilder();
             foreach (var element in path.Split('/'))
             {
                 sb.Append(element);
                 sb.Append('/');
-
                 yield return (element, sb.ToString().TrimEnd('/'));
             }
         }

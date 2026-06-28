@@ -1,0 +1,95 @@
+@using Librarian.ViewModels
+@model WmViewerViewModel
+@{
+    Layout = "_WmLayout";
+    ViewData["Title"] = Model.DisplayName;
+    ViewData["TaskbarActive"] = "browse";
+    var backUrl = Model.ParentPath != null
+        ? Url.Action("Index", "Browse", new { path = Model.ParentPath })
+        : Url.Action("Index", "Browse", new { path = "" });
+}
+
+<wm-window title="@Model.DisplayName" icon="@Model.IconUrl">
+
+    <wm-toolbar>
+        <wm-button icon="/icons/32/gnome-stock-insert-table.png" text="Edit metadata" href="@Model.FullMetadataUrl" tooltip="Open the full metadata editor"></wm-button>
+        <wm-button icon="/icons/32/document-save.png" text="View Raw" href="@Model.PreviewUrl" tooltip="View the original file bytes in the browser"></wm-button>
+        <wm-button icon="/icons/32/document-save.png" text="Download" href="@Model.DownloadUrl" tooltip="Download the original file"></wm-button>
+    </wm-toolbar>
+
+    <div class="wm-locationbar-row">
+        <wm-button class="wm-locationbar-up" icon="/icons/16/go-up.png" text="Up" href="@backUrl" tooltip="Back to the folder"></wm-button>
+        <wm-breadcrumb>
+            <wm-crumb href="@Url.Action("Index", "Browse", new { path = "" })" icon="/icons/16/go-home.png" text="Home"></wm-crumb>
+            @foreach (var (name, p) in Model.Breadcrumbs)
+            {
+                <wm-crumb href="@Url.Action("Index", "Browse", new { path = p })" text="@name"></wm-crumb>
+            }
+        </wm-breadcrumb>
+    </div>
+
+    <wm-content class="wm-content-flush">
+        <div class="wm-viewer">
+            <div class="wm-viewer-preview">
+                @switch (Model.PreviewKind)
+                {
+                    case "image":
+                        <img class="wm-viewer-image" src="@Model.PreviewUrl" alt="@Model.DisplayName" />
+                        break;
+                    case "audio":
+                        <audio class="wm-viewer-media" controls src="@Model.PreviewUrl"></audio>
+                        break;
+                    case "video":
+                        <video class="wm-viewer-media" controls src="@Model.PreviewUrl"></video>
+                        break;
+                    case "pdf":
+                        <iframe class="wm-viewer-frame" src="@Model.PreviewUrl" title="@Model.DisplayName"></iframe>
+                        break;
+                    case "text":
+                        <pre class="wm-viewer-text">@Model.TextPreview</pre>
+                        break;
+                    default:
+                        <div class="wm-viewer-none">
+                            <img src="@Model.IconUrl" alt="" />
+                            <p class="muted">No preview available for this file type.</p>
+                            <p>
+                                <a class="wm-button" href="@Model.PreviewUrl">View Raw</a>
+                                <a class="wm-button" href="@Model.DownloadUrl">Download</a>
+                            </p>
+                        </div>
+                        break;
+                }
+            </div>
+
+            <div class="wm-viewer-props">
+                <div class="wm-viewer-facts">
+                    <table>
+                        <tr><td class="wm-viewer-prop-name">Type</td><td>@Model.MimeType</td></tr>
+                        <tr><td class="wm-viewer-prop-name">Size</td><td>@Model.DisplaySize</td></tr>
+                        <tr><td class="wm-viewer-prop-name">Modified</td><td>@Model.Modified</td></tr>
+                    </table>
+                    <a href="@Model.FullMetadataUrl">Edit full metadata →</a>
+                </div>
+
+                @if (Model.Properties.Count == 0)
+                {
+                    <p class="muted">No extracted metadata.</p>
+                }
+                @foreach (var g in Model.Properties)
+                {
+                    <div class="wm-viewer-prop-group-title">@g.Group</div>
+                    <table>
+                        @foreach (var (name, val) in g.Items)
+                        {
+                            <tr><td class="wm-viewer-prop-name">@name</td><td>@val</td></tr>
+                        }
+                    </table>
+                }
+            </div>
+        </div>
+    </wm-content>
+
+    <wm-statusbar>
+        <span>@Model.MimeType · @Model.DisplaySize</span>
+    </wm-statusbar>
+</wm-window>

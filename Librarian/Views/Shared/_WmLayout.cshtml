@@ -12,6 +12,7 @@
     <meta name="description" content="" />
     <link rel="stylesheet" href="~/lib/wm/css/wm.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/lib/wm/css/wm-theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/wm-app.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
     <link rel="icon" href="~/favicon.ico" asp-append-version="true" />
 </head>
@@ -21,8 +22,10 @@
 
     @{ var taskbarActive = ViewData["TaskbarActive"] as string ?? "browse"; }
     <wm-taskbar>
-        <wm-task icon="/icons/16/file-manager.png" text="Browse" href="@Url.Action("Index", "UiTest", new { path = "" })"
+        <wm-task icon="/icons/16/file-manager.png" text="Browse" href="@Url.Action("Index", "Browse", new { path = "" })"
                  active="@(taskbarActive == "browse")" tooltip="Browse the library"></wm-task>
+        <wm-task icon="/icons/16/places/search.png" text="Search" href="@Url.Action("Index", "Search")"
+                 active="@(taskbarActive == "search")" tooltip="Search the library"></wm-task>
         <wm-task icon="/icons/16/gnome-searchtool.png" text="Settings" href="@Url.Action("Index", "Admin")"
                  active="@(taskbarActive == "settings")" tooltip="Settings and maintenance"></wm-task>
         <div class="wm-layout-fill"></div>

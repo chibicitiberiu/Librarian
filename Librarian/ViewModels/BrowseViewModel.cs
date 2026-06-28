@@ -1,43 +1,31 @@
-﻿using Librarian.Controllers;
-using System;
 using System.Collections.Generic;
 
-namespace Librarian.Models
+namespace Librarian.ViewModels
 {
-    public class BrowseFileViewModel
-    {
-        public string Name { get; set; } = null!;
-
-        public string Path { get; set; } = null!;
-
-        public bool IsDirectory { get; set; }
-
-        public DateTimeOffset LastModified { get; set; }
-
-        public string? MimeType { get; set; }
-
-        public long? Size { get; set; }
-
-        public string? DisplaySize { get; set; }
-
-        public string IconUrl { get; set; } = null!;
-    }
-
+    /// <summary>Backing model for the Browse directory listing: folder identity, breadcrumbs and the
+    /// FileListView payload (items + columns + current view mode / zoom / filters).</summary>
     public class BrowseViewModel
     {
-        public string Path { get; set; } = null!;
-
-        public string DisplayName { get; set; } = null!;
-
-        public string DisplayPath { get; set; } = null!;
-
+        public string DisplayName { get; set; } = "";
+        public string Path { get; set; } = "";
         public string? ParentPath { get; set; }
 
-        public IEnumerable<BrowseFileViewModel> Files { get; set; } = null!;
+        // (name, path) pairs for the breadcrumb trail.
+        public IReadOnlyList<(string Name, string Path)> Breadcrumbs { get; set; } = new List<(string, string)>();
 
-        // name, path
-        public IEnumerable<(string, string)> Breadcrumbs { get; set; } = null!;
+        public IReadOnlyList<WmListItem> Items { get; set; } = new List<WmListItem>();
+        public IReadOnlyList<WmListColumn> Columns { get; set; } = new List<WmListColumn>();
 
-        public BrowseClipboardModel? Clipboard { get; set;}
+        public string Mode { get; set; } = "details";
+        public int Zoom { get; set; } = 2;
+        public string Sort { get; set; } = "name";
+
+        /// <summary>Whether hidden files (dotfiles / Hidden attribute) are shown.</summary>
+        public bool ShowHidden { get; set; }
+
+        /// <summary>Whether the session clipboard holds something to paste (enables the Paste controls).</summary>
+        public bool HasClipboard { get; set; }
+
+        public int Count => Items.Count;
     }
 }

@@ -1,6 +1,25 @@
-﻿@{
-    ViewData["Title"] = "Privacy Policy";
+@{
+    Layout = "_WmLayout";
+    ViewData["Title"] = "Privacy";
+    ViewData["TaskbarActive"] = "browse";
 }
-<h1>@ViewData["Title"]</h1>
-
-<p>Use this page to detail your site's privacy policy.</p>
+<wm-window title="Privacy" icon="/icons/16/file-manager.png">
+    <div class="wm-locationbar-row">
+        <wm-breadcrumb>
+            <wm-crumb href="@Url.Action("Index", "Browse", new { path = "" })" icon="/icons/16/go-home.png" text="Home"></wm-crumb>
+            <wm-crumb text="Privacy"></wm-crumb>
+        </wm-breadcrumb>
+    </div>
+    <div class="wm-window-body">
+        <partial name="_WmSidebar" />
+        <wm-content>
+            <div class="wm-page">
+                <div class="wm-section">
+                    <div class="wm-section-heading">Privacy Policy</div>
+                    <p>Use this page to detail your site's privacy policy.</p>
+                </div>
+            </div>
+        </wm-content>
+    </div>
+    <wm-statusbar><span>Ready</span></wm-statusbar>
+</wm-window>

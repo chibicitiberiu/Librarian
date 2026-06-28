@@ -1,10 +1,35 @@
 @{
+    Layout = "_WmLayout";
     ViewData["Title"] = "Home";
-    ViewData["CurrentPage"] = "browse";
+    ViewData["TaskbarActive"] = "browse";
 }
-
-<h1>Welcome</h1>
-
-<p>This is <em>Librarian</em>, a program for managing and indexing data.</p>
-
-<p>Use the sidebar to browse files, explore the library by category, open collections, or search.</p>
+<wm-window title="Home" icon="/icons/16/file-manager.png">
+    <div class="wm-locationbar-row">
+        <wm-breadcrumb>
+            <wm-crumb href="@Url.Action("Index", "Browse", new { path = "" })" icon="/icons/16/go-home.png" text="Home"></wm-crumb>
+            <wm-crumb text="Home"></wm-crumb>
+        </wm-breadcrumb>
+    </div>
+    <div class="wm-window-body">
+        <partial name="_WmSidebar" />
+        <wm-content>
+            <div class="wm-page">
+                <div class="wm-section">
+                    <div class="wm-section-heading">Welcome to Librarian</div>
+                    <p>Librarian is a program for managing and indexing your data. Browse files, explore the
+                        library by category, open collections, and search across everything you have indexed.</p>
+                    <p class="wm-hint">The file browser is now the home page, so this welcome screen is just a
+                        starting point. Use the links below or the sidebar to get around.</p>
+                </div>
+                <div class="wm-section">
+                    <div class="wm-section-heading">Get started</div>
+                    <p>
+                        <wm-button href="@Url.Action("Index", "Browse", new { path = "" })" icon="/icons/16/file-manager.png" text="Open the browser"></wm-button>
+                        <wm-button href="@Url.Action("Index", "Admin")" icon="/icons/16/gnome-searchtool.png" text="Settings"></wm-button>
+                    </p>
+                </div>
+            </div>
+        </wm-content>
+    </div>
+    <wm-statusbar><span>Ready</span></wm-statusbar>
+</wm-window>
