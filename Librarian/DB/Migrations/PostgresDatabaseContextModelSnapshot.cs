@@ -783,6 +783,13 @@ namespace Librarian.DB.Migrations
                             Id = 105,
                             Alias = "filename",
                             Role = 1
+                        },
+                        new
+                        {
+                            Id = 106,
+                            Alias = "show",
+                            AttributeDefinitionId = 37,
+                            Role = 0
                         });
                 });
 
@@ -2031,6 +2038,36 @@ namespace Librarian.DB.Migrations
                             Group = "File attributes",
                             IsReadOnly = true,
                             Name = "Checksum",
+                            Type = 0,
+                            Unit = ""
+                        },
+                        new
+                        {
+                            Id = 122,
+                            Description = "IMDb identifier (e.g. tt0133093) for cross-referencing and enrichment.",
+                            Group = "Media",
+                            IsReadOnly = false,
+                            Name = "IMDb ID",
+                            Type = 0,
+                            Unit = ""
+                        },
+                        new
+                        {
+                            Id = 123,
+                            Description = "The Movie Database identifier.",
+                            Group = "Media",
+                            IsReadOnly = false,
+                            Name = "TMDb ID",
+                            Type = 0,
+                            Unit = ""
+                        },
+                        new
+                        {
+                            Id = 124,
+                            Description = "TheTVDB identifier.",
+                            Group = "Media",
+                            IsReadOnly = false,
+                            Name = "TVDB ID",
                             Type = 0,
                             Unit = ""
                         });

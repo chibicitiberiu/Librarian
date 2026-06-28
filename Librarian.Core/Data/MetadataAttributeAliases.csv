@@ -104,3 +104,4 @@ SeasonNumber,Media,Season number,
 PRODUCTION_STUDIO,Media,Studio,
 DISCTOTAL,Media,Total discs,
 filename,,,Ignore
+show,General,Collection,

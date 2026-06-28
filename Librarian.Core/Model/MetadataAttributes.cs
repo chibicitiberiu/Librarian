@@ -114,6 +114,7 @@ namespace Librarian.Model.MetadataAttributes
         public static readonly int EpisodeID = 90;
         public static readonly int EpisodeNumber = 91;
         public static readonly int Genre = 92;
+        public static readonly int IMDbID = 122;
         public static readonly int Label = 93;
         public static readonly int MediaFormat = 94;
         public static readonly int MusicBrainzAlbumArtistID = 95;
@@ -129,6 +130,8 @@ namespace Librarian.Model.MetadataAttributes
         public static readonly int StartTime = 105;
         public static readonly int StreamType = 106;
         public static readonly int Studio = 107;
+        public static readonly int TMDbID = 123;
+        public static readonly int TVDBID = 124;
         public static readonly int TotalDiscs = 108;
     }
 

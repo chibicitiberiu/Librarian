@@ -15,9 +15,8 @@ namespace Librarian.DB.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // unaccent powers accent-insensitive search (used by the search queries at runtime). It's a
-            // trusted extension, so the database owner can create it. Folded in from the old
-            // AddUnaccentExtension migration when the history was collapsed.
+            // unaccent powers accent-insensitive search; it must exist before the generated search
+            // columns / GIN indexes below reference it.
             migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS unaccent;");
 
             migrationBuilder.CreateTable(
@@ -578,7 +577,10 @@ namespace Librarian.DB.Migrations
                     { 118, "", "Software", false, "User interface", 0, "" },
                     { 119, "", "Video", true, "Frame rate", 4, "fps" },
                     { 120, "", "Video", true, "Frames", 3, "" },
-                    { 121, "SHA-256 content hash (hex).", "File attributes", true, "Checksum", 0, "" }
+                    { 121, "SHA-256 content hash (hex).", "File attributes", true, "Checksum", 0, "" },
+                    { 122, "IMDb identifier (e.g. tt0133093) for cross-referencing and enrichment.", "Media", false, "IMDb ID", 0, "" },
+                    { 123, "The Movie Database identifier.", "Media", false, "TMDb ID", 0, "" },
+                    { 124, "TheTVDB identifier.", "Media", false, "TVDB ID", 0, "" }
                 });
 
             migrationBuilder.InsertData(
@@ -688,7 +690,8 @@ namespace Librarian.DB.Migrations
                     { 101, "season_number", 104, 0 },
                     { 102, "seasonnumber", 104, 0 },
                     { 103, "production_studio", 107, 0 },
-                    { 104, "disctotal", 108, 0 }
+                    { 104, "disctotal", 108, 0 },
+                    { 106, "show", 37, 0 }
                 });
 
             migrationBuilder.CreateIndex(
@@ -877,9 +880,8 @@ namespace Librarian.DB.Migrations
                 column: "ValueSearch")
                 .Annotation("Npgsql:IndexMethod", "gin");
 
-            // Reserve the curated-id space (folded in from the old ReserveCurationIdSpace migration): seed
-            // AttributeDefinitions occupy ids 1..N (well under the base), while "Other" definitions created
-            // on demand during indexing start at 1,000,000 — so the two ranges never collide.
+            // Reserve the 1..999999 id range for the seeded (curated) AttributeDefinitions; runtime
+            // on-demand "Other" definitions are minted from 1000000 up so they never collide with seeds.
             migrationBuilder.Sql("ALTER TABLE \"AttributeDefinitions\" ALTER COLUMN \"Id\" RESTART WITH 1000000;");
         }
 

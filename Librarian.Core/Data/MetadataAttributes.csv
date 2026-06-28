@@ -120,3 +120,6 @@ Software,User interface,Text,,,
 Video,Frame rate,Float,,fps,TRUE
 Video,Frames,Integer,,,TRUE
 File attributes,Checksum,Text,SHA-256 content hash (hex).,,TRUE
+Media,IMDb ID,Text,IMDb identifier (e.g. tt0133093) for cross-referencing and enrichment.,,
+Media,TMDb ID,Text,The Movie Database identifier.,,
+Media,TVDB ID,Text,TheTVDB identifier.,,
