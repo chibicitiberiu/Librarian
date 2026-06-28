@@ -1,11 +1,19 @@
 @import "browser_support";
 
+// "Flush" content area: the viewer wants its panes edge-to-edge (no window-content padding) and
+// fixed to the content height so each pane scrolls on its own rather than the whole window scrolling.
+.wm-window-content.wm-content-flush {
+    padding: 0;
+    overflow: hidden;
+}
+
 // Viewer — an in-window item view: a preview pane that grows + a fixed-width properties pane.
+// Height is pinned to the content area so the two panes scroll independently (see .wm-content-flush).
 .wm-viewer {
     @include display-flex;
     @include flex-direction-row;
     @include align-items(stretch);
-    min-height: 100%;
+    height: 100%;
 }
 
 .wm-viewer-preview {

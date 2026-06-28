@@ -11,21 +11,23 @@
 <wm-window title="@Model.DisplayName" icon="@Model.IconUrl">
 
     <wm-toolbar>
-        <wm-button icon="/icons/16/go-up.png" text="Back" href="@backUrl" tooltip="Back to the folder"></wm-button>
-        <wm-separator></wm-separator>
         <wm-button icon="/icons/32/gnome-stock-insert-table.png" text="Edit metadata" href="@Model.FullMetadataUrl" tooltip="Open the full metadata editor"></wm-button>
-        <wm-button icon="/icons/32/document-save.png" text="Open original" href="@Model.PreviewUrl" tooltip="Open or download the original file"></wm-button>
+        <wm-button icon="/icons/32/document-save.png" text="View Raw" href="@Model.PreviewUrl" tooltip="View the original file bytes in the browser"></wm-button>
+        <wm-button icon="/icons/32/document-save.png" text="Download" href="@Model.DownloadUrl" tooltip="Download the original file"></wm-button>
     </wm-toolbar>
 
-    <wm-breadcrumb>
-        <wm-crumb href="@Url.Action("Index", "UiTest", new { path = "" })" icon="/icons/16/go-home.png" text="Home"></wm-crumb>
-        @foreach (var (name, p) in Model.Breadcrumbs)
-        {
-            <wm-crumb href="@Url.Action("Index", "UiTest", new { path = p })" text="@name"></wm-crumb>
-        }
-    </wm-breadcrumb>
+    <div class="wm-locationbar-row">
+        <wm-button class="wm-locationbar-up" icon="/icons/16/go-up.png" text="Up" href="@backUrl" tooltip="Back to the folder"></wm-button>
+        <wm-breadcrumb>
+            <wm-crumb href="@Url.Action("Index", "UiTest", new { path = "" })" icon="/icons/16/go-home.png" text="Home"></wm-crumb>
+            @foreach (var (name, p) in Model.Breadcrumbs)
+            {
+                <wm-crumb href="@Url.Action("Index", "UiTest", new { path = p })" text="@name"></wm-crumb>
+            }
+        </wm-breadcrumb>
+    </div>
 
-    <wm-content>
+    <wm-content class="wm-content-flush">
         <div class="wm-viewer">
             <div class="wm-viewer-preview">
                 @switch (Model.PreviewKind)
@@ -49,7 +51,10 @@
                         <div class="wm-viewer-none">
                             <img src="@Model.IconUrl" alt="" />
                             <p class="muted">No preview available for this file type.</p>
-                            <a class="wm-button" href="@Model.PreviewUrl">Open original</a>
+                            <p>
+                                <a class="wm-button" href="@Model.PreviewUrl">View Raw</a>
+                                <a class="wm-button" href="@Model.DownloadUrl">Download</a>
+                            </p>
                         </div>
                         break;
                 }

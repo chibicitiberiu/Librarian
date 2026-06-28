@@ -318,6 +318,42 @@ body.wm-desktop {
   display: block;
 }
 
+.wm-locationbar-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -moz-box;
+  display: flex;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: row;
+  -moz-box-orient: horizontal;
+  -moz-box-direction: normal;
+  -ms-flex-direction: row;
+  flex-direction: row;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  -moz-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+}
+
+.wm-locationbar-row > .wm-locationbar-up {
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+}
+
+.wm-locationbar-row > .wm-locationbar {
+  -webkit-box-flex: 1;
+  -webkit-flex-grow: 1;
+  -moz-box-flex: 1;
+  -ms-flex-positive: 1;
+  flex-grow: 1;
+  min-width: 0;
+}
+
 .wm-locationbar {
   display: -webkit-box;
   display: -webkit-flex;
@@ -726,6 +762,11 @@ body.wm-desktop {
   font-size: 1.1em;
 }
 
+.wm-window-content.wm-content-flush {
+  padding: 0;
+  overflow: hidden;
+}
+
 .wm-viewer {
   display: -webkit-box;
   display: -webkit-flex;
@@ -744,7 +785,7 @@ body.wm-desktop {
   -moz-box-align: stretch;
   -ms-flex-align: stretch;
   align-items: stretch;
-  min-height: 100%;
+  height: 100%;
 }
 
 .wm-viewer-preview {

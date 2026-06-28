@@ -2,6 +2,26 @@
 
 // Breadcrumb navigation — a location bar holding a trail of crumbs. The first crumb carries an icon
 // (Home / Search), drawn to the LEFT of its text; deeper crumbs are text only, separated by a slash.
+// A location strip that pairs a leading nav button (Up) with the breadcrumb to its right, like the
+// address bar in a classic file manager. The breadcrumb grows to fill the remaining width.
+.wm-locationbar-row {
+    @include display-flex;
+    @include flex-direction-row;
+    @include align-items(center);
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+}
+
+.wm-locationbar-row > .wm-locationbar-up {
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+}
+
+.wm-locationbar-row > .wm-locationbar {
+    @include flex-grow(1);
+    min-width: 0;
+}
+
 .wm-locationbar {
     @include display-flex;
     @include flex-direction-row;

@@ -91,6 +91,8 @@
   border-right: 1px solid #CECECE;
   outline: 1px solid #5C5C5C;
   margin: 1px;
+  padding: 0.2em 0.5em;
+  color: black;
 }
 .wm-button:hover {
   background: #F5F5F5;
@@ -111,10 +113,6 @@
 .wm-button:disabled, .wm-button.disabled {
   opacity: 0.5;
 }
-.wm-button {
-  padding: 0.2em 0.5em;
-  color: black;
-}
 
 .wm-toolbar > .wm-button {
   background: transparent;
@@ -125,6 +123,8 @@
   outline: 1px solid #E6E6E6;
   outline: 1px solid rgba(255, 255, 255, 0.01);
   margin: 1px;
+  padding: 0.15em 0.4em;
+  color: black;
 }
 .wm-toolbar > .wm-button:hover {
   background: #F5F5F5;
@@ -145,14 +145,24 @@
 .wm-toolbar > .wm-button:disabled, .wm-toolbar > .wm-button.disabled {
   opacity: 0.5;
 }
-.wm-toolbar > .wm-button {
-  padding: 0.15em 0.4em;
-  color: black;
-}
 
 .wm-locationbar {
   padding: 0.2em 0.35em;
   border-bottom: 1px solid #A1A1A1;
+}
+
+.wm-locationbar-row {
+  padding: 0.2em 0.35em;
+  border-bottom: 1px solid #A1A1A1;
+}
+
+.wm-locationbar-row > .wm-locationbar {
+  padding: 0;
+  border-bottom: 0;
+}
+
+.wm-locationbar-up {
+  margin-right: 0.35em;
 }
 
 .wm-breadcrumb {

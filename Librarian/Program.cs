@@ -138,6 +138,9 @@ namespace Librarian
             app.MapControllerRoute("Browse_Paste", "browse_actions/paste", new { controller = "Browse", action = "Paste" });
             app.MapControllerRoute("Browse_Rename", "browse_actions/rename", new { controller = "Browse", action = "Rename" });
             app.MapControllerRoute("Browse_Delete", "browse_actions/delete", new { controller = "Browse", action = "Delete" });
+            // Distinct prefix so it isn't swallowed by the "browse/{**path}" catch-all above.
+            app.MapControllerRoute("Browse_Download", "browse_download/{**path}",
+                                    new { controller = "Browse", action = "Download", path = string.Empty });
 
             app.MapControllerRoute("Library",
                                     "library/{category}/{view?}",

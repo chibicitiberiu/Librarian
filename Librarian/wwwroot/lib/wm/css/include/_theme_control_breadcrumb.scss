@@ -6,6 +6,22 @@
     border-bottom: 1px solid $color-panel-border-dark;
 }
 
+// When the location bar is paired with a leading Up button, the row owns the strip chrome so the
+// button and breadcrumb read as one address bar; the inner bar drops its own padding/border.
+.wm-locationbar-row {
+    padding: .2em .35em;
+    border-bottom: 1px solid $color-panel-border-dark;
+}
+
+.wm-locationbar-row > .wm-locationbar {
+    padding: 0;
+    border-bottom: 0;
+}
+
+.wm-locationbar-up {
+    margin-right: .35em;
+}
+
 .wm-breadcrumb {
     @include common-input;
     margin: 0 .15em;

@@ -28,8 +28,11 @@ namespace Librarian.ViewModels
         /// <summary>image | audio | video | pdf | text | none — selects the preview widget.</summary>
         public string PreviewKind { get; set; } = "none";
 
-        /// <summary>URL serving the raw file bytes (the Browse controller).</summary>
+        /// <summary>URL serving the raw file bytes inline (the Browse controller) — "View Raw".</summary>
         public string PreviewUrl { get; set; } = "";
+
+        /// <summary>URL serving the raw file bytes as an attachment (Content-Disposition: attachment) — "Download".</summary>
+        public string DownloadUrl { get; set; } = "";
 
         /// <summary>First chunk of a text file, for the text preview.</summary>
         public string? TextPreview { get; set; }

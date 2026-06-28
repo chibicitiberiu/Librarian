@@ -136,6 +136,53 @@ namespace Librarian.Controllers
             }
         }
 
+        /// <summary>Serves a file as a download (Content-Disposition: attachment) so the browser saves it
+        /// rather than rendering it inline. Used by the viewer's "Download" button; "View Raw" still hits
+        /// <see cref="Index"/> for inline display.</summary>
+        public IActionResult Download(string path)
+        {
+            try
+            {
+                string diskPath = fileService.Resolve(path);
+
+                if (System.IO.File.Exists(diskPath))
+                    return this.FileFromDisk(diskPath);
+
+                // Virtual archive entry: serve its bytes as an attachment too.
+                var entry = db.IndexedFiles
+                    .Include(f => f.ParentFile)
+                    .FirstOrDefault(f => f.Path == path && f.Source == FileSource.ArchiveEntry);
+
+                if (entry?.ParentFile != null && entry.InternalPath != null)
+                {
+                    string archiveDisk = fileService.Resolve(entry.ParentFile.Path);
+                    if (System.IO.File.Exists(archiveDisk))
+                    {
+                        Stream? stream = archiveBytes.OpenEntry(archiveDisk, entry.InternalPath);
+                        if (stream != null)
+                        {
+                            string name = Path.GetFileName(entry.InternalPath);
+                            Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.ContentDisposition] =
+                                new Microsoft.Net.Http.Headers.ContentDispositionHeaderValue("attachment") { FileName = name }.ToString();
+                            return File(stream, MimeUtility.GetMimeMapping(name), name);
+                        }
+                    }
+                }
+
+                return NotFound("File not found!");
+            }
+            catch (ArgumentException ex)
+            {
+                logger.LogError(ex, "Bad request!");
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error handling request!");
+                return StatusCode(500, ex.Message);
+            }
+        }
+
         /// <summary>Serves the bytes of a virtual archive entry (no standalone disk file) by reading them out
         /// of its parent archive (collection_plan.md §3.1, §7.3). Returns 404 when the path is not a known
         /// archive entry, the archive is missing, or its family has no registered byte source.</summary>

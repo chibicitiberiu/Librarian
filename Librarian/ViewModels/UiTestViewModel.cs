@@ -20,6 +20,12 @@ namespace Librarian.ViewModels
         public int Zoom { get; set; } = 2;
         public string Sort { get; set; } = "name";
 
+        /// <summary>Whether hidden files (dotfiles / Hidden attribute) are shown.</summary>
+        public bool ShowHidden { get; set; }
+
+        /// <summary>Whether files are grouped into catalog Items (primary file stands in for the group).</summary>
+        public bool ItemView { get; set; }
+
         public int Count => Items.Count;
     }
 }
