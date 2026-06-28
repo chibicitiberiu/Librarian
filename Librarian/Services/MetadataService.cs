@@ -96,11 +96,15 @@ namespace Librarian.Services
 
             // Canonical providers (file attributes, media), run under the resilience policy so a
             // transient provider failure is retried and, if it persists, flags the file.
-            bool incomplete = await StoreCanonicalProvidersAsync(indexedFile);
+            // Shared across the canonical and promotion passes so an identical (field, sub-resource, value)
+            // isn't stored twice — e.g. a series from the filename parser and the same value promoted from
+            // a Matroska "show" tag.
+            var seen = new HashSet<(int Def, SubResource? Sub, string Value)>();
+            bool incomplete = await StoreCanonicalProvidersAsync(indexedFile, seen);
             await dbContext.SaveChangesAsync();
 
             // Raw providers (Tika, ExifTool): persist the raw layer and promote it to canonical.
-            incomplete |= await UpdateRawMetadata(indexedFile);
+            incomplete |= await UpdateRawMetadata(indexedFile, seen);
 
             // User edits in the .meta sidecar are authoritative: replace the matching extracted/promoted
             // values so the DB reflects what's on disk (the system of record).
@@ -117,14 +121,13 @@ namespace Librarian.Services
 
         /// <summary>Runs the canonical providers under the resilience policy, stores their attributes,
         /// and reports whether any provider's extraction failed transiently (the file is incomplete).</summary>
-        private async Task<bool> StoreCanonicalProvidersAsync(IndexedFile file)
+        private async Task<bool> StoreCanonicalProvidersAsync(IndexedFile file, HashSet<(int Def, SubResource? Sub, string Value)> seen)
         {
             string filePath = fileService.Resolve(file.Path);
             bool incomplete = false;
 
-            // Collapse identical (field, sub-resource, value) across providers — e.g. the series name
-            // emitted by both the filename parser and meta-cli's "show" tag is one Collection row, not two.
-            var seen = new HashSet<(int Def, SubResource? Sub, string Value)>();
+            // `seen` collapses identical (field, sub-resource, value) across providers — and is shared with
+            // the promotion pass so a canonical value isn't duplicated by a later promoted one.
 
             foreach (var provider in metadataProviders.Values)
             {
@@ -157,7 +160,7 @@ namespace Librarian.Services
             return incomplete;
         }
 
-        private async Task<bool> UpdateRawMetadata(IndexedFile indexedFile)
+        private async Task<bool> UpdateRawMetadata(IndexedFile indexedFile, HashSet<(int Def, SubResource? Sub, string Value)> seen)
         {
             string filePath = fileService.Resolve(indexedFile.Path);
             string? content = null;
@@ -169,8 +172,9 @@ namespace Librarian.Services
 
             // De-duplicates promoted attributes by (field, sub-resource, value): several raw keys can
             // map to the same canonical field+value (e.g. albumartist spelt three ways), and we want
-            // one row per (field, value) on each sub-resource, not one per source key.
-            var promotedKeys = new HashSet<(int Def, SubResource? Sub, string Value)>();
+            // one row per (field, value) on each sub-resource, not one per source key. Seeded with the
+            // canonical pass's `seen` so a promotion can't duplicate a value a canonical provider wrote.
+            var promotedKeys = seen;
 
             // Files embedded in this one (archive entries), to be exploded into virtual files after the
             // provider loop (collection_plan.md §7). Carries the producing provider so the entry's raw
