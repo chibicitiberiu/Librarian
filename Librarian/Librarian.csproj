@@ -21,12 +21,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Editable classification lists; copied next to the app so ContentRoot/config.d resolves at runtime. -->
+    <Content Update="config.d\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="compilerconfig.json" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="GitignoreParserNet" Version="0.2.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <!-- Pin Relational to match EF Core 10.0.9; the Npgsql 10.0.2 provider would
+         otherwise drag in 10.0.4 transitively and trigger an MSB3277 conflict. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

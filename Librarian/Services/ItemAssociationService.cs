@@ -72,14 +72,22 @@ namespace Librarian.Services
             var containerIds = files.Where(f => f.ParentFileId is int)
                                     .Select(f => f.ParentFileId!.Value).ToHashSet();
 
-            var realFiles = files.Where(f => !dirPaths.Contains(f.Path) && !containerIds.Contains(f.Id)).ToList();
+            // Directory entries carry no Size (only files set it). Exclude them explicitly so a folder
+            // whose children aren't indexed yet (or an empty/ignored folder like a "cache" dir) can't be
+            // mistaken for a leaf content item — dirPaths only catches directories that are a parent of an
+            // indexed file.
+            bool IsDirectoryEntry(IndexedFile f) => f.Source == FileSource.Filesystem && f.Size == null;
+
+            var realFiles = files.Where(f => !dirPaths.Contains(f.Path)
+                                             && !containerIds.Contains(f.Id)
+                                             && !IsDirectoryEntry(f)).ToList();
             var byFolder = realFiles.GroupBy(f => ParentDir(f.Path)).ToList();
 
             // An app/game install folder = an executable + resource files (DLLs/data) together. A
             // catch-all folder that merely holds a loose installer is NOT one. Such a bundle owns its
             // whole subtree (manuals/trainers in subfolders fold in), so only the outermost qualifies.
             var appFolders = byFolder
-                .Where(g => g.Any(f => IsContentExe(f)) && g.Any(f => Sidecars.Classify(NameOf(f.Path)) == SidecarKind.CompanionResource))
+                .Where(g => g.Any(f => IsContentExe(f)) && g.Any(f => Sidecars.Classify(NameOf(f.Path), f.MimeType) == SidecarKind.CompanionResource))
                 .Select(g => g.Key)
                 .ToHashSet();
             var roots = appFolders.Where(d => !AncestorDirs(d).Any(appFolders.Contains)).ToHashSet();
@@ -115,7 +123,7 @@ namespace Librarian.Services
             var touched = new HashSet<int>();
             foreach (var (sidecar, primary) in promotions)
             {
-                int produced = Sidecars.Classify(NameOf(sidecar.Path)) switch
+                int produced = Sidecars.Classify(NameOf(sidecar.Path), sidecar.MimeType) switch
                 {
                     SidecarKind.Opf => await PromoteAttributesAsync(sidecar.Id, primary.Id),
                     SidecarKind.Lrc => await PromoteContentAsync(sidecar.Id, primary.Id, Attr.Audio.Lyrics),
@@ -145,17 +153,21 @@ namespace Librarian.Services
         private (int Items, int Sidecars, int Companions) AssociateFolder(
             List<IndexedFile> folderFiles, List<(IndexedFile, IndexedFile)> promotions)
         {
+            // Classify by content MIME where we have it (robust to mismatched extensions), name otherwise.
             var classified = folderFiles
-                .Select(f => (file: f, name: NameOf(f.Path), kind: Sidecars.Classify(NameOf(f.Path))))
+                .Select(f => (file: f, name: NameOf(f.Path), kind: Sidecars.Classify(NameOf(f.Path), f.MimeType)))
                 .ToList();
+            string? MimeOf(string name) => folderFiles.FirstOrDefault(f => NameOf(f.Path) == name)?.MimeType;
 
-            bool isBundle = classified.Any(c => c.kind == SidecarKind.Content
-                                                && (Sidecars.IsAudio(c.name) || Sidecars.IsExecutable(c.name)));
+            // A "media folder" is built around primary media (a movie, album tracks, an app). In one, every
+            // other loose file — stray images, a .txt subtitle, a conversion .log, sidecar art — is a
+            // companion of the media, not standalone content. (A folder of only text/images is NOT a media
+            // folder, so those stay real items.)
+            bool isMediaFolder = classified.Any(c => c.kind == SidecarKind.Content && Sidecars.IsPrimaryMedia(c.name, MimeOf(c.name)));
 
-            // Loose images inside an audio/app folder are art/resources, not standalone photos (M3b).
             bool IsCompanion(SidecarKind kind, string name) =>
                 kind is SidecarKind.CompanionArt or SidecarKind.CompanionResource
-                || (isBundle && kind == SidecarKind.Content && Sidecars.IsImage(name));
+                || (isMediaFolder && kind == SidecarKind.Content && !Sidecars.IsPrimaryMedia(name, MimeOf(name)));
 
             var realContent = classified
                 .Where(c => c.kind == SidecarKind.Content && !IsCompanion(c.kind, c.name))
@@ -178,7 +190,7 @@ namespace Librarian.Services
                 .Where(f => ParentDir(f.Path) == rootDir && IsContentExe(f))
                 .ToList();
             var primary = ChoosePrimaryExe(rootExes, LastSegment(rootDir))
-                          ?? bundleFiles.FirstOrDefault(f => Sidecars.Classify(NameOf(f.Path)) == SidecarKind.Content);
+                          ?? bundleFiles.FirstOrDefault(f => Sidecars.Classify(NameOf(f.Path), f.MimeType) == SidecarKind.Content);
             if (primary is null)
                 return (0, 0, 0);
 
@@ -195,7 +207,7 @@ namespace Librarian.Services
                 {
                     file.Role = FileRole.Primary;
                 }
-                else if (Sidecars.Classify(NameOf(file.Path)) is SidecarKind.Opf or SidecarKind.Nfo or SidecarKind.Lrc)
+                else if (Sidecars.Classify(NameOf(file.Path), file.MimeType) is SidecarKind.Opf or SidecarKind.Nfo or SidecarKind.Lrc)
                 {
                     file.Role = FileRole.Sidecar;
                     promotions.Add((file, primary));
@@ -211,7 +223,7 @@ namespace Librarian.Services
         }
 
         private static bool IsContentExe(IndexedFile f) =>
-            Sidecars.Classify(NameOf(f.Path)) == SidecarKind.Content && Sidecars.IsExecutable(NameOf(f.Path));
+            Sidecars.Classify(NameOf(f.Path), f.MimeType) == SidecarKind.Content && Sidecars.IsExecutable(NameOf(f.Path));
 
         /// <summary>Whole folder is one Item owned by <paramref name="primary"/>.</summary>
         private (int, int, int) SingleItem(
@@ -446,25 +458,10 @@ namespace Librarian.Services
 
         #region Structural collections (collection_plan.md §6)
 
-        /// <summary>A folder/archive-subdir name like "Season 1", "Disc 2", "Vol. 3", "Specials" — the
-        /// naming signal that a content folder is one structural level of a larger work.</summary>
-        // No \b after the keyword: a level can be written with no separator ("S01") or with an underscore
-        // ("Part_4"), neither of which is a word boundary. The trailing $ keeps it from matching prefixes.
-        private static readonly System.Text.RegularExpressions.Regex StructuralName = new(
-            @"^(season|series|saison|book|vol|volume|disc|disk|cd|part|pt|s)[\s._-]*\d+$|^(specials?|extras?|bonus)$",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
-
-        private static bool IsStructuralName(string name) => StructuralName.IsMatch(name.Trim());
-
-        private static bool IsSeasonName(string name)
-        {
-            string n = name.Trim();
-            return System.Text.RegularExpressions.Regex.IsMatch(n, @"^(season|series|saison|s)[\s._-]*\d+$",
-                       System.Text.RegularExpressions.RegexOptions.IgnoreCase)
-                   || n.Equals("specials", StringComparison.OrdinalIgnoreCase)
-                   || n.Equals("special", StringComparison.OrdinalIgnoreCase)
-                   || n.Equals("extras", StringComparison.OrdinalIgnoreCase);
-        }
+        // Structural-collection naming ("Season 1", "Disc 2", "Specials", …) lives in config.d via
+        // FolderHeuristics; these thin forwarders keep the call sites below readable.
+        private static bool IsStructuralName(string name) => FolderHeuristics.IsStructuralName(name);
+        private static bool IsSeasonName(string name) => FolderHeuristics.IsSeasonName(name);
 
         private readonly record struct ResolvedNode(Collection? Collection, IReadOnlyList<int> ItemIds);
 
@@ -538,7 +535,7 @@ namespace Librarian.Services
                     return;
                 foreach (var file in folderFiles)
                 {
-                    var kind = Sidecars.Classify(NameOf(file.Path));
+                    var kind = Sidecars.Classify(NameOf(file.Path), file.MimeType);
                     if (kind == SidecarKind.CompanionArt)
                     {
                         file.Item = null; file.ItemId = null;
@@ -568,10 +565,31 @@ namespace Librarian.Services
 
                 int nonEmptyChildren = childRes.Count(kv => kv.Value.Collection != null || kv.Value.ItemIds.Count > 0);
                 bool anyStructuralKid = kids.Any(c => IsStructuralName(NameOf(c)));
-                bool anyChildCollection = childRes.Values.Any(v => v.Collection != null);
-                bool isCollection = anyStructuralKid
-                                    || nonEmptyChildren >= 2
-                                    || (anyChildCollection && looseItems.Count > 0);
+
+                // Uniform folder→collection so the Collections view mirrors the filesystem tree: any folder
+                // that holds content (items or sub-collections) is a collection node — EXCEPT a folder
+                // dedicated to a single item, which is promoted to that item (it bubbles up to its parent
+                // collection instead of getting a redundant one-item wrapper).
+                bool isCollection;
+                if (anyStructuralKid)
+                {
+                    isCollection = true;
+                }
+                else if (nonEmptyChildren == 0 && looseItems.Count == 1)
+                {
+                    var folderFiles = filesByFolder.TryGetValue(folder, out var ff) ? ff : new List<IndexedFile>();
+                    string? primaryName = folderFiles
+                        .FirstOrDefault(f => f.ItemId == looseItems[0] && f.Role == FileRole.Primary)
+                        is IndexedFile pf ? NameOf(pf.Path) : null;
+
+                    bool promote = primaryName == null
+                        || FolderHeuristics.FolderIsDedicatedToItem(NameOf(folder), primaryName, folderFiles.Select(f => NameOf(f.Path)));
+                    isCollection = !promote;
+                }
+                else
+                {
+                    isCollection = (nonEmptyChildren + looseItems.Count) >= 1;
+                }
 
                 ResolvedNode node;
                 if (!isCollection)

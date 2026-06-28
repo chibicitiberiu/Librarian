@@ -8,7 +8,9 @@ using Librarian.Metadata.Providers.MetadataCli;
 using Librarian.Metadata.Normalization;
 using Librarian.Metadata.Providers.ExifTool;
 using Librarian.Metadata.Providers.Tika;
+using Librarian.Library;
 using Librarian.Services;
+using Librarian.Utils;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -17,8 +19,13 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Quartz;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Librarian
 {
@@ -27,6 +34,43 @@ namespace Librarian
         private static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // User-managed settings (edited from the Settings page) live in a writable settings.json under
+            // the AppDataDirectory. Added last so it takes precedence over appsettings.json and environment
+            // variables — once a value is saved in-app it is authoritative. Missing file is fine (optional).
+            var appDataDir = PathUtils.GetCanonicalPath(builder.Configuration["AppDataDirectory"] ?? "data");
+            builder.Configuration.AddJsonFile(Path.Combine(appDataDir, "settings.json"),
+                                              optional: true, reloadOnChange: false);
+
+            // Classification lists (file-type/MIME classes, sidecar roles, heuristic tokens & patterns) are
+            // data, not code: load every config.d/*.json, shipped defaults first then AppDataDirectory
+            // overrides, merged into the "Classification" section.
+            // Merge every config.d/*.json (shipped first, then AppDataDirectory overrides) ourselves, with
+            // ARRAY-REPLACE semantics: objects merge recursively, but a list (or scalar) in a later file
+            // replaces the earlier one wholesale. IConfiguration's default would merge arrays element-wise
+            // by index, so a shorter override would only overwrite the first N entries — a sharp edge for
+            // per-deployment list customization. We feed the cleanly-merged result back into config.
+            var cfgFiles = new List<string>();
+            foreach (var cfgDir in new[]
+                     {
+                         Path.Combine(builder.Environment.ContentRootPath, "config.d"),
+                         Path.Combine(appDataDir, "config.d"),
+                     })
+            {
+                if (Directory.Exists(cfgDir))
+                    cfgFiles.AddRange(Directory.GetFiles(cfgDir, "*.json").OrderBy(f => f, StringComparer.Ordinal));
+            }
+            int cfgFilesLoaded = cfgFiles.Count;
+            if (cfgFiles.Count > 0)
+                builder.Configuration.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(MergeConfigFiles(cfgFiles))));
+
+            // Bind once and install into the (static, read-only-after-startup) classifiers, so the parallel
+            // indexing threads share immutable lists. Falls back to the built-in defaults if config is absent.
+            var boundClassification = builder.Configuration.GetSection("Classification").Get<ClassificationOptions>();
+            var classification = boundClassification ?? ClassificationOptions.Default;
+            Sidecars.Configure(classification);
+            FolderHeuristics.Configure(classification);
+            builder.Services.AddSingleton(classification);
 
             // Add services to the container.
             builder.Services.AddDbContext<DatabaseContext>(opts =>
@@ -94,6 +138,13 @@ namespace Librarian
 
             var app = builder.Build();
 
+            app.Logger.LogInformation(
+                "Classification: {n} config.d file(s) loaded; using {src} ({v} video / {a} audio / {i} image ext, {sub} subtitle ext, {noise} noise tokens).",
+                cfgFilesLoaded, boundClassification != null ? "config.d" : "built-in defaults",
+                classification.VideoExtensions.Length, classification.AudioExtensions.Length,
+                classification.ImageExtensions.Length, classification.SubtitleExtensions.Length,
+                classification.NoiseTokens.Length);
+
             try
             {
                 VerifyConfiguration(app.Configuration);
@@ -109,10 +160,15 @@ namespace Librarian
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
             {
+                // Friendly 500 page in production; the developer exception page stays on in Development.
                 app.UseExceptionHandler("/error");
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
+
+            // Friendly error page for status codes with no body (404, 403, …) in every environment.
+            // Re-executes the request against /error/{code} so the wm-styled page is rendered in place.
+            app.UseStatusCodePagesWithReExecute("/error/{0}");
 
             //app.UseHttpsRedirection();
             app.UseStaticFiles();
@@ -121,9 +177,10 @@ namespace Librarian
             app.UseAuthorization();
             app.UseSession();
 
+            // The file browser is the application's landing surface (the new UI has no separate Home).
             app.MapControllerRoute("default",
                                     "",
-                                    new { controller = "Home", action = "Index" });
+                                    new { controller = "Browse", action = "Index", path = string.Empty });
 
             app.MapControllerRoute("error",
                                     "/error/{id?}",
@@ -132,6 +189,10 @@ namespace Librarian
             app.MapControllerRoute("Browse",
                                     "browse/{**path}",
                                     new { controller = "Browse", action = "Index", path = string.Empty });
+
+            // Distinct prefix so the in-window file viewer isn't swallowed by the "browse/{**path}" catch-all.
+            app.MapControllerRoute("Browse_Viewer", "browse_view/{**path}",
+                                    new { controller = "Browse", action = "Viewer", path = string.Empty });
 
             app.MapControllerRoute("Browse_Cut", "browse_actions/cut", new { controller = "Browse", action = "Cut" });
             app.MapControllerRoute("Browse_Copy", "browse_actions/copy", new { controller = "Browse", action = "Copy" });
@@ -163,11 +224,6 @@ namespace Librarian
                                     "admin/{action=Index}",
                                     new { controller = "Admin" });
 
-            // Sandbox for the new window-manager control library (lib/wm). Functional browse-clone.
-            app.MapControllerRoute("UiTest",
-                                    "uitest/{**path}",
-                                    new { controller = "UiTest", action = "Index", path = string.Empty });
-
             app.MapControllerRoute("Search",
                                     "/search",
                                     new { controller = "Search", action = "Index" });
@@ -185,6 +241,34 @@ namespace Librarian
             app.Run();
         }
 
+        /// <summary>Deep-merges config.d JSON files in order: nested objects merge recursively, but arrays
+        /// and scalars from a later file REPLACE earlier ones wholesale (so an override list is a clean
+        /// replacement, not IConfiguration's index-wise array merge). A malformed file is skipped, not fatal.</summary>
+        private static string MergeConfigFiles(IEnumerable<string> files)
+        {
+            var docOptions = new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
+            var merged = new JsonObject();
+            foreach (var file in files)
+            {
+                JsonNode? node;
+                try { node = JsonNode.Parse(File.ReadAllText(file), documentOptions: docOptions); }
+                catch { continue; }
+                if (node is JsonObject obj)
+                    MergeJsonInto(merged, obj);
+            }
+            return merged.ToJsonString();
+        }
+
+        private static void MergeJsonInto(JsonObject target, JsonObject source)
+        {
+            foreach (var kv in source)
+            {
+                if (kv.Value is JsonObject srcObj && target[kv.Key] is JsonObject tgtObj)
+                    MergeJsonInto(tgtObj, srcObj);
+                else
+                    target[kv.Key] = kv.Value?.DeepClone();
+            }
+        }
 
         private static void VerifyConfiguration(IConfiguration config)
         {

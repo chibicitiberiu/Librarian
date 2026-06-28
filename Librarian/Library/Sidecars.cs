@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Librarian.Library
 {
@@ -18,51 +19,53 @@ namespace Librarian.Library
         /// <summary>Cover/art resource (<c>cover.jpg</c>, <c>folder.png</c>, <c>backdrop.*</c>, …).</summary>
         CompanionArt,
         /// <summary>A bundled resource that is never standalone library content — a shared library,
-        /// game data file, installer/config (<c>.dll</c>, <c>.vol</c>, <c>.ani</c>, <c>.inf</c>, …).</summary>
+        /// game data file, installer/config, subtitle (<c>.dll</c>, <c>.vol</c>, <c>.srt</c>, …).</summary>
         CompanionResource,
     }
 
     /// <summary>
-    /// Recognises sidecar/companion files by name, so the association service can fold them into their
-    /// primary work instead of letting them surface as standalone library items. Purely name-based —
-    /// it is deliberately conservative (only well-known conventions) to avoid hijacking real content.
+    /// Recognises sidecar/companion files by name (and, when available, by detected MIME), so the
+    /// association service can fold them into their primary work instead of letting them surface as
+    /// standalone library items. The lists it consults live in <c>config.d</c> (see
+    /// <see cref="ClassificationOptions"/>) and are installed once at startup via <see cref="Configure"/>.
     /// </summary>
     public static class Sidecars
     {
-        private static readonly HashSet<string> ArtStems = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "cover", "folder", "backdrop", "logo", "poster", "fanart", "banner",
-            "front", "back", "thumb", "thumbnail", "albumart", "albumartsmall", "disc",
-        };
+        private static HashSet<string> _artStems = Set(ClassificationOptions.Default.ArtStems);
+        private static HashSet<string> _imageExt = Set(ClassificationOptions.Default.ImageExtensions);
+        private static HashSet<string> _subtitleExt = Set(ClassificationOptions.Default.SubtitleExtensions);
+        private static HashSet<string> _resourceExt = Set(ClassificationOptions.Default.ResourceExtensions);
+        private static HashSet<string> _audioExt = Set(ClassificationOptions.Default.AudioExtensions);
+        private static HashSet<string> _videoExt = Set(ClassificationOptions.Default.VideoExtensions);
+        private static HashSet<string> _exeExt = Set(ClassificationOptions.Default.ExecutableExtensions);
+        private static HashSet<string> _auxExeStems = Set(ClassificationOptions.Default.AuxiliaryExeStems);
+        private static string[] _videoMime = ClassificationOptions.Default.VideoMimePrefixes;
+        private static string[] _audioMime = ClassificationOptions.Default.AudioMimePrefixes;
+        private static string[] _imageMime = ClassificationOptions.Default.ImageMimePrefixes;
 
-        private static readonly HashSet<string> ArtExtensions = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".tif",
-        };
+        private static HashSet<string> Set(IEnumerable<string> values) => new(values, StringComparer.OrdinalIgnoreCase);
 
-        // Extensions that are never a library item on their own — they only exist to serve a primary.
-        private static readonly HashSet<string> ResourceExtensions = new(StringComparer.OrdinalIgnoreCase)
+        /// <summary>Installs the classification lists (from config.d) — call once at startup. Read-only
+        /// afterwards, so the indexing threads can share it without locking.</summary>
+        public static void Configure(ClassificationOptions o)
         {
-            // shared libraries / binary components
-            ".dll", ".so", ".dylib", ".ocx", ".sys", ".drv", ".vxd", ".cpl", ".lib", ".a", ".o",
-            // game / application data
-            ".vol", ".ani", ".pak", ".wad", ".dat", ".bin", ".res", ".pk3", ".pk4",
-            ".bsp", ".mdl", ".spr", ".vdf", ".gcf", ".big", ".bsa", ".cab",
-            // install / config leftovers
-            ".inf", ".isu", ".ini", ".cfg", ".conf",
-        };
+            _artStems = Set(o.ArtStems);
+            _imageExt = Set(o.ImageExtensions);
+            _subtitleExt = Set(o.SubtitleExtensions);
+            _resourceExt = Set(o.ResourceExtensions);
+            _audioExt = Set(o.AudioExtensions);
+            _videoExt = Set(o.VideoExtensions);
+            _exeExt = Set(o.ExecutableExtensions);
+            _auxExeStems = Set(o.AuxiliaryExeStems);
+            _videoMime = o.VideoMimePrefixes;
+            _audioMime = o.AudioMimePrefixes;
+            _imageMime = o.ImageMimePrefixes;
+        }
 
-        private static readonly HashSet<string> AudioExtensions = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".flac", ".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".wav", ".wma", ".alac", ".ape", ".wv",
-        };
+        private static bool MimeMatches(string? mime, string[] prefixes) =>
+            !string.IsNullOrEmpty(mime) && prefixes.Any(p => mime.StartsWith(p, StringComparison.OrdinalIgnoreCase));
 
-        private static readonly HashSet<string> ExecutableExtensions = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".exe", ".msi", ".com",
-        };
-
-        public static SidecarKind Classify(string fileName)
+        public static SidecarKind Classify(string fileName, string? mime = null)
         {
             string ext = Path.GetExtension(fileName);
             string stem = Path.GetFileNameWithoutExtension(fileName);
@@ -73,26 +76,28 @@ namespace Librarian.Library
                 return SidecarKind.Lrc;
             if (ext.Equals(".nfo", StringComparison.OrdinalIgnoreCase))
                 return SidecarKind.Nfo;
-            if (ArtExtensions.Contains(ext) && ArtStems.Contains(stem))
+            if (IsImage(fileName, mime) && _artStems.Contains(stem))
                 return SidecarKind.CompanionArt;
-            if (ResourceExtensions.Contains(ext))
+            if (_subtitleExt.Contains(ext) || _resourceExt.Contains(ext))
                 return SidecarKind.CompanionResource;
 
             return SidecarKind.Content;
         }
 
-        public static bool IsImage(string fileName) => ArtExtensions.Contains(Path.GetExtension(fileName));
-        public static bool IsAudio(string fileName) => AudioExtensions.Contains(Path.GetExtension(fileName));
-        public static bool IsExecutable(string fileName) => ExecutableExtensions.Contains(Path.GetExtension(fileName));
+        // Media-class predicates: a detected content MIME wins when present (robust to wrong extensions);
+        // otherwise we fall back to the extension. Executables have no reliable MIME, so extension only.
+        public static bool IsImage(string fileName, string? mime = null) =>
+            MimeMatches(mime, _imageMime) || (string.IsNullOrEmpty(mime) && _imageExt.Contains(Path.GetExtension(fileName)));
+        public static bool IsAudio(string fileName, string? mime = null) =>
+            MimeMatches(mime, _audioMime) || (string.IsNullOrEmpty(mime) && _audioExt.Contains(Path.GetExtension(fileName)));
+        public static bool IsVideo(string fileName, string? mime = null) =>
+            MimeMatches(mime, _videoMime) || (string.IsNullOrEmpty(mime) && _videoExt.Contains(Path.GetExtension(fileName)));
+        public static bool IsExecutable(string fileName) => _exeExt.Contains(Path.GetExtension(fileName));
 
-        // Executables that ship alongside an app but are not the app itself — installers, archivers,
-        // uninstallers, redistributables. Used to avoid picking them as a bundle's primary.
-        private static readonly HashSet<string> AuxiliaryExeStems = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "setup", "install", "installer", "autorun", "uninstall", "uninst", "unins000", "unwise",
-            "rar", "winrar", "unrar", "7z", "7za", "7zfm", "vcredist", "dxsetup", "dotnetfx",
-            "oalinst", "directx", "dxwebsetup", "redist", "update", "patch",
-        };
+        /// <summary>The "primary content" media classes — a folder built around one of these treats every
+        /// other loose file (stray text, logs, images, …) as a companion of it.</summary>
+        public static bool IsPrimaryMedia(string fileName, string? mime = null) =>
+            IsAudio(fileName, mime) || IsVideo(fileName, mime) || IsExecutable(fileName);
 
         /// <summary>True for a helper executable (installer/archiver/redist) that should not be
         /// chosen as a bundle's primary app.</summary>
@@ -101,7 +106,7 @@ namespace Librarian.Library
             if (!IsExecutable(fileName))
                 return false;
             string stem = Path.GetFileNameWithoutExtension(fileName);
-            return AuxiliaryExeStems.Contains(stem)
+            return _auxExeStems.Contains(stem)
                 || stem.StartsWith("unins", StringComparison.OrdinalIgnoreCase);
         }
 
