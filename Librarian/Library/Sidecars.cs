@@ -70,6 +70,11 @@ namespace Librarian.Library
             string ext = Path.GetExtension(fileName);
             string stem = Path.GetFileNameWithoutExtension(fileName);
 
+            // yt-dlp "<name>.info.json": its useful fields are promoted onto the video by
+            // InfoJsonMetadataProvider, so fold it into the item rather than listing it standalone.
+            if (fileName.EndsWith(".info.json", StringComparison.OrdinalIgnoreCase))
+                return SidecarKind.CompanionResource;
+
             if (ext.Equals(".opf", StringComparison.OrdinalIgnoreCase))
                 return SidecarKind.Opf;
             if (ext.Equals(".lrc", StringComparison.OrdinalIgnoreCase))

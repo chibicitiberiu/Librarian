@@ -113,6 +113,7 @@ namespace Librarian
 
             builder.Services.AddScoped<IMetadataProvider, FileMetadataProvider>();
             builder.Services.AddScoped<IMetadataProvider, FilenameMetadataProvider>();
+            builder.Services.AddScoped<IMetadataProvider, InfoJsonMetadataProvider>();
             //builder.Services.AddScoped<IMetadataProvider, MetadataExtractorProvider>();
             builder.Services.AddScoped<IMetadataProvider, MetadataCliProvider>();
             builder.Services.AddScoped<IRawMetadataProvider, TikaProvider>();
