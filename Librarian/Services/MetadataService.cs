@@ -135,6 +135,14 @@ namespace Librarian.Services
                     attribute.File = file;
                     if (attribute.SubResource != null)
                         attribute.SubResource.File = file;
+
+                    // Mirror the file-level content MIME onto the row so the association pass can classify
+                    // by content (robust to mismatched extensions) without re-running detection.
+                    if (attribute.SubResource == null
+                        && attribute.AttributeDefinition?.Id == Model.MetadataAttributes.FileAttributes.MimeType
+                        && attribute is TextAttribute mimeAttr)
+                        file.MimeType = mimeAttr.Value;
+
                     StoreCanonical(attribute);
                 }
             }

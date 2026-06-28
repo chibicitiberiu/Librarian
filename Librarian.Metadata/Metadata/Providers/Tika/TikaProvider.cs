@@ -18,6 +18,17 @@ namespace Librarian.Metadata.Providers.Tika
 
         private readonly TikaService tikaService;
         private readonly ILogger logger;
+        private readonly HashSet<string> skipExtensions;
+
+        // Tika parses a whole video/audio container to extract little that meta-cli (libav) and exiftool
+        // don't already get faster — and it's the dominant per-file cost when enabled. Skip those formats.
+        // Overridable via the "Tika:SkipExtensions" config (config.d).
+        private static readonly string[] DefaultSkipExtensions =
+        {
+            ".mkv", ".mp4", ".avi", ".mov", ".m4v", ".webm", ".wmv", ".flv", ".mpg", ".mpeg",
+            ".m2ts", ".mts", ".ts", ".vob", ".ogv", ".3gp", ".divx", ".rm", ".rmvb", ".asf",
+            ".flac", ".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".wav", ".wma", ".alac", ".ape", ".wv",
+        };
 
         public Guid ProviderId => providerId;
 
@@ -27,6 +38,12 @@ namespace Librarian.Metadata.Providers.Tika
         {
             this.tikaService = tikaService;
             this.logger = logger;
+
+            var configured = configuration?.GetSection("Tika:SkipExtensions").GetChildren()
+                .Select(c => c.Value).Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!).ToArray();
+            skipExtensions = new HashSet<string>(
+                configured is { Length: > 0 } ? configured : DefaultSkipExtensions,
+                StringComparer.OrdinalIgnoreCase);
         }
 
         public async Task<RawMetadataResult> GetRawMetadataAsync(string filePath)
@@ -35,6 +52,10 @@ namespace Librarian.Metadata.Providers.Tika
 
             // Tika handles files, not directories.
             if (Directory.Exists(filePath))
+                return result;
+
+            // Skip formats where Tika is slow and adds little over the media providers (video/audio).
+            if (skipExtensions.Contains(Path.GetExtension(filePath)))
                 return result;
 
             IReadOnlyList<TikaResource>? resources;

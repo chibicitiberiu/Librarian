@@ -16,6 +16,11 @@ namespace Librarian.Metadata
 
         private readonly static Regex StreamLanguageRegex = new("IAS([0-9]+)", RegexOptions.IgnoreCase);
 
+        // Files are extracted in parallel during indexing; on-demand AttributeDefinition creation is the
+        // one shared-write path. Serialize it (double-checked at each call site) so two threads can't
+        // insert the same definition and collide. Static = shared across all (scoped) factory instances.
+        private static readonly object DefinitionCreationLock = new();
+
         public MetadataFactory(DatabaseContext dbContext, ILogger<MetadataFactory> logger)
         {
             this.dbContext = dbContext;
@@ -106,9 +111,18 @@ namespace Librarian.Metadata
 
             if (definition == null)
             {
-                definition = new AttributeDefinition(name, groupName, type);
-                dbContext.Add(definition);
-                dbContext.SaveChanges();
+                lock (DefinitionCreationLock)
+                {
+                    // Re-check inside the lock (another thread may have just created and committed it).
+                    definition = dbContext.AttributeDefinitions
+                        .FirstOrDefault(x => x.Group == groupName && x.Name == name && x.Type == type);
+                    if (definition == null)
+                    {
+                        definition = new AttributeDefinition(name, groupName, type);
+                        dbContext.Add(definition);
+                        dbContext.SaveChanges();
+                    }
+                }
             }
 
             return Create(definition,
@@ -184,14 +198,23 @@ namespace Librarian.Metadata
             // Create attribute. Its Id comes from the identity sequence, which the
             // ReserveCurationIdSpace migration restarts at 1,000,000 — so curated "Other" defs live in
             // their own id range and never collide with seed-appended attributes (1..N from the CSV).
-            var newAttribute = new AttributeDefinition(cleanedName, "Other", GetDatatype(value));
+            lock (DefinitionCreationLock)
+            {
+                // Re-check under the lock — another thread may have just created this "Other" definition.
+                var existing = dbContext.AttributeDefinitions.AsEnumerable()
+                    .Where(x => string.Equals(x.Name, cleanedName, StringComparison.OrdinalIgnoreCase))
+                    .FirstOrDefault(x => MatchesDatatype(value, x));
+                if (existing != null)
+                    return Create(existing, value, providerId, providerAttributeId, editable, subResource);
 
-            dbContext.Add(newAttribute);
-            dbContext.SaveChanges();
+                var newAttribute = new AttributeDefinition(cleanedName, "Other", GetDatatype(value));
+                dbContext.Add(newAttribute);
+                dbContext.SaveChanges();
 
-            logger.LogTrace("Create {name} (original: '{rawName}') = {value} >> New attribute {attributeId} : {attributeGroup} : {attributeName}",
-                cleanedName, rawName, value, newAttribute.Id, newAttribute.Group, newAttribute.Name);
-            return Create(newAttribute, value, providerId, providerAttributeId, editable, subResource);
+                logger.LogTrace("Create {name} (original: '{rawName}') = {value} >> New attribute {attributeId} : {attributeGroup} : {attributeName}",
+                    cleanedName, rawName, value, newAttribute.Id, newAttribute.Group, newAttribute.Name);
+                return Create(newAttribute, value, providerId, providerAttributeId, editable, subResource);
+            }
         }
 
         private static bool MatchesDatatype(object value, AttributeDefinition attributeDefinition)
@@ -308,8 +331,12 @@ namespace Librarian.Metadata
 
         public static int StreamLanguageGetStreamId(string attribute)
         {
-            var match = StreamLanguageRegex.Match(attribute.Trim())!;
-            return int.Parse(match.Captures[1].Value);
+            // Group 1 is the digits in "IAS<n>"; match.Captures[1] is the WHOLE-match capture list (one
+            // entry) and was always out of range — use the capture group instead.
+            var match = StreamLanguageRegex.Match(attribute.Trim());
+            return match.Success && match.Groups[1].Success
+                ? int.Parse(match.Groups[1].Value)
+                : -1;
         }
     }
 }

@@ -226,7 +226,10 @@ namespace Librarian.Metadata.Providers.MetadataCli
                     else if (metadataBase.AttributeDefinition.Id == Media.BitRate)
                         stream.BitRate ??= Convert.ToInt64(pair.Value);
                     else if (metadataBase.AttributeDefinition.Id == Media.Duration)
-                        stream.Duration ??= TimeSpan.Parse(pair.Value.ToString()!).TotalSeconds;
+                    {
+                        if (stream.Duration == null && TryParseDurationSeconds(pair.Value?.ToString(), out double sec))
+                            stream.Duration = sec;
+                    }
                     else if (metadataBase.AttributeDefinition.Id == Video.Frames)
                         stream.Frames ??= Convert.ToInt64(pair.Value);
                     else result.Add(metadataBase);
@@ -303,6 +306,33 @@ namespace Librarian.Metadata.Providers.MetadataCli
                 result.Add(metadataFactory.Create(Media.EndTime, chapter.End, ProviderId, editable: false, subResource: chapterResource));
             if (chapter.Start != null && chapter.End != null)
                 result.Add(metadataFactory.Create(Media.Duration, chapter.End - chapter.Start, ProviderId, editable: false, subResource: chapterResource));
+        }
+
+        /// <summary>Parses a libav duration that may carry more fractional digits than TimeSpan accepts
+        /// (it reports nanoseconds, e.g. "01:33:38.405000000"), or a bare seconds value ("5618.405").</summary>
+        private static bool TryParseDurationSeconds(string? raw, out double seconds)
+        {
+            seconds = 0;
+            if (string.IsNullOrWhiteSpace(raw)) return false;
+            string s = raw.Trim();
+
+            // TimeSpan supports at most 7 fractional digits (100-ns ticks); truncate longer fractions.
+            int dot = s.IndexOf('.');
+            if (dot >= 0 && s.Length - dot - 1 > 7)
+                s = s.Substring(0, dot + 1 + 7);
+
+            if (TimeSpan.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var ts))
+            {
+                seconds = ts.TotalSeconds;
+                return true;
+            }
+            if (double.TryParse(raw, System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out double d))
+            {
+                seconds = d;
+                return true;
+            }
+            return false;
         }
 
         public Task SaveMetadataAsync(string filePath, MetadataCollection metadata)

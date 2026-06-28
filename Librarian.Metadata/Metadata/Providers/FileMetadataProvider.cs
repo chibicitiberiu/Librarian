@@ -29,7 +29,17 @@ namespace Librarian.Metadata.Providers
             {
                 info = new FileInfo(filePath);
                 result.Add(metadataFactory.Create(FileAttributes.Size, ((FileInfo)info).Length, ProviderId, editable: false));
-                result.Add(metadataFactory.Create(FileAttributes.MimeType, MimeUtility.GetMimeMapping(filePath), ProviderId, editable: false));
+                // Content-detected MIME (file --mime-type) is authoritative over the extension — it's what
+                // makes classification robust to mismatched extensions; the extension mapping is the
+                // fallback when 'file' is unavailable or unsure.
+                string mime = await DetectContentMimeAsync(filePath) ?? MimeUtility.GetMimeMapping(filePath);
+                result.Add(metadataFactory.Create(FileAttributes.MimeType, mime, ProviderId, editable: false));
+
+                // The human-readable 'file' description (a second call) captures detail a MIME type omits —
+                // CPU architecture for binaries, container/codec specifics, encoding, version, etc.
+                string? description = await DetectFileDescriptionAsync(filePath);
+                if (description != null)
+                    result.Add(metadataFactory.Create(FileAttributes.FileType, description, ProviderId, editable: false));
             }
             else if (Directory.Exists(filePath))
             {
@@ -46,27 +56,39 @@ namespace Librarian.Metadata.Providers
             result.Add(metadataFactory.Create(FileAttributes.FullPath, info.FullName, ProviderId, editable: false));
             result.Add(metadataFactory.Create(FileAttributes.DateCreated, new DateTimeOffset(info.CreationTime), ProviderId, editable: false));
             result.Add(metadataFactory.Create(FileAttributes.DateModified, new DateTimeOffset(info.LastWriteTime), ProviderId, editable: false));
-            await GetFileType(filePath, result);
 
             return result;
         }
 
-        private async Task GetFileType(string filePath, MetadataCollection result)
+        /// <summary>Content type via libmagic (<c>file --mime-type</c>), or null when 'file' is missing,
+        /// errors, or returns something that isn't a "type/subtype" MIME (so the caller falls back to the
+        /// extension mapping).</summary>
+        private static async Task<string?> DetectContentMimeAsync(string filePath)
         {
             if (!File.Exists(FileCommand))
-                return;
+                return null;
 
-            // '-E' makes filesystem errors (unreadable/partial files) exit non-zero and go to
-            // stderr instead of being printed to stdout — otherwise 'file' happily emits
-            // "cannot open `...' (...)" as its answer and we would store that error string as
-            // the file's type. The output-shape check below is defence-in-depth for builds of
-            // 'file' that still slip a diagnostic onto stdout with a zero exit code.
+            // '-b' bare output, '-E' surfaces I/O errors as a non-zero exit (instead of "cannot open …" on
+            // stdout, which we'd otherwise store as the type), '--mime-type' yields just "type/subtype".
+            var (exitCode, output, _) = await ProcessHelper.RunProcessAsync(FileCommand, "-b", "-E", "--mime-type", filePath);
+            string mime = output.Trim();
+            if (exitCode != 0 || mime.Length == 0 || LooksLikeError(mime) || !mime.Contains('/'))
+                return null;
+            return mime;
+        }
+
+        /// <summary>The human-readable libmagic description (<c>file -b</c>), e.g. "ELF 64-bit LSB
+        /// executable, x86-64, …" or "Matroska data". Null when 'file' is missing or errors.</summary>
+        private static async Task<string?> DetectFileDescriptionAsync(string filePath)
+        {
+            if (!File.Exists(FileCommand))
+                return null;
+
             var (exitCode, output, _) = await ProcessHelper.RunProcessAsync(FileCommand, "-b", "-E", filePath);
             string type = output.Trim();
             if (exitCode != 0 || type.Length == 0 || LooksLikeError(type))
-                return;
-
-            result.Attributes.Add(metadataFactory.Create(FileAttributes.FileType, type, ProviderId, editable: false));
+                return null;
+            return type;
         }
 
         private static bool LooksLikeError(string fileOutput)

@@ -85,6 +85,11 @@ namespace Librarian.Model
         public DateTimeOffset Created {  get; set; }
         public DateTimeOffset Modified { get; set; }
 
+        /// <summary>Content-detected MIME type (file --mime-type / Tika), set during indexing. Authoritative
+        /// over the file extension for media-class classification (robust to mismatched extensions). Null
+        /// until detected (e.g. a directory entry, or before the first extraction).</summary>
+        public string? MimeType { get; set; }
+
         #endregion
 
         #region Content hashing (plan.md Phase 4 — checksums & dedup)
