@@ -122,6 +122,10 @@ namespace Librarian.Services
             string filePath = fileService.Resolve(file.Path);
             bool incomplete = false;
 
+            // Collapse identical (field, sub-resource, value) across providers — e.g. the series name
+            // emitted by both the filename parser and meta-cli's "show" tag is one Collection row, not two.
+            var seen = new HashSet<(int Def, SubResource? Sub, string Value)>();
+
             foreach (var provider in metadataProviders.Values)
             {
                 var (collection, failed) = await executor.ExecuteAsync(
@@ -142,6 +146,9 @@ namespace Librarian.Services
                         && attribute.AttributeDefinition?.Id == Model.MetadataAttributes.FileAttributes.MimeType
                         && attribute is TextAttribute mimeAttr)
                         file.MimeType = mimeAttr.Value;
+
+                    if (!seen.Add((DefId(attribute), attribute.SubResource, CanonicalValueKey(attribute))))
+                        continue;
 
                     StoreCanonical(attribute);
                 }

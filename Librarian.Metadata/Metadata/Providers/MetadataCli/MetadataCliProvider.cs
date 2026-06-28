@@ -115,15 +115,14 @@ namespace Librarian.Metadata.Providers.MetadataCli
                         result.Add(metadataFactory.Create(Media.Disc, match.Groups[1].Value, providerId, providerAttributeId: key, editable: true));
                         result.Add(metadataFactory.Create(Media.TotalDiscs, match.Groups[2].Value, providerId, providerAttributeId: "disctotal", editable: true));
                     }
-                    else if (pair.Value?.ToString() is { } sv && IsEpochPlaceholderDate(sv))
-                    {
-                        // Skip placeholder dates: mp4 'creation_time' is frequently the 1970 / 1904 epoch
-                        // zero, which would pollute a canonical Date field. Raw providers still capture the
-                        // value untouched in the raw layer.
-                    }
                     else
                     {
-                        result.Add(metadataFactory.Create(key, pair.Value, ProviderId, providerAttributeId: key, editable: true));
+                        // Skip placeholder dates: mp4 'creation_time' is frequently the 1970 / 1904 epoch
+                        // zero (sometimes timezone-shifted), which would pollute a canonical Date field.
+                        // Raw providers still capture the value untouched in the raw layer.
+                        var attr = metadataFactory.Create(key, pair.Value, ProviderId, providerAttributeId: key, editable: true);
+                        if (attr is not null && !(attr is DateAttribute date && IsPlaceholderDate(date.Value)))
+                            result.Add(attr);
                     }
                 }
             }
@@ -226,6 +225,8 @@ namespace Librarian.Metadata.Providers.MetadataCli
                     var metadataBase = metadataFactory.Create(pair.Key, pair.Value, ProviderId, editable: true, subResource: streamResource);
                     if (metadataBase == null)
                         continue;
+                    if (metadataBase is DateAttribute streamDate && IsPlaceholderDate(streamDate.Value))
+                        continue;   // per-stream creation_time is usually the epoch placeholder
 
                     if (metadataBase.AttributeDefinition.Id == General.Title)
                         stream.Title = pair.Value.ToString()!.Trim();
@@ -315,13 +316,14 @@ namespace Librarian.Metadata.Providers.MetadataCli
         }
 
         /// <summary>True for placeholder dates that aren't real: the all-zero date and the Unix (1970) /
-        /// QuickTime (1904) epoch zeros that containers emit when no date was set.</summary>
-        private static bool IsEpochPlaceholderDate(string value)
+        /// QuickTime (1904) epoch zeros (incl. timezone-shifted forms) that containers emit when no date
+        /// was set. A genuinely old tag date (e.g. a 1965 film) is far from these instants and is kept.</summary>
+        internal static bool IsPlaceholderDate(DateTimeOffset dt)
         {
-            string v = value.TrimStart();
-            return v.StartsWith("0000")
-                || v.StartsWith("1904-01-01") || v.StartsWith("1904:01:01")
-                || v.StartsWith("1970-01-01") || v.StartsWith("1970:01:01");
+            DateTime utc = dt.UtcDateTime;
+            return utc.Year <= 1
+                || Math.Abs((utc - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalDays) < 2
+                || Math.Abs((utc - new DateTime(1904, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalDays) < 2;
         }
 
         /// <summary>Parses a libav duration that may carry more fractional digits than TimeSpan accepts

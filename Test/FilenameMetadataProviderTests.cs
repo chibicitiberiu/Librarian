@@ -78,6 +78,23 @@ namespace Test
         }
 
         [Fact]
+        public void Normalizes_scene_style_dotted_series()
+        {
+            var ep = FilenameMetadataProvider.ParseTvEpisode("Star.Wars.The.Clone.Wars.s01e06");
+            Assert.Equal("Star Wars The Clone Wars", ep!.Value.Series);
+            Assert.Equal(1, ep.Value.Season);
+            Assert.Equal(6, ep.Value.Episode);
+        }
+
+        [Fact]
+        public void Keeps_spaced_series_dots_untouched()
+        {
+            // Already has spaces -> dots are meaningful, leave them.
+            var ep = FilenameMetadataProvider.ParseTvEpisode("Dr. Who - S01E01 - Rose");
+            Assert.Equal("Dr. Who", ep!.Value.Series);
+        }
+
+        [Fact]
         public void Episode_without_title_uses_folder_series()
         {
             var ep = FilenameMetadataProvider.ParseTvEpisode("S03E09", "Season 03", "Xploration Outer Space");

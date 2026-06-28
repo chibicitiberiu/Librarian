@@ -39,6 +39,7 @@ namespace Librarian.Metadata.Providers
         private static readonly Regex TrailingTag = new(@"\s*[\[\(][^\]\)]*[\]\)]\s*$", RegexOptions.Compiled);
         private static readonly Regex TrailingYear = new(@"\s*\((?:19|20)\d{2}\)\s*$", RegexOptions.Compiled);
         private static readonly Regex EdgeSeparators = new(@"^[\s._\-–—]+|[\s._\-–—]+$", RegexOptions.Compiled);
+        private static readonly Regex SceneSeparators = new(@"[._]+", RegexOptions.Compiled);
 
         /// <summary>Parses an episode from a filename stem, deriving the series from the surrounding
         /// folders when the name has no series prefix. Returns null when it isn't a recognisable episode.</summary>
@@ -57,11 +58,11 @@ namespace Librarian.Metadata.Providers
                 || !int.TryParse(match.Groups["episode"].Value, out int episode))
                 return null;
 
-            string series = Clean(match.Groups["series"].Value);
+            string series = Desceneify(Clean(match.Groups["series"].Value));
             if (series.Length == 0)
-                series = SeriesFromFolders(immediateFolder, parentFolder);
+                series = Desceneify(SeriesFromFolders(immediateFolder, parentFolder));
 
-            string title = Clean(match.Groups["title"].Value);
+            string title = Desceneify(Clean(match.Groups["title"].Value));
             return new TvEpisode(series, season, episode, title.Length > 0 ? title : null);
         }
 
@@ -76,6 +77,11 @@ namespace Librarian.Metadata.Providers
         }
 
         private static string Clean(string value) => EdgeSeparators.Replace(value.Trim(), string.Empty).Trim();
+
+        // Scene-style names use '.'/'_' as word separators ("Star.Wars.The.Clone.Wars"). When a value has
+        // no real spaces, treat those as spaces; if it already has spaces, the dots are likely meaningful.
+        private static string Desceneify(string value)
+            => value.Contains(' ') ? value : SceneSeparators.Replace(value, " ").Trim();
 
         private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
