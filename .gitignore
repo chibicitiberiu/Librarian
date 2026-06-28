@@ -449,3 +449,6 @@ _deps
 
 # Track the top-level Makefile (the CMake rule above ignores all "Makefile"s)
 !/Makefile
+
+# Track the classification config (the "*.d" rule above matches the "config.d" directory)
+!Librarian/config.d/

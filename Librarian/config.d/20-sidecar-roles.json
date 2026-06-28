@@ -1,0 +1,23 @@
+{
+  "//": "Name-based sidecar/companion roles. MIME can't express these (cover.jpg vs photo.jpg are both image/jpeg; .nfo vs .txt are both text/plain), so they stay name-driven.",
+  "Classification": {
+    "ArtStems": [
+      "cover", "folder", "backdrop", "logo", "poster", "fanart", "banner",
+      "front", "back", "thumb", "thumbnail", "albumart", "albumartsmall", "disc"
+    ],
+    "SubtitleExtensions": [
+      ".srt", ".sub", ".idx", ".ass", ".ssa", ".vtt", ".smi", ".sami", ".sup", ".ttml"
+    ],
+    "ResourceExtensions": [
+      ".dll", ".so", ".dylib", ".ocx", ".sys", ".drv", ".vxd", ".cpl", ".lib", ".a", ".o",
+      ".vol", ".ani", ".pak", ".wad", ".dat", ".bin", ".res", ".pk3", ".pk4",
+      ".bsp", ".mdl", ".spr", ".vdf", ".gcf", ".big", ".bsa", ".cab",
+      ".inf", ".isu", ".ini", ".cfg", ".conf"
+    ],
+    "AuxiliaryExeStems": [
+      "setup", "install", "installer", "autorun", "uninstall", "uninst", "unins000", "unwise",
+      "rar", "winrar", "unrar", "7z", "7za", "7zfm", "vcredist", "dxsetup", "dotnetfx",
+      "oalinst", "directx", "dxwebsetup", "redist", "update", "patch"
+    ]
+  }
+}

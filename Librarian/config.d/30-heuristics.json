@@ -1,0 +1,17 @@
+{
+  "//": "Folder->item promotion + structural-collection naming. NoiseTokens are dropped when comparing a folder name to its content file (the match is folder->file, so this need not be exhaustive). Patterns are .NET regex, matched case-insensitively against a single name segment.",
+  "Classification": {
+    "NoiseTokens": [
+      "1080p", "720p", "480p", "2160p", "4k", "uhd", "hd", "sd", "bluray", "blu", "ray", "bdrip", "brrip",
+      "webrip", "web", "dl", "hdtv", "dvdrip", "dvd", "remux", "x264", "x265", "h264", "h265", "hevc", "avc",
+      "xvid", "divx", "aac", "ac3", "dts", "dd", "ddp", "mp3", "flac", "atmos", "truehd", "10bit", "8bit",
+      "hdr", "sdr", "dubbed", "subbed", "rodubbed", "rosub", "multi", "dual", "audio", "proper", "repack",
+      "extended", "remastered", "unrated", "internal", "limited", "complete", "yify", "rip"
+    ],
+    "DiscRipExtensions": [ ".vob", ".ifo", ".bup", ".m2ts", ".bdmv" ],
+    "GenericContentNamePattern": "^(movie|video|film|main|title|playlist|index|stream|default|fullmovie|full|dvd|disc|cd|part|vts[\\s._-]*\\d+|title[\\s._-]*\\d+|disc[\\s._-]*\\d+|cd[\\s._-]*\\d+|part[\\s._-]*\\d+|\\d+)$",
+
+    "StructuralNamePattern": "^(season|series|saison|book|vol|volume|disc|disk|cd|part|pt|s)[\\s._-]*\\d+$|^(specials?|extras?|bonus)$",
+    "SeasonNamePattern": "^(season|series|saison|s)[\\s._-]*\\d+$|^(specials?|extras)$"
+  }
+}

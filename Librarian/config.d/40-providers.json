@@ -1,0 +1,10 @@
+{
+  "//": "Metadata-provider tuning. Tika.SkipExtensions: formats Tika should NOT parse. Tika tries to decode the whole video/audio container for little gain over meta-cli (libav) + exiftool, and is the dominant per-file indexing cost otherwise, so video/audio are skipped here.",
+  "Tika": {
+    "SkipExtensions": [
+      ".mkv", ".mp4", ".avi", ".mov", ".m4v", ".webm", ".wmv", ".flv", ".mpg", ".mpeg",
+      ".m2ts", ".mts", ".ts", ".vob", ".ogv", ".3gp", ".divx", ".rm", ".rmvb", ".asf",
+      ".flac", ".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".wav", ".wma", ".alac", ".ape", ".wv"
+    ]
+  }
+}
